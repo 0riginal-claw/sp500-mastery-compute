@@ -1,0 +1,61 @@
+# --- Secrets / credentials ---
+.env
+.env.*
+.envrc
+*.key
+*.pem
+*.p12
+*.crt
+secrets/
+credentials/
+credentials.json
+tokens.json
+**/api_keys*
+**/api_key*
+**/*api_key*
+**/*secret*
+**/*token*
+**/*credential*
+
+# --- Project state with sensitive/usage data ---
+dashboard/state.json
+dashboard/pacing_state.json
+dashboard/live.json
+sweeps/cloud_usage.json
+infra/drone/.env
+
+# --- Large data caches ---
+*.parquet
+*.feather
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+*.h5
+*.hdf5
+
+# --- Tmp/scratch ---
+/tmp/
+tmp/
+.cache/
+cache/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

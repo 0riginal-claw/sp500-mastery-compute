@@ -1,0 +1,348 @@
+# .github/workflows/sweep.yml
+#
+# XGBoost Backtest Sweep — GitHub Actions Matrix Workflow
+#
+# QUOTA NOTES:
+#   - PUBLIC repo  : UNLIMITED minutes (no cap). Recommended.
+#   - PRIVATE repo : 2,000 min/month on GitHub Free. At ~0.5 min/job,
+#                    that's ~4,000 jobs before hitting the cap.
+#   - Max parallel jobs on Free tier: 20 concurrent runners.
+#   - Max matrix size per run: 256 combinations.
+#     For sweeps >256 jobs, the dispatcher chunks into multiple workflow_dispatch
+#     calls automatically (each chunk <= 256).
+#
+# TRIGGERS:
+#   1. workflow_dispatch  — manual trigger or API call from dispatcher
+#   2. push to sweeps/    — optional auto-trigger when queue.txt changes
+#
+# INPUTS (workflow_dispatch):
+#   ticker    : single ticker symbol (e.g. "AAPL") — used for single-job dispatch
+#   strategy  : strategy code ("ORB" or "VWAP") — used for single-job dispatch
+#   script    : relative path to backtest script (default: scripts/backtest_xgb_v8.py)
+#   job_id    : tracking ID from the dispatcher (optional)
+#   tickers_json : JSON array of tickers for matrix dispatch (overrides ticker)
+#   strategies_json : JSON array of strategies for matrix dispatch
+#
+# RESULT DELIVERY:
+#   Each job uploads result.json as a workflow artifact.
+#   The rollup job downloads all artifacts and commits them back to the repo
+#   under backtests/<ticker>/<strategy>/result.json.
+#   The dispatcher polls for this file to detect completion.
+#
+# SETUP REQUIRED:
+#   - BACKTEST_GITHUB_TOKEN secret: PAT with `contents: write` scope for commit-back
+#   - (Optional) GCP_SA_KEY secret: service account JSON for Drive upload
+#   - Make repo public for unlimited minutes, OR stay private and monitor quota.
+
+name: xgb-sweep
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: 'Single ticker (e.g. AAPL). Leave blank if using tickers_json.'
+        required: false
+        default: ''
+      strategy:
+        description: 'Single strategy (ORB or VWAP). Leave blank if using strategies_json.'
+        required: false
+        default: 'ORB'
+      script:
+        description: 'Backtest script path'
+        required: false
+        default: 'scripts/backtest_xgb_v8.py'
+      job_id:
+        description: 'Dispatcher job ID for tracking (generated if empty)'
+        required: false
+        default: ''
+      tickers_json:
+        description: 'JSON array of tickers for matrix run, e.g. ["AAPL","MSFT"]'
+        required: false
+        default: '[]'
+      strategies_json:
+        description: 'JSON array of strategies for matrix run, e.g. ["ORB","VWAP"]'
+        required: false
+        default: '["ORB","VWAP"]'
+
+  # Auto-trigger when queue changes (optional — comment out if too noisy)
+  # push:
+  #   branches: [main]
+  #   paths: ['sweeps/queue.txt']
+
+env:
+  PYTHON_VERSION: '3.12'
+  # Prevents tqdm and rich from writing ANSI codes to log
+  PYTHONUNBUFFERED: '1'
+  NO_COLOR: '1'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # build-matrix: decide whether we're running single-job or matrix mode
+  # ---------------------------------------------------------------------------
+  build-matrix:
+    name: Build job matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      mode:   ${{ steps.set-matrix.outputs.mode }}
+    steps:
+      - id: set-matrix
+        name: Compute matrix JSON
+        run: |
+          TICKER="${{ github.event.inputs.ticker }}"
+          STRAT="${{ github.event.inputs.strategy }}"
+          TICKERS_JSON='${{ github.event.inputs.tickers_json }}'
+          STRATS_JSON='${{ github.event.inputs.strategies_json }}'
+
+          # If tickers_json is a non-empty array, use matrix mode
+          COUNT=$(echo "$TICKERS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d))")
+          if [ "$COUNT" -gt "0" ]; then
+            MODE="matrix"
+            MATRIX=$(python3 -c "
+          import json, sys
+          tickers   = json.loads('$TICKERS_JSON')
+          strategies = json.loads('$STRATS_JSON') if '$STRATS_JSON' != '[]' else ['ORB','VWAP']
+          pairs = [{'ticker': t, 'strategy': s} for t in tickers for s in strategies]
+          print(json.dumps({'include': pairs}))
+          ")
+          else
+            MODE="single"
+            MATRIX="{\"include\":[{\"ticker\":\"$TICKER\",\"strategy\":\"$STRAT\"}]}"
+          fi
+
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Mode: $MODE — Matrix: $MATRIX"
+
+  # ---------------------------------------------------------------------------
+  # sweep: run one backtest per matrix cell
+  # ---------------------------------------------------------------------------
+  sweep:
+    name: Backtest ${{ matrix.ticker }}/${{ matrix.strategy }}
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false          # don't cancel siblings on one failure
+      max-parallel: 20          # GitHub Free tier concurrency cap
+      matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          # Use PAT so the rollup job can push result commits back
+          token: ${{ secrets.BACKTEST_GITHUB_TOKEN || github.token }}
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          # Install from requirements if it exists; otherwise install minimal stack
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install \
+              xgboost==2.1.3 \
+              pandas==2.2.3 \
+              numpy==1.26.4 \
+              scikit-learn==1.6.1 \
+              pyarrow==17.0.0 \
+              python-dotenv==1.0.1
+          fi
+
+      - name: Generate job ID
+        id: job-meta
+        run: |
+          JOB_ID="${{ github.event.inputs.job_id }}"
+          if [ -z "$JOB_ID" ]; then
+            JOB_ID=$(python3 -c "import uuid; print(str(uuid.uuid4())[:8])")
+          fi
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "result_dir=backtests/${{ matrix.ticker }}/${{ matrix.strategy }}" >> "$GITHUB_OUTPUT"
+
+      - name: Run backtest
+        id: backtest
+        env:
+          TICKER:   ${{ matrix.ticker }}
+          STRATEGY: ${{ matrix.strategy }}
+          JOB_ID:   ${{ steps.job-meta.outputs.job_id }}
+        run: |
+          SCRIPT="${{ github.event.inputs.script }}"
+          SCRIPT="${SCRIPT:-scripts/backtest_xgb_v8.py}"
+          mkdir -p "${{ steps.job-meta.outputs.result_dir }}"
+
+          # Run backtest — script should print JSON result on last stdout line
+          # and exit 0 on success.
+          set +e
+          python "$SCRIPT" \
+            --ticker   "$TICKER" \
+            --strategy "$STRATEGY" \
+            --job-id   "$JOB_ID" \
+            --out-dir  "${{ steps.job-meta.outputs.result_dir }}" \
+            2>&1 | tee /tmp/backtest_output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+
+          # Build result.json from script output or from failure
+          python3 - <<'PYEOF'
+          import json, os, sys
+          from datetime import datetime, timezone
+
+          ticker   = os.environ["TICKER"]
+          strategy = os.environ["STRATEGY"]
+          job_id   = os.environ["JOB_ID"]
+          out_dir  = "${{ steps.job-meta.outputs.result_dir }}"
+          exit_code = $EXIT_CODE
+
+          # Try to find JSON on last line of output
+          result_payload = None
+          try:
+              with open("/tmp/backtest_output.txt") as f:
+                  for line in reversed(f.readlines()):
+                      line = line.strip()
+                      if line.startswith("{"):
+                          result_payload = json.loads(line)
+                          break
+          except Exception:
+              pass
+
+          # If script wrote result.json itself, that takes priority
+          result_file = f"{out_dir}/result.json"
+          if not os.path.exists(result_file):
+              record = {
+                  "job_id":       job_id,
+                  "ticker":       ticker,
+                  "strategy":     strategy,
+                  "cloud":        "github_actions",
+                  "status":       "completed" if exit_code == 0 else "failed",
+                  "returncode":   exit_code,
+                  "completed_at": datetime.now(timezone.utc).isoformat(),
+                  "runner_os":    "ubuntu-latest",
+                  "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
+                  "result":       result_payload,
+              }
+              with open(result_file, "w") as f:
+                  json.dump(record, f, indent=2)
+              print(f"Wrote {result_file}")
+          else:
+              print(f"Script already wrote {result_file}")
+
+          sys.exit(0 if exit_code == 0 else 1)
+          PYEOF
+
+      - name: Upload result artifact
+        if: always()   # upload even on failure so rollup has the error record
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.ticker }}-${{ matrix.strategy }}
+          path: ${{ steps.job-meta.outputs.result_dir }}/result.json
+          retention-days: 7
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # rollup: collect all results, commit back to repo
+  # ---------------------------------------------------------------------------
+  rollup:
+    name: Rollup results
+    needs: sweep
+    runs-on: ubuntu-latest
+    if: always()   # run even if some sweep jobs failed
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BACKTEST_GITHUB_TOKEN || github.token }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          merge-multiple: false   # keep per-job directories
+
+      - name: Flatten results into backtests/ tree
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, shutil, pathlib
+
+          artifacts_root = pathlib.Path("artifacts")
+          backtests_root = pathlib.Path("backtests")
+          summary = []
+
+          for artifact_dir in artifacts_root.iterdir():
+              if not artifact_dir.is_dir():
+                  continue
+              for result_file in artifact_dir.rglob("result.json"):
+                  try:
+                      with open(result_file) as f:
+                          data = json.load(f)
+                  except Exception as e:
+                      print(f"WARN: could not parse {result_file}: {e}")
+                      continue
+
+                  ticker   = data.get("ticker", "UNKNOWN")
+                  strategy = data.get("strategy", "UNKNOWN")
+                  dest_dir = backtests_root / ticker / strategy
+                  dest_dir.mkdir(parents=True, exist_ok=True)
+                  dest_path = dest_dir / "result.json"
+                  shutil.copy(result_file, dest_path)
+                  summary.append({
+                      "ticker":   ticker,
+                      "strategy": strategy,
+                      "status":   data.get("status", "unknown"),
+                      "path":     str(dest_path),
+                  })
+                  print(f"  OK  {ticker}/{strategy} -> {dest_path}")
+
+          print(f"\nTotal results collected: {len(summary)}")
+          completed = sum(1 for r in summary if r["status"] == "completed")
+          failed    = sum(1 for r in summary if r["status"] == "failed")
+          print(f"  Completed: {completed}  Failed: {failed}")
+
+          # Write a sweep-level summary
+          sweep_summary_path = pathlib.Path("sweeps/last_run_summary.json")
+          sweep_summary_path.parent.mkdir(parents=True, exist_ok=True)
+          with open(sweep_summary_path, "w") as f:
+              import datetime
+              json.dump({
+                  "run_id":     os.environ.get("GITHUB_RUN_ID", ""),
+                  "completed":  completed,
+                  "failed":     failed,
+                  "total":      len(summary),
+                  "timestamp":  datetime.datetime.utcnow().isoformat() + "Z",
+                  "jobs":       summary,
+              }, f, indent=2)
+          PYEOF
+
+      - name: Commit results back to repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backtests/ sweeps/last_run_summary.json || true
+          # Only commit if there's actually something to commit
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit."
+          else
+            git commit -m "chore: sweep results from run ${{ github.run_id }}"
+            git push
+          fi
+
+      - name: Print summary
+        if: always()
+        run: |
+          echo "=== Sweep run ${{ github.run_id }} complete ==="
+          if [ -f sweeps/last_run_summary.json ]; then
+            python3 -c "
+          import json
+          with open('sweeps/last_run_summary.json') as f:
+              s = json.load(f)
+          print(f\"Completed: {s['completed']}  Failed: {s['failed']}  Total: {s['total']}\")
+          "
+          fi
