@@ -87,7 +87,11 @@ try:
 except Exception as e:
     print(f"[warn] vol-estimators: {e}", file=sys.stderr); _add_vol_features = None
 
-WORK = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery")
+_WORK_DEFAULT_V7 = (
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com"
+    "/My Drive/AI-Tools/s&p500-ticker-mastery"
+)
+WORK = Path(os.environ.get("BACKTEST_WORK_DIR", _WORK_DEFAULT_V7))
 LABEL_EMBARGO_DAYS = 21
 
 

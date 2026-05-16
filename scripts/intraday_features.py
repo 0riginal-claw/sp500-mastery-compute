@@ -27,11 +27,15 @@ warnings.filterwarnings("ignore")
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-DATA_ROOT = (
+_DATA_ROOT_DEFAULT = (
     "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com"
     "/My Drive/claudes test/data/timeframes/S&P500 5 Year Historical Data"
     "/Minutes TimeFrames/1Min_merged"
 )
+# Allow CI / GH Actions to override via env var.  When BACKTEST_DATA_SOURCE is
+# set to "yfinance_daily" the intraday root will not exist; _load_1min() handles
+# that gracefully (returns empty DataFrame) so all callers skip intraday features.
+DATA_ROOT = os.environ.get("BACKTEST_DATA_ROOT", _DATA_ROOT_DEFAULT)
 
 ET_TZ = "America/New_York"
 
@@ -78,13 +82,23 @@ _CACHE: dict[str, pd.DataFrame] = {}
 def _load_1min(ticker: str) -> pd.DataFrame:
     """Load and cache the 1-min parquet for ticker.
 
-    Returns a DataFrame indexed by UTC-aware timestamps, converted to ET,
-    covering all bars.  The returned index is ET-timezone-aware.
+    Returns a DataFrame indexed by ET-timezone-aware timestamps, or an empty
+    DataFrame if the parquet file does not exist (e.g. when running on GH Actions
+    with BACKTEST_DATA_SOURCE=yfinance_daily).
     """
     if ticker in _CACHE:
         return _CACHE[ticker]
 
     path = os.path.join(DATA_ROOT, f"{ticker}.parquet")
+    if not os.path.exists(path):
+        warnings.warn(
+            f"intraday_features: 1-min parquet not found at {path!r}; "
+            "intraday features will be skipped (DATA_SOURCE may be yfinance_daily)."
+        )
+        empty = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
+        _CACHE[ticker] = empty
+        return empty
+
     raw = pd.read_parquet(path).set_index("timestamp").sort_index()
     # Convert index to ET
     raw.index = raw.index.tz_convert(ET_TZ)
@@ -409,6 +423,10 @@ def add_intraday_features(
         min1 = _load_1min(ticker)
     except FileNotFoundError:
         warnings.warn(f"intraday_features: no 1-min parquet for {ticker}, skipping.")
+        return daily_df
+
+    # Empty frame means the parquet file wasn't found (e.g. yfinance_daily mode).
+    if min1.empty:
         return daily_df
 
     # ---- Daily ATR for normalization ------------------------------------

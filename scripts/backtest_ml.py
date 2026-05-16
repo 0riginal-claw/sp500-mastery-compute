@@ -6,6 +6,13 @@ v2 fixes (2026-05-14 code-review):
   - OBV-EMA leak (line 88) fixed: compute EMA on raw OBV, single shift(1) at end
   - dist_ema_20_atr dead code removed
 
+v3 fixes (2026-05-16 cloud-compat):
+  - BACKTEST_DATA_SOURCE env var gates data loading strategy:
+      local_parquet  (default) — reads 1-min parquet from DATA_ROOT (local Drive)
+      yfinance_daily            — fetches 5y daily OHLCV from yfinance; no Drive needed
+  - DATA_ROOT now also reads from BACKTEST_DATA_ROOT env var so CI can override path
+  - pandas_ta_classic import made soft so yfinance path works without it
+
 Approach (per DeepSeek + Trading Insight Info §3):
     1. Compute ~60 daily features per ticker via pandas-ta-classic
     2. Train HistGradientBoosting classifier to predict P(next-21d return > 0)
@@ -16,8 +23,11 @@ Approach (per DeepSeek + Trading Insight Info §3):
 
 Goal: produce trades on tickers where D1_REV (RSI<30) didn't fire enough times.
 
-Usage:
+Usage (local):
     python backtest_ml.py --ticker AAPL --output-dir backtests_ml/AAPL
+
+Usage (CI / GH Actions — no Drive):
+    BACKTEST_DATA_SOURCE=yfinance_daily python backtest_ml.py --ticker AAPL --output-dir /tmp/out
 """
 
 import argparse, json, os, sys, warnings
@@ -25,25 +35,202 @@ warnings.filterwarnings('ignore')
 from datetime import datetime
 import pandas as pd
 import numpy as np
-import pandas_ta_classic as pta
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import TimeSeriesSplit
 
-DATA_ROOT = "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/claudes test/data/timeframes/S&P500 5 Year Historical Data/Minutes TimeFrames/1Min_merged"
+# pandas_ta_classic is only required for the local parquet path (build_features).
+# Import it softly so the yfinance_daily path can run without it installed.
+try:
+    import pandas_ta_classic as pta
+    _PTA_AVAILABLE = True
+except ImportError:
+    pta = None
+    _PTA_AVAILABLE = False
 
-def load_daily(ticker):
-    df = pd.read_parquet(f"{DATA_ROOT}/{ticker}.parquet").set_index('timestamp').sort_index()
-    et = df.index.tz_convert('America/New_York')
+# ---------------------------------------------------------------------------
+# Data source configuration — controlled by BACKTEST_DATA_SOURCE env var.
+#   local_parquet   (default): read from local 1-min parquet files on Drive
+#   yfinance_daily           : fetch 5-year daily OHLCV from yfinance (no Drive needed)
+# ---------------------------------------------------------------------------
+_DATA_SOURCE = os.environ.get("BACKTEST_DATA_SOURCE", "local_parquet").strip().lower()
+
+DATA_ROOT = os.environ.get(
+    "BACKTEST_DATA_ROOT",
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com"
+    "/My Drive/claudes test/data/timeframes/S&P500 5 Year Historical Data"
+    "/Minutes TimeFrames/1Min_merged",
+)
+
+# Cache dir for yfinance downloads so re-runs within the same job are fast.
+_YF_CACHE_DIR = os.environ.get("BACKTEST_YF_CACHE", "/tmp/data_cache")
+
+
+def _load_daily_yfinance(ticker: str) -> pd.DataFrame:
+    """Fetch 5 years of daily OHLCV from yfinance; cache to /tmp/data_cache/<ticker>.parquet.
+
+    Returns a DataFrame with columns [open, high, low, close, volume] and a
+    tz-naive DatetimeIndex of business days (mirrors the shape produced by
+    load_daily() from the 1-min parquet path).
+    """
+    import yfinance as yf
+
+    os.makedirs(_YF_CACHE_DIR, exist_ok=True)
+    cache_file = os.path.join(_YF_CACHE_DIR, f"{ticker}_daily.parquet")
+
+    if os.path.exists(cache_file):
+        print(f"  [yf] loading cached daily bars: {cache_file}", file=sys.stderr)
+        df = pd.read_parquet(cache_file)
+    else:
+        print(f"  [yf] downloading 5y daily bars for {ticker}...", file=sys.stderr)
+        raw = yf.download(ticker, period="5y", interval="1d", auto_adjust=True, progress=False)
+        if raw.empty:
+            raise RuntimeError(f"yfinance returned no data for {ticker}")
+        # Normalise column names to lowercase
+        raw.columns = [c[0].lower() if isinstance(c, tuple) else c.lower() for c in raw.columns]
+        # Keep only OHLCV; drop timezone to match local-parquet behaviour
+        df = raw[["open", "high", "low", "close", "volume"]].copy()
+        if df.index.tz is not None:
+            df.index = df.index.tz_localize(None)
+        df.index.name = "timestamp"
+        df = df.dropna(subset=["open", "high", "low", "close"])
+        df.to_parquet(cache_file)
+        print(f"  [yf] cached {len(df)} daily bars -> {cache_file}", file=sys.stderr)
+
+    return df
+
+
+def load_daily(ticker: str) -> pd.DataFrame:
+    """Load daily OHLCV bars for ticker.
+
+    Routes to yfinance or local parquet based on BACKTEST_DATA_SOURCE env var.
+    """
+    if _DATA_SOURCE == "yfinance_daily":
+        return _load_daily_yfinance(ticker)
+
+    # Default: local 1-min parquet -> resample to daily RTH bars
+    df = pd.read_parquet(f"{DATA_ROOT}/{ticker}.parquet").set_index("timestamp").sort_index()
+    et = df.index.tz_convert("America/New_York")
     rth = df[((et.hour > 9) | ((et.hour == 9) & (et.minute >= 30))) & (et.hour < 16)].copy()
-    daily = rth.resample('1D', closed='left', label='left').agg({
-        'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last',
-        'volume': 'sum',
-    }).dropna(subset=['open', 'high', 'low', 'close'])
+    daily = rth.resample("1D", closed="left", label="left").agg({
+        "open": "first", "high": "max", "low": "min", "close": "last",
+        "volume": "sum",
+    }).dropna(subset=["open", "high", "low", "close"])
     return daily
 
+def _ema_pandas(series: pd.Series, span: int) -> pd.Series:
+    """Exponential moving average via pandas ewm (no external dep)."""
+    return series.ewm(span=span, adjust=False).mean()
+
+
+def _rsi_pandas(series: pd.Series, length: int = 14) -> pd.Series:
+    """Wilder RSI via pure pandas."""
+    delta = series.diff()
+    gain = delta.clip(lower=0)
+    loss = (-delta).clip(lower=0)
+    avg_gain = gain.ewm(alpha=1 / length, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / length, adjust=False).mean()
+    rs = avg_gain / avg_loss.replace(0, float("nan"))
+    return 100 - (100 / (1 + rs))
+
+
+def _atr_pandas(high: pd.Series, low: pd.Series, close: pd.Series, length: int = 14) -> pd.Series:
+    """Average True Range via pure pandas."""
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    return tr.ewm(alpha=1 / length, adjust=False).mean()
+
+
+def _build_features_pandas_fallback(df: pd.DataFrame) -> pd.DataFrame:
+    """Pure-pandas feature builder used when pandas_ta_classic is not available.
+
+    Produces a subset of features (~30) that covers all pipeline-required columns
+    (rsi_14, atr_14, ema_200, fwd_ret_21d, y) plus enough signal features to
+    run XGBoost folds without crashing.  No look-ahead: every feature uses
+    shift(1) except the forward label.
+    """
+    df = df.copy()
+    c = df["close"]; h = df["high"]; l = df["low"]; v = df["volume"]
+
+    # RSI variants
+    for n in [7, 14, 21, 28]:
+        df[f"rsi_{n}"] = _rsi_pandas(c, n).shift(1)
+
+    # EMAs
+    for n in [5, 10, 20, 50, 200]:
+        df[f"ema_{n}"] = _ema_pandas(c, n).shift(1)
+
+    # ATR
+    df["atr_14"] = _atr_pandas(h, l, c, 14).shift(1)
+    df["atr_28"] = _atr_pandas(h, l, c, 28).shift(1)
+
+    # MACD (12/26/9 EMA)
+    ema12 = _ema_pandas(c, 12); ema26 = _ema_pandas(c, 26)
+    macd_line = ema12 - ema26
+    signal_line = _ema_pandas(macd_line, 9)
+    df["macd"] = macd_line.shift(1)
+    df["macd_signal"] = signal_line.shift(1)
+    df["macd_hist"] = (macd_line - signal_line).shift(1)
+
+    # Bollinger Bands (20, 2)
+    sma20 = c.rolling(20).mean(); std20 = c.rolling(20).std()
+    bb_upper = sma20 + 2 * std20; bb_lower = sma20 - 2 * std20
+    df["bb_upper"] = bb_upper.shift(1)
+    df["bb_lower"] = bb_lower.shift(1)
+    df["bb_width"] = (bb_upper - bb_lower).shift(1)
+    bb_range = (bb_upper - bb_lower).replace(0, float("nan"))
+    df["bb_pct"] = ((c - bb_lower) / bb_range).shift(1)
+
+    # Volume features
+    df["vol_sma_20"] = v.rolling(20).mean().shift(1)
+    df["vol_ratio"] = (v / v.rolling(20).mean()).shift(1)
+
+    # Returns
+    for n in [1, 3, 5, 10, 21, 63]:
+        df[f"ret_{n}d"] = c.pct_change(n).shift(1)
+
+    # Distance from EMA20 / ATR
+    df["dist_ema_20_atr"] = (c.shift(1) - df["ema_20"]) / df["atr_14"]
+    df["atr_pct"] = df["atr_14"] / c.shift(1)
+
+    # SMA crossover flags
+    df["ema_5_gt_ema_20"] = (df["ema_5"] > df["ema_20"]).astype(int)
+    df["ema_20_gt_ema_50"] = (df["ema_20"] > df["ema_50"]).astype(int)
+    df["close_gt_ema_50"] = (c.shift(1) > df["ema_50"]).astype(int)
+
+    # Daily range normalised by ATR
+    df["daily_range_atr"] = ((h - l) / df["atr_14"]).shift(1)
+
+    # OBV (simple running sum direction)
+    direction = pd.Series(0.0, index=c.index)
+    direction[c > c.shift(1)] = 1.0
+    direction[c < c.shift(1)] = -1.0
+    _obv_raw = (direction * v).cumsum()
+    df["obv"] = _obv_raw.shift(1)
+    df["obv_ema_20"] = _ema_pandas(_obv_raw, 20).shift(1)
+
+    # Forward label (no shift — looks 21 bars ahead from bar t)
+    df["fwd_ret_21d"] = c.pct_change(21).shift(-21)
+    df["y"] = (df["fwd_ret_21d"] > 0).astype(int)
+
+    return df
+
+
 def build_features(df):
-    """~60 features from pandas-ta-classic + custom. All shift(1) for no-lookahead."""
+    """~60 features from pandas-ta-classic + custom. All shift(1) for no-lookahead.
+
+    When BACKTEST_DATA_SOURCE=yfinance_daily and pandas_ta_classic is not installed,
+    only the hand-coded features (returns, EMA, ATR, vol ratios) are computed.
+    All pipeline-required columns (rsi_14, atr_14, ema_200, fwd_ret_21d, y) are
+    always produced via pure-pandas fallbacks so the pipeline does not crash.
+    """
+    if not _PTA_AVAILABLE:
+        return _build_features_pandas_fallback(df)
+
     df = df.copy()
     c = df['close']; h = df['high']; l = df['low']; v = df['volume']
     o = df['open']
