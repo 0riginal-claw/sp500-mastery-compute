@@ -194,52 +194,58 @@ jobs:
           EXIT_CODE=${PIPESTATUS[0]}
           set -e
 
-          # Build result.json from script output or from failure
+          # Pass EXIT_CODE and result_dir to Python via env vars.
+          # The heredoc is single-quoted so bash does NOT expand variables inside it.
+          export BACKTEST_EXIT_CODE=$EXIT_CODE
+          export RESULT_DIR="${{ steps.job-meta.outputs.result_dir }}"
+
+          # Build result.json from script output or from failure.
+          # If the script already wrote result.json we skip creating one.
           python3 - <<'PYEOF'
-          import json, os, sys
-          from datetime import datetime, timezone
+import json, os, sys
+from datetime import datetime, timezone
 
-          ticker   = os.environ["TICKER"]
-          strategy = os.environ["STRATEGY"]
-          job_id   = os.environ["JOB_ID"]
-          out_dir  = "${{ steps.job-meta.outputs.result_dir }}"
-          exit_code = $EXIT_CODE
+ticker    = os.environ["TICKER"]
+strategy  = os.environ["STRATEGY"]
+job_id    = os.environ["JOB_ID"]
+out_dir   = os.environ.get("RESULT_DIR", ".")
+exit_code = int(os.environ.get("BACKTEST_EXIT_CODE", "1"))
 
-          # Try to find JSON on last line of output
-          result_payload = None
-          try:
-              with open("/tmp/backtest_output.txt") as f:
-                  for line in reversed(f.readlines()):
-                      line = line.strip()
-                      if line.startswith("{"):
-                          result_payload = json.loads(line)
-                          break
-          except Exception:
-              pass
+# Try to find JSON on last line of output
+result_payload = None
+try:
+    with open("/tmp/backtest_output.txt") as fh:
+        for line in reversed(fh.readlines()):
+            line = line.strip()
+            if line.startswith("{"):
+                result_payload = json.loads(line)
+                break
+except Exception:
+    pass
 
-          # If script wrote result.json itself, that takes priority
-          result_file = f"{out_dir}/result.json"
-          if not os.path.exists(result_file):
-              record = {
-                  "job_id":       job_id,
-                  "ticker":       ticker,
-                  "strategy":     strategy,
-                  "cloud":        "github_actions",
-                  "status":       "completed" if exit_code == 0 else "failed",
-                  "returncode":   exit_code,
-                  "completed_at": datetime.now(timezone.utc).isoformat(),
-                  "runner_os":    "ubuntu-latest",
-                  "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
-                  "result":       result_payload,
-              }
-              with open(result_file, "w") as f:
-                  json.dump(record, f, indent=2)
-              print(f"Wrote {result_file}")
-          else:
-              print(f"Script already wrote {result_file}")
+# If script wrote result.json itself, that takes priority
+result_file = os.path.join(out_dir, "result.json")
+if not os.path.exists(result_file):
+    record = {
+        "job_id":        job_id,
+        "ticker":        ticker,
+        "strategy":      strategy,
+        "cloud":         "github_actions",
+        "status":        "completed" if exit_code == 0 else "failed",
+        "returncode":    exit_code,
+        "completed_at":  datetime.now(timezone.utc).isoformat(),
+        "runner_os":     "ubuntu-latest",
+        "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
+        "result":        result_payload,
+    }
+    with open(result_file, "w") as fh:
+        json.dump(record, fh, indent=2)
+    print(f"Wrote {result_file}")
+else:
+    print(f"Script already wrote {result_file}")
 
-          sys.exit(0 if exit_code == 0 else 1)
-          PYEOF
+sys.exit(0 if exit_code == 0 else 1)
+PYEOF
 
       - name: Upload result artifact
         if: always()   # upload even on failure so rollup has the error record
@@ -258,6 +264,11 @@ jobs:
     needs: sweep
     runs-on: ubuntu-latest
     if: always()   # run even if some sweep jobs failed
+    # contents: write lets the default GITHUB_TOKEN push commit-back results.
+    # If BACKTEST_GITHUB_TOKEN secret is set, that PAT is used instead (preferred
+    # for triggering further workflows, cross-repo access, etc.).
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repo
