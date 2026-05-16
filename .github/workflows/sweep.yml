@@ -74,6 +74,10 @@ env:
   # Prevents tqdm and rich from writing ANSI codes to log
   PYTHONUNBUFFERED: '1'
   NO_COLOR: '1'
+  # Data source: fetch 5-year daily OHLCV via yfinance instead of reading
+  # local Drive parquet files (which don't exist on GH Actions runners).
+  # Switch to "local_parquet" when running locally with the Drive mounted.
+  BACKTEST_DATA_SOURCE: 'yfinance_daily'
 
 jobs:
   # ---------------------------------------------------------------------------

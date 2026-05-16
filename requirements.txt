@@ -15,6 +15,14 @@ requests==2.32.3
 beautifulsoup4==4.12.3
 lxml==5.3.0
 
+# Technical-indicator library used by build_features() / local-parquet path.
+# On GH Actions with BACKTEST_DATA_SOURCE=yfinance_daily a pure-pandas fallback
+# is used instead, but installing it is harmless and keeps local runs compatible.
+pandas-ta-classic==0.4.47
+
+# VADER sentiment used by news_sentiment_features.py (optional — fails gracefully).
+vaderSentiment==3.3.2
+
 # Time/holidays utilities
 python-dateutil==2.9.0.post0
 pytz==2024.2
