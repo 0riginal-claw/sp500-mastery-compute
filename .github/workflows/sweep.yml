@@ -69,6 +69,10 @@ on:
   #   branches: [main]
   #   paths: ['sweeps/queue.txt']
 
+permissions:
+  contents: write
+  actions: write
+
 env:
   PYTHON_VERSION: '3.12'
   # Prevents tqdm and rich from writing ANSI codes to log
@@ -201,51 +205,50 @@ jobs:
 
           # Build result.json from script output or from failure.
           # If the script already wrote result.json we skip creating one.
-          python3 - <<'PYEOF'
-import json, os, sys
-from datetime import datetime, timezone
+          cat > /tmp/_build_result.py <<'PYEOF'
+          import json, os, sys
+          from datetime import datetime, timezone
 
-ticker    = os.environ["TICKER"]
-strategy  = os.environ["STRATEGY"]
-job_id    = os.environ["JOB_ID"]
-out_dir   = os.environ.get("RESULT_DIR", ".")
-exit_code = int(os.environ.get("BACKTEST_EXIT_CODE", "1"))
+          ticker    = os.environ["TICKER"]
+          strategy  = os.environ["STRATEGY"]
+          job_id    = os.environ["JOB_ID"]
+          out_dir   = os.environ.get("RESULT_DIR", ".")
+          exit_code = int(os.environ.get("BACKTEST_EXIT_CODE", "1"))
 
-# Try to find JSON on last line of output
-result_payload = None
-try:
-    with open("/tmp/backtest_output.txt") as fh:
-        for line in reversed(fh.readlines()):
-            line = line.strip()
-            if line.startswith("{"):
-                result_payload = json.loads(line)
-                break
-except Exception:
-    pass
+          result_payload = None
+          try:
+              with open("/tmp/backtest_output.txt") as fh:
+                  for line in reversed(fh.readlines()):
+                      line = line.strip()
+                      if line.startswith("{"):
+                          result_payload = json.loads(line)
+                          break
+          except Exception:
+              pass
 
-# If script wrote result.json itself, that takes priority
-result_file = os.path.join(out_dir, "result.json")
-if not os.path.exists(result_file):
-    record = {
-        "job_id":        job_id,
-        "ticker":        ticker,
-        "strategy":      strategy,
-        "cloud":         "github_actions",
-        "status":        "completed" if exit_code == 0 else "failed",
-        "returncode":    exit_code,
-        "completed_at":  datetime.now(timezone.utc).isoformat(),
-        "runner_os":     "ubuntu-latest",
-        "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
-        "result":        result_payload,
-    }
-    with open(result_file, "w") as fh:
-        json.dump(record, fh, indent=2)
-    print(f"Wrote {result_file}")
-else:
-    print(f"Script already wrote {result_file}")
+          result_file = os.path.join(out_dir, "result.json")
+          if not os.path.exists(result_file):
+              record = {
+                  "job_id":        job_id,
+                  "ticker":        ticker,
+                  "strategy":      strategy,
+                  "cloud":         "github_actions",
+                  "status":        "completed" if exit_code == 0 else "failed",
+                  "returncode":    exit_code,
+                  "completed_at":  datetime.now(timezone.utc).isoformat(),
+                  "runner_os":     "ubuntu-latest",
+                  "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
+                  "result":        result_payload,
+              }
+              with open(result_file, "w") as fh:
+                  json.dump(record, fh, indent=2)
+              print(f"Wrote {result_file}")
+          else:
+              print(f"Script already wrote {result_file}")
 
-sys.exit(0 if exit_code == 0 else 1)
-PYEOF
+          sys.exit(0 if exit_code == 0 else 1)
+          PYEOF
+          python3 /tmp/_build_result.py
 
       - name: Upload result artifact
         if: always()   # upload even on failure so rollup has the error record
@@ -284,48 +287,47 @@ PYEOF
 
       - name: Flatten results into backtests/ tree
         run: |
-          python3 - <<'PYEOF'
-          import json, os, shutil, pathlib
+          cat > /tmp/_rollup.py <<'PYEOF'
+          import json, os, shutil, pathlib, datetime
 
           artifacts_root = pathlib.Path("artifacts")
           backtests_root = pathlib.Path("backtests")
           summary = []
 
-          for artifact_dir in artifacts_root.iterdir():
-              if not artifact_dir.is_dir():
-                  continue
-              for result_file in artifact_dir.rglob("result.json"):
-                  try:
-                      with open(result_file) as f:
-                          data = json.load(f)
-                  except Exception as e:
-                      print(f"WARN: could not parse {result_file}: {e}")
+          if artifacts_root.exists():
+              for artifact_dir in artifacts_root.iterdir():
+                  if not artifact_dir.is_dir():
                       continue
+                  for result_file in artifact_dir.rglob("result.json"):
+                      try:
+                          with open(result_file) as f:
+                              data = json.load(f)
+                      except Exception as e:
+                          print(f"WARN: could not parse {result_file}: {e}")
+                          continue
 
-                  ticker   = data.get("ticker", "UNKNOWN")
-                  strategy = data.get("strategy", "UNKNOWN")
-                  dest_dir = backtests_root / ticker / strategy
-                  dest_dir.mkdir(parents=True, exist_ok=True)
-                  dest_path = dest_dir / "result.json"
-                  shutil.copy(result_file, dest_path)
-                  summary.append({
-                      "ticker":   ticker,
-                      "strategy": strategy,
-                      "status":   data.get("status", "unknown"),
-                      "path":     str(dest_path),
-                  })
-                  print(f"  OK  {ticker}/{strategy} -> {dest_path}")
+                      ticker   = data.get("ticker", "UNKNOWN")
+                      strategy = data.get("strategy", "UNKNOWN")
+                      dest_dir = backtests_root / ticker / strategy
+                      dest_dir.mkdir(parents=True, exist_ok=True)
+                      dest_path = dest_dir / "result.json"
+                      shutil.copy(result_file, dest_path)
+                      summary.append({
+                          "ticker":   ticker,
+                          "strategy": strategy,
+                          "status":   data.get("status", "unknown"),
+                          "path":     str(dest_path),
+                      })
+                      print(f"  OK  {ticker}/{strategy} -> {dest_path}")
 
           print(f"\nTotal results collected: {len(summary)}")
           completed = sum(1 for r in summary if r["status"] == "completed")
           failed    = sum(1 for r in summary if r["status"] == "failed")
           print(f"  Completed: {completed}  Failed: {failed}")
 
-          # Write a sweep-level summary
           sweep_summary_path = pathlib.Path("sweeps/last_run_summary.json")
           sweep_summary_path.parent.mkdir(parents=True, exist_ok=True)
           with open(sweep_summary_path, "w") as f:
-              import datetime
               json.dump({
                   "run_id":     os.environ.get("GITHUB_RUN_ID", ""),
                   "completed":  completed,
@@ -335,6 +337,7 @@ PYEOF
                   "jobs":       summary,
               }, f, indent=2)
           PYEOF
+          python3 /tmp/_rollup.py
 
       - name: Commit results back to repo
         run: |
@@ -354,10 +357,11 @@ PYEOF
         run: |
           echo "=== Sweep run ${{ github.run_id }} complete ==="
           if [ -f sweeps/last_run_summary.json ]; then
-            python3 -c "
+            cat > /tmp/_print_summary.py <<'PYEOF'
           import json
           with open('sweeps/last_run_summary.json') as f:
               s = json.load(f)
-          print(f\"Completed: {s['completed']}  Failed: {s['failed']}  Total: {s['total']}\")
-          "
+          print(f"Completed: {s['completed']}  Failed: {s['failed']}  Total: {s['total']}")
+          PYEOF
+            python3 /tmp/_print_summary.py
           fi
