@@ -1,0 +1,12 @@
+{
+  "job_id": "43c2e0b9",
+  "ticker": "TRGP",
+  "strategy": "momentum",
+  "cloud": "github_actions",
+  "status": "failed",
+  "returncode": 2,
+  "completed_at": "2026-05-18T01:52:41.552492+00:00",
+  "runner_os": "ubuntu-latest",
+  "github_run_id": "26009336038",
+  "result": null
+}
