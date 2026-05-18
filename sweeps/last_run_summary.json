@@ -1,15 +1,15 @@
 {
-  "run_id": "26008599465",
+  "run_id": "26009188503",
   "completed": 0,
-  "failed": 0,
+  "failed": 1,
   "total": 1,
-  "timestamp": "2026-05-18T01:31:53.413574Z",
+  "timestamp": "2026-05-18T01:47:32.239581Z",
   "jobs": [
     {
-      "ticker": "AAPL",
-      "strategy": "UNKNOWN",
-      "status": "ok",
-      "path": "backtests/AAPL/UNKNOWN/result.json"
+      "ticker": "SW",
+      "strategy": "momentum",
+      "status": "failed",
+      "path": "backtests/SW/momentum/result.json"
     }
   ]
 }
