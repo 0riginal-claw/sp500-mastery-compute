@@ -102,6 +102,19 @@ jobs:
           TICKERS_JSON='${{ github.event.inputs.tickers_json }}'
           STRATS_JSON='${{ github.event.inputs.strategies_json }}'
 
+          # ------------------------------------------------------------------
+          # FAIL-FAST GUARD (added 2026-05-17): reject dispatches that have
+          # neither a single ticker nor a tickers_json array. Previously this
+          # produced a "Backtest /ORB" job whose backtest stage crashed with
+          # `ValueError: No objects to concatenate` from yfinance returning
+          # empty data for an empty symbol — wasting a full runner slot per
+          # bad dispatch. Now fails in 1 second with a clear message.
+          # ------------------------------------------------------------------
+          if [ -z "$TICKER" ] && [ "$TICKERS_JSON" = "[]" ]; then
+            echo "::error::No ticker provided. Pass -f ticker=<SYM> OR -f tickers_json='[\"SYM\",...]'."
+            exit 1
+          fi
+
           # If tickers_json is a non-empty array, use matrix mode
           COUNT=$(echo "$TICKERS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d))")
           if [ "$COUNT" -gt "0" ]; then
@@ -347,10 +360,40 @@ jobs:
           # Only commit if there's actually something to commit
           if git diff --cached --quiet; then
             echo "Nothing new to commit."
-          else
-            git commit -m "chore: sweep results from run ${{ github.run_id }}"
-            git push
+            exit 0
           fi
+          git commit -m "chore: sweep results from run ${{ github.run_id }}"
+
+          # --------------------------------------------------------------
+          # PUSH RETRY LOOP (added 2026-05-17): when the dispatcher fires
+          # 20 parallel workflow_dispatch events, all 20 rollup jobs race
+          # to push to main. GitHub serializes pushes, so 19 fail with
+          # `! [rejected] main -> main (fetch first)`. Each retry does
+          # `git pull --rebase` to get the latest main and re-apply our
+          # 1-file commit on top, then pushes again. Backoff 5-30s with
+          # jitter avoids thundering herd.
+          # --------------------------------------------------------------
+          MAX_ATTEMPTS=8
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            if git push origin HEAD:main 2>&1 | tee /tmp/push.log; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            if ! grep -q -e "rejected" -e "fetch first" -e "non-fast-forward" /tmp/push.log; then
+              echo "Push failed for a non-race reason — aborting:"
+              cat /tmp/push.log
+              exit 1
+            fi
+            SLEEP=$(( (RANDOM % 25) + 5 ))
+            echo "Push race lost on attempt $attempt/$MAX_ATTEMPTS — pulling and retrying in ${SLEEP}s..."
+            git pull --rebase --autostash origin main || {
+              echo "Rebase failed — aborting"
+              exit 1
+            }
+            sleep $SLEEP
+          done
+          echo "::error::Push failed after $MAX_ATTEMPTS attempts"
+          exit 1
 
       - name: Print summary
         if: always()
