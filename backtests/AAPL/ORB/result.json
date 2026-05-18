@@ -1,0 +1,20 @@
+{
+  "ticker": "AAPL",
+  "strategy": "ORB",
+  "job_id": "test_post_fix",
+  "cloud": "github_actions",
+  "status": "completed",
+  "returncode": 0,
+  "completed_at": "2026-05-18T00:03:40.288980Z",
+  "result": {
+    "n_trades": 64,
+    "win_rate": 0.484375,
+    "profit_factor": 1.6389736606936134,
+    "total_return_pct": 0.0440423465025099,
+    "max_drawdown_pct": -0.012421791452679718,
+    "prob_threshold": 0.5,
+    "rows": 1035,
+    "features_total": 645,
+    "data_source": "yfinance_daily"
+  }
+}
