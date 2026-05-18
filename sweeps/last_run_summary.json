@@ -1,15 +1,15 @@
 {
-  "run_id": "26007719200",
-  "completed": 0,
-  "failed": 1,
+  "run_id": "26007778157",
+  "completed": 1,
+  "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-18T00:51:12.602553Z",
+  "timestamp": "2026-05-18T01:00:10.056444Z",
   "jobs": [
     {
-      "ticker": "WAB",
+      "ticker": "AAPL",
       "strategy": "ORB",
-      "status": "failed",
-      "path": "backtests/WAB/ORB/result.json"
+      "status": "completed",
+      "path": "backtests/AAPL/ORB/result.json"
     }
   ]
 }
