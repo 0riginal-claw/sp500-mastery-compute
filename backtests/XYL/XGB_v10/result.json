@@ -1,0 +1,12 @@
+{
+  "job_id": "e25c62d8",
+  "ticker": "XYL",
+  "strategy": "XGB_v10",
+  "cloud": "github_actions",
+  "status": "failed",
+  "returncode": 2,
+  "completed_at": "2026-05-18T01:17:17.469112+00:00",
+  "runner_os": "ubuntu-latest",
+  "github_run_id": "26008385408",
+  "result": null
+}
