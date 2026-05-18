@@ -1,15 +1,15 @@
 {
-  "run_id": "26008385408",
+  "run_id": "26008599465",
   "completed": 0,
-  "failed": 1,
+  "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-18T01:17:33.852410Z",
+  "timestamp": "2026-05-18T01:31:53.413574Z",
   "jobs": [
     {
-      "ticker": "XYL",
-      "strategy": "XGB_v10",
-      "status": "failed",
-      "path": "backtests/XYL/XGB_v10/result.json"
+      "ticker": "AAPL",
+      "strategy": "UNKNOWN",
+      "status": "ok",
+      "path": "backtests/AAPL/UNKNOWN/result.json"
     }
   ]
 }
