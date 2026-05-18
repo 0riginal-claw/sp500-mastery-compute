@@ -1,0 +1,12 @@
+{
+  "job_id": "test_diag",
+  "ticker": "AAPL",
+  "strategy": "momentum",
+  "cloud": "github_actions",
+  "status": "failed",
+  "returncode": 2,
+  "completed_at": "2026-05-18T00:45:02.196283+00:00",
+  "runner_os": "ubuntu-latest",
+  "github_run_id": "26007578258",
+  "result": null
+}
