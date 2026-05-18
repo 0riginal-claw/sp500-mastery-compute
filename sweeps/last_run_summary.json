@@ -1,15 +1,8 @@
 {
-  "run_id": "26007778157",
-  "completed": 1,
+  "run_id": "26008277920",
+  "completed": 0,
   "failed": 0,
-  "total": 1,
-  "timestamp": "2026-05-18T01:00:10.056444Z",
-  "jobs": [
-    {
-      "ticker": "AAPL",
-      "strategy": "ORB",
-      "status": "completed",
-      "path": "backtests/AAPL/ORB/result.json"
-    }
-  ]
+  "total": 0,
+  "timestamp": "2026-05-18T01:12:21.215090Z",
+  "jobs": []
 }
