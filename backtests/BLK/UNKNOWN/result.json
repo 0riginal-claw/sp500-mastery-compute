@@ -1,6 +1,6 @@
 {
   "ticker": "BLK",
-  "job_id": "ff57832c",
+  "job_id": "f559507d",
   "pipeline_version": "xgb_v10",
   "features_total": 915,
   "rows": 1035,
@@ -57,8 +57,8 @@
   },
   "n_trades": 59,
   "win_rate": 0.4745762711864407,
-  "profit_factor": 1.4389038293840462,
-  "total_return_pct": 0.025692520246701635,
-  "max_drawdown_pct": -0.015530599819000608,
+  "profit_factor": 1.4389035494938007,
+  "total_return_pct": 0.02569251285372457,
+  "max_drawdown_pct": -0.015530608907636334,
   "status": "ok"
 }
