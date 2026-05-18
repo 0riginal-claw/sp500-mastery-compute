@@ -1,15 +1,15 @@
 {
-  "run_id": "26009336038",
+  "run_id": "26009911796",
   "completed": 0,
-  "failed": 1,
+  "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-18T01:52:53.954569Z",
+  "timestamp": "2026-05-18T02:18:41.224189Z",
   "jobs": [
     {
-      "ticker": "TRGP",
-      "strategy": "momentum",
-      "status": "failed",
-      "path": "backtests/TRGP/momentum/result.json"
+      "ticker": "BLK",
+      "strategy": "UNKNOWN",
+      "status": "ok",
+      "path": "backtests/BLK/UNKNOWN/result.json"
     }
   ]
 }
