@@ -1,0 +1,12 @@
+{
+  "job_id": "9745497b",
+  "ticker": "WAB",
+  "strategy": "ORB",
+  "cloud": "github_actions",
+  "status": "failed",
+  "returncode": 2,
+  "completed_at": "2026-05-18T00:50:33.638433+00:00",
+  "runner_os": "ubuntu-latest",
+  "github_run_id": "26007719200",
+  "result": null
+}

@@ -1,15 +1,15 @@
 {
-  "run_id": "26007684913",
+  "run_id": "26007719200",
   "completed": 0,
   "failed": 1,
   "total": 1,
-  "timestamp": "2026-05-18T00:49:25.206499Z",
+  "timestamp": "2026-05-18T00:51:12.602553Z",
   "jobs": [
     {
-      "ticker": "",
+      "ticker": "WAB",
       "strategy": "ORB",
       "status": "failed",
-      "path": "backtests/ORB/result.json"
+      "path": "backtests/WAB/ORB/result.json"
     }
   ]
 }
