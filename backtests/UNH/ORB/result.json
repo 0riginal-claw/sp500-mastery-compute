@@ -1,0 +1,20 @@
+{
+  "ticker": "UNH",
+  "strategy": "ORB",
+  "job_id": "verify-v2-UNH",
+  "cloud": "github_actions",
+  "status": "completed",
+  "returncode": 0,
+  "completed_at": "2026-05-20T09:05:11.146586Z",
+  "result": {
+    "n_trades": 53,
+    "win_rate": 0.41509433962264153,
+    "profit_factor": 0.930222203552964,
+    "total_return_pct": -0.0071577443938605325,
+    "max_drawdown_pct": -0.03486641622978933,
+    "prob_threshold": 0.5,
+    "rows": 1034,
+    "features_total": 645,
+    "data_source": "yfinance_daily"
+  }
+}
