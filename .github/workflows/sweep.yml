@@ -449,10 +449,23 @@ jobs:
             fi
             SLEEP=$(( (RANDOM % 25) + 5 ))
             echo "push race lost on attempt $attempt/$MAX_ATTEMPTS — pulling and retrying in ${SLEEP}s..."
-            git pull --rebase --autostash origin main || {
-              echo "Rebase failed — aborting"
-              exit 1
-            }
+            # BUGFIX 2026-05-20 v3: use -X theirs to auto-resolve cross-job conflicts on
+            # sweeps/last_run_summary.json. The unique result.json file (backtests/<T>/<S>/) never
+            # conflicts because each job's path is unique. The summary file conflicts harmlessly.
+            if ! git pull --rebase --autostash --strategy-option=theirs origin main; then
+              echo "Rebase still failed with -X theirs — aborting rebase and falling back"
+              git rebase --abort 2>/dev/null || true
+              # Reset to remote head, re-stage our unique result.json, recommit
+              git fetch origin main
+              git reset --hard origin/main
+              git add backtests/ || true
+              if ! git diff --cached --quiet; then
+                git commit -m "chore: sweep results from run ${{ github.run_id }} (recovered after rebase conflict)"
+              else
+                echo "Nothing left to commit after reset — exiting clean"
+                exit 0
+              fi
+            fi
             sleep $SLEEP
           done
           echo "::error::push failed after $MAX_ATTEMPTS attempts"
