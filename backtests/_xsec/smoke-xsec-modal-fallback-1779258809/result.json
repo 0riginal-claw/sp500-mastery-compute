@@ -1,0 +1,15 @@
+{
+  "job_id": "smoke-xsec-modal-fallback-1779258809",
+  "ticker": "ALL",
+  "strategy": "ML_XGB_v10_xsec_smoke",
+  "cloud": "github_actions",
+  "kind": "xsec",
+  "status": "failed",
+  "returncode": 1,
+  "completed_at": "2026-05-20T06:34:22.724203+00:00",
+  "runner_os": "ubuntu-latest",
+  "github_run_id": "26145709879",
+  "output_dir": "artifacts/v10_xsec_full500_smoke-xsec-modal-fallback-1779258809",
+  "result": null,
+  "run_meta": null
+}
