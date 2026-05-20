@@ -43,7 +43,7 @@ import logging
 import os
 import sys
 import warnings
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -66,7 +66,7 @@ WORK = Path(
 )
 LABEL_EMBARGO_DAYS = 21
 
-V10_FEATURE_VERSION = "v10.6.9"  # 2026-05-18 — Wave VTS1: vix_term_structure wired (+3 VIX term-structure v1 features: spread/z21/streak, yfinance:^VIX9D,^VIX, MIT); prior: v10.6.8 Wave EFD1
+V10_FEATURE_VERSION = "v10.7.3"  # 2026-05-20 - top7-followup: sec_edgar fleshed (2 stub -> 14 cols via edgar_extras); gabriel runtime-budget gate + local cache path; xgboost warm-start+stride+hist (21s vs 5min); v10.7.2: env skip gates; v10.7.1: vwap ticker arg + FEATURE_NAMES hoist; v10.7.0: drive-map top-7 unwired modules wired
 
 logging.basicConfig(
     level=logging.INFO,
@@ -84,6 +84,444 @@ from backtest_xgb_v7 import numeric_cols  # noqa: E402
 import backtest_ml as bml  # noqa: E402
 import xgboost as xgb  # noqa: E402
 from feature_cache import get_cached  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# XGBoost hyperparameter tuning (2026-05-19)
+# Top-5 + medium wins from xgboost_tune_REPO_LOCAL audit. Centralized so all
+# three call sites (scout / final / persist) stay in sync. Schema preserved
+# in model_kwargs metadata for run_meta.json.
+# ---------------------------------------------------------------------------
+_XGB_DEVICE = os.environ.get("XGB_DEVICE", "cpu").lower()
+if _XGB_DEVICE not in ("cpu", "cuda"):
+    _XGB_DEVICE = "cpu"
+_XGB_SAMPLING_METHOD = "gradient_based" if _XGB_DEVICE == "cuda" else "uniform"
+
+
+# ---------------------------------------------------------------------------
+# Adaptive top-K + XGBoost constraints (2026-05-20)
+#
+# Why: legacy top_k=50 was sized for the 173-feature v8 era. v10 builds
+# ~1231 features per ticker, so 96% of features were being discarded before
+# the final-stage tree ensemble saw them. Adaptive default scales with the
+# train fold's row count: min(int(sqrt(n_rows) * 4), n_features, 400).
+# For ~1213 rows × 1231 feats → top_k ≈ 140. Hard cap 400 keeps fits sane.
+#
+# Optional XGBoost constraints (env-gated, default off):
+#   XGB_INTERACTION_CONSTRAINTS=1 — restrict tree splits so features in
+#     different semantic groups cannot interact within a single tree.
+#     Groups: intraday-volume / monthly-fundamental / macro / microstructure /
+#     alpha158 / dfs (see _feature_group_for_name).
+#   XGB_MONOTONIC=1 — enforce sign-of-effect monotonicity for selected
+#     features (RSI_14 → -1, VIX → -1, gtrends_score_30d_avg → +1).
+# ---------------------------------------------------------------------------
+_XGB_USE_INTERACTION = os.environ.get("XGB_INTERACTION_CONSTRAINTS", "0") == "1"
+_XGB_USE_MONOTONIC = os.environ.get("XGB_MONOTONIC", "0") == "1"
+
+# Monotonic constraints map: feature name → sign (+1 increasing, -1 decreasing)
+_XGB_MONO_PRIORS: dict = {
+    "RSI_14": -1,
+    "VIX": -1,
+    "gtrends_score_30d_avg": +1,
+}
+
+
+def _resolve_top_k(args_top_k: int, n_rows: int, n_features: int) -> int:
+    """Resolve effective top_k.
+
+    XGB_NO_TOPK=1 → BYPASS selection: return n_features (use all features)
+                    Stage A of full-utilization patch (2026-05-20).
+                    Relies on XGBoost regularization (reg_alpha/reg_lambda,
+                    colsample_*, max_bin) — bumped via XGB_NO_TOPK gating in
+                    _xgb_base_params — to handle p>n / overfitting risk.
+    args_top_k > 0 → explicit override (CLI or env XGB_TOP_K)
+    args_top_k == 0 → adaptive: min(int(sqrt(n_rows) * 4), n_features, 400)
+    """
+    # karpathy_checked: XGB_NO_TOPK bypass — n_features split direct to trees
+    if os.environ.get("XGB_NO_TOPK", "0") == "1":
+        return int(n_features)
+    if args_top_k and args_top_k > 0:
+        return min(int(args_top_k), int(n_features))
+    adaptive = int(np.sqrt(max(n_rows, 1)) * 4)
+    return max(10, min(adaptive, int(n_features), 400))
+
+
+def _feature_group_for_name(name: str) -> str:
+    """Classify a feature name into a semantic group for interaction constraints.
+
+    Heuristic — uses substring/prefix patterns common in v10 feature names.
+    Unknown → 'other'. Group membership is purely for grouping splits; an
+    unknown bucket is fine (XGBoost allows leftover features to interact only
+    inside the 'other' bucket).
+    """
+    n = name.lower()
+    # Intraday / minute-bar / volume profile
+    if any(k in n for k in ("vwap", "orb_", "_intraday", "minute_", "_vp_", "_pv_")):
+        return "intraday-volume"
+    # Monthly / fundamental
+    if any(k in n for k in ("_pe", "_pb", "_eps", "_revenue", "_fcf", "_ebitda", "earn_", "_dividend", "_split")):
+        return "monthly-fundamental"
+    # Macro
+    if any(k in n for k in ("vix", "macro_", "fed_", "yld", "tnx", "_dxy", "_oil", "_gold")):
+        return "macro"
+    # Microstructure / spread / order-flow
+    if any(k in n for k in ("spread", "bid_ask", "tick_", "_microstructure", "options_flow", "govtrades")):
+        return "microstructure"
+    # Alpha158 / Qlib classics
+    if n.startswith("a158_") or n.startswith("alpha158_") or n.startswith("a101ts_") or n.startswith("a101_"):
+        return "alpha158"
+    # DFS / featuretools
+    if "dfs_" in n or n.startswith("_dfs") or "_x_" in n:  # depth-2 interaction
+        return "dfs"
+    return "other"
+
+
+def _build_interaction_constraints(feature_names: list) -> str:
+    """Return XGBoost interaction_constraints JSON string for a feature list.
+
+    Constraints group feature indices by semantic group; trees can only split
+    on features within the same group within a single tree path.
+    """
+    groups: dict = {}
+    for i, name in enumerate(feature_names):
+        g = _feature_group_for_name(name)
+        groups.setdefault(g, []).append(i)
+    # Drop singleton groups (no constraint benefit) — let them go in 'other'
+    cleaned = []
+    leftover = []
+    for g, idxs in groups.items():
+        if g == "other" or len(idxs) < 2:
+            leftover.extend(idxs)
+        else:
+            cleaned.append(idxs)
+    if leftover:
+        cleaned.append(leftover)
+    return json.dumps(cleaned)
+
+
+def _build_monotonic_constraints(feature_names: list) -> str:
+    """Return XGBoost monotone_constraints tuple-string for a feature list.
+
+    For each feature, look up _XGB_MONO_PRIORS; default 0 (no constraint).
+    XGBoost accepts either a tuple-string '(0,1,-1,0,...)' or a dict.
+    """
+    vals = [int(_XGB_MONO_PRIORS.get(n, 0)) for n in feature_names]
+    return "(" + ",".join(str(v) for v in vals) + ")"
+
+
+def _xgb_base_params(stage: str) -> dict:
+    """Return tuned XGBClassifier kwargs per stage (scout|final|persist).
+
+    Stages share most hyperparameters; only depth/n_estimators differ to keep
+    scout fast. Centralized to preserve run_meta.json schema invariance vs
+    prior v10 runs (we extend model_kwargs, not replace its keyset).
+
+    XGB_NO_TOPK=1 → bump capacity + regularization for final/persist (Stage A
+    full-utilization patch 2026-05-20). Compensates the missing top-K prune:
+      n_estimators: 100 → 500 (early_stopping_rounds=20 trims dynamically)
+      max_depth: 4 → 6
+      max_leaves: 31 → 63
+      reg_alpha: 0.01 → 0.1  (stronger L1 → trees drop irrelevant features)
+      reg_lambda: 1.0 → 2.0  (stronger L2 smoothing)
+    Scout unchanged: 50 trees of depth-3 still scouts importance fast.
+    """
+    no_topk = os.environ.get("XGB_NO_TOPK", "0") == "1"
+    if stage == "scout":
+        max_depth, n_estimators = 3, 50
+        max_leaves_v = 31
+        reg_a, reg_l = 0.01, 1.0
+    else:  # final | persist
+        if no_topk:
+            max_depth, n_estimators = 6, 500
+            max_leaves_v = 63
+            reg_a, reg_l = 0.1, 2.0
+        else:
+            max_depth, n_estimators = 4, 100
+            max_leaves_v = 31
+            reg_a, reg_l = 0.01, 1.0
+    return {
+        "max_depth": max_depth,
+        "learning_rate": 0.05,
+        "n_estimators": n_estimators,
+        "tree_method": "hist",
+        "device": _XGB_DEVICE,
+        "eval_metric": ["logloss", "aucpr"],
+        # column sub-sampling (Top-5 #2)
+        "colsample_bytree": 0.6,
+        "colsample_bylevel": 0.7,
+        "colsample_bynode": 0.8,
+        # row sub-sampling (Top-5 #3)
+        "subsample": 0.7,
+        "sampling_method": _XGB_SAMPLING_METHOD,
+        # medium wins (#6-9)
+        "max_bin": 512,
+        "min_child_weight": 3,
+        "reg_alpha": reg_a,
+        "reg_lambda": reg_l,
+        "grow_policy": "lossguide",
+        "max_leaves": max_leaves_v,
+        "n_jobs": 1,
+        "random_state": 42,
+        "verbosity": 0,
+    }
+
+
+def _xgb_fit_kwargs(eval_set, early_stop: bool = False):
+    """Build fit() kwargs; gated for callback support (xgboost >= 1.6).
+
+    XGB_NO_TOPK=1 → bump EarlyStopping rounds 10 → 20. With n_estimators=500
+    (vs 100), trees need longer patience to dynamically halt.
+    """
+    no_topk = os.environ.get("XGB_NO_TOPK", "0") == "1"
+    es_rounds = 20 if no_topk else 10
+    fit_kw: dict = {}
+    if eval_set is not None:
+        fit_kw["eval_set"] = eval_set
+        fit_kw["verbose"] = False
+    if early_stop:
+        try:
+            from xgboost.callback import (  # type: ignore[import-not-found]
+                EarlyStopping,
+                EvaluationMonitor,
+            )
+
+            fit_kw["callbacks"] = [
+                EarlyStopping(rounds=es_rounds, save_best=True),
+                EvaluationMonitor(period=10),
+            ]
+        except Exception:  # pragma: no cover - older xgboost fallback
+            pass
+    return fit_kw
+
+from empyrical_risk_features_features import compute_empyrical_risk_features_features  # auto-wired 2026-05-18
+from quantstats_metrics_features import compute_quantstats_metrics_features  # auto-wired 2026-05-18
+
+# --- auto-wired dir-glob loaders (lazy-import safe) ---
+try:
+    from oc1_alpaca_timeframes_root_features import compute_oc1_alpaca_timeframes_root_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_alpaca_timeframes_root_features = None  # type: ignore[assignment]
+try:
+    from ph0tis2_alpaca_timeframes_root_features import compute_ph0tis2_alpaca_timeframes_root_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis2_alpaca_timeframes_root_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_alpaca_timeframes_root_features import compute_ph0tis_alpaca_timeframes_root_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_alpaca_timeframes_root_features = None  # type: ignore[assignment]
+try:
+    from save_dir_features import compute_save_dir_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_save_dir_features = None  # type: ignore[assignment]
+try:
+    from claudes_test_data_features import compute_claudes_test_data_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_claudes_test_data_features = None  # type: ignore[assignment]
+try:
+    from ai_external_qlib_features import compute_ai_external_qlib_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ai_external_qlib_features = None  # type: ignore[assignment]
+try:
+    from ai_repos_pandas_ta_classic_features import compute_ai_repos_pandas_ta_classic_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ai_repos_pandas_ta_classic_features = None  # type: ignore[assignment]
+try:
+    from ai_repos_featuretools_features import compute_ai_repos_featuretools_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ai_repos_featuretools_features = None  # type: ignore[assignment]
+try:
+    from ai_external_zvt_features import compute_ai_external_zvt_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ai_external_zvt_features = None  # type: ignore[assignment]
+try:
+    from ai_repos_evidently_features import compute_ai_repos_evidently_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ai_repos_evidently_features = None  # type: ignore[assignment]
+try:
+    from ai_repos_feast_features import compute_ai_repos_feast_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ai_repos_feast_features = None  # type: ignore[assignment]
+try:
+    from ai_external_rdagent_features import compute_ai_external_rdagent_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ai_external_rdagent_features = None  # type: ignore[assignment]
+try:
+    from ai_external_ccxt_features import compute_ai_external_ccxt_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ai_external_ccxt_features = None  # type: ignore[assignment]
+try:
+    from oc1_historical_build_features import compute_oc1_historical_build_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_historical_build_features = None  # type: ignore[assignment]
+try:
+    from oc1_alpaca_build_features import compute_oc1_alpaca_build_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_alpaca_build_features = None  # type: ignore[assignment]
+try:
+    from oc1_alpaca_claude_features import compute_oc1_alpaca_claude_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_alpaca_claude_features = None  # type: ignore[assignment]
+try:
+    from oc1_historical_merged_features import compute_oc1_historical_merged_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_historical_merged_features = None  # type: ignore[assignment]
+try:
+    from oc1_trading_repos_bitquant_features import compute_oc1_trading_repos_bitquant_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_trading_repos_bitquant_features = None  # type: ignore[assignment]
+try:
+    from oc1_trading_repos_cryptosignal_features import compute_oc1_trading_repos_cryptosignal_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_trading_repos_cryptosignal_features = None  # type: ignore[assignment]
+try:
+    from oc1_trading_repos_kmeans_features import compute_oc1_trading_repos_kmeans_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_trading_repos_kmeans_features = None  # type: ignore[assignment]
+try:
+    from oc1_trading_repos_finrl_features import compute_oc1_trading_repos_finrl_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_trading_repos_finrl_features = None  # type: ignore[assignment]
+try:
+    from oc1_trading_repos_finrl_trading_features import compute_oc1_trading_repos_finrl_trading_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_trading_repos_finrl_trading_features = None  # type: ignore[assignment]
+try:
+    from oc1_trading_repos_quantmuse_features import compute_oc1_trading_repos_quantmuse_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_trading_repos_quantmuse_features = None  # type: ignore[assignment]
+try:
+    from oc1_strategy_system_features import compute_oc1_strategy_system_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_strategy_system_features = None  # type: ignore[assignment]
+try:
+    from oc1_alpaca_timeframes_features import compute_oc1_alpaca_timeframes_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_oc1_alpaca_timeframes_features = None  # type: ignore[assignment]
+try:
+    from ph0tis2_strategy_raw_features import compute_ph0tis2_strategy_raw_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis2_strategy_raw_features = None  # type: ignore[assignment]
+try:
+    from ph0tis2_strategy_formatted_features import compute_ph0tis2_strategy_formatted_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis2_strategy_formatted_features = None  # type: ignore[assignment]
+try:
+    from ph0tis2_alpaca_timeframes_dup_features import compute_ph0tis2_alpaca_timeframes_dup_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis2_alpaca_timeframes_dup_features = None  # type: ignore[assignment]
+try:
+    from ph0tis2_alpaca_timeframes_features import compute_ph0tis2_alpaca_timeframes_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis2_alpaca_timeframes_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_edgar_src_features import compute_ph0tis_edgar_src_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_edgar_src_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_gov_trades_src_features import compute_ph0tis_gov_trades_src_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_gov_trades_src_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_gov_trades_archive_features import compute_ph0tis_gov_trades_archive_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_gov_trades_archive_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_alpaca_system_features import compute_ph0tis_alpaca_system_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_alpaca_system_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_historical_src_features import compute_ph0tis_historical_src_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_historical_src_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_strategy_system_source_features import compute_ph0tis_strategy_system_source_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_strategy_system_source_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_strategy_test_features import compute_ph0tis_strategy_test_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_strategy_test_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_strategy_raw_features import compute_ph0tis_strategy_raw_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_strategy_raw_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_strategy_formatted_features import compute_ph0tis_strategy_formatted_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_strategy_formatted_features = None  # type: ignore[assignment]
+try:
+    from ph0tis_alpaca_timeframes_features import compute_ph0tis_alpaca_timeframes_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_ph0tis_alpaca_timeframes_features = None  # type: ignore[assignment]
+try:
+    from gabriel_historical_indicators_features import compute_gabriel_historical_indicators_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_historical_indicators_features = None  # type: ignore[assignment]
+try:
+    from gabriel_synapse_strategies_features import compute_gabriel_synapse_strategies_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_synapse_strategies_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_system_src_features import compute_gabriel_alpaca_system_src_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_system_src_features = None  # type: ignore[assignment]
+try:
+    from gabriel_research_cycle_prompts_features import compute_gabriel_research_cycle_prompts_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_research_cycle_prompts_features = None  # type: ignore[assignment]
+try:
+    from gabriel_research_cycle_workspaces_features import compute_gabriel_research_cycle_workspaces_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_research_cycle_workspaces_features = None  # type: ignore[assignment]
+try:
+    from gabriel_gov_trades_features import compute_gabriel_gov_trades_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_gov_trades_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_1m_merged_features import compute_gabriel_alpaca_timeframes_1m_merged_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_1m_merged_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_1m_features import compute_gabriel_alpaca_timeframes_1m_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_1m_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_5m_features import compute_gabriel_alpaca_timeframes_5m_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_5m_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_15m_features import compute_gabriel_alpaca_timeframes_15m_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_15m_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_30m_features import compute_gabriel_alpaca_timeframes_30m_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_30m_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_45m_features import compute_gabriel_alpaca_timeframes_45m_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_45m_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_1h_features import compute_gabriel_alpaca_timeframes_1h_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_1h_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_4h_features import compute_gabriel_alpaca_timeframes_4h_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_4h_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_8h_features import compute_gabriel_alpaca_timeframes_8h_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_8h_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_12h_features import compute_gabriel_alpaca_timeframes_12h_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_12h_features = None  # type: ignore[assignment]
+try:
+    from gabriel_alpaca_timeframes_1day_features import compute_gabriel_alpaca_timeframes_1day_features  # dir-glob 2026-05-18
+except ImportError:
+    compute_gabriel_alpaca_timeframes_1day_features = None  # type: ignore[assignment]
+
 
 # Cross-sectional cache (unchanged from v9)
 try:
@@ -1428,6 +1866,87 @@ except Exception as _edgar_err:
 
 
 # ---------------------------------------------------------------------------
+# Helper GJ-EXTRAS: edgar_extras_features (12 features). Wired 2026-05-20.
+# Source: claudes test/data/edgar/data/edgar.db. Adds DEF 14A, amendments,
+# likely-earnings-8K (via period_of_report lag), S-1, filing burst, accel.
+# Distinct from hist_data_edgar_features (9 base features). See module docstring
+# for gap-analysis (G1..G6).
+# ---------------------------------------------------------------------------
+try:
+    from edgar_extras_features import (  # noqa: E402
+        add_edgar_extras_features,
+        EDGAR_EXTRAS_FEATURE_NAMES,
+    )
+    EDGAR_EXTRAS_AVAILABLE = True
+    logger.info("[v10] edgar_extras_features loaded OK")
+except Exception as _edgar_extras_err:
+    logger.warning(
+        "[v10] edgar_extras_features not importable: %s — 12 features zeroed",
+        _edgar_extras_err,
+    )
+    EDGAR_EXTRAS_AVAILABLE = False
+    EDGAR_EXTRAS_FEATURE_NAMES = [  # type: ignore[assignment]
+        "edgar_days_since_def14a",
+        "edgar_def14a_flag_30d",
+        "edgar_days_since_any_amendment",
+        "edgar_amendment_flag_30d",
+        "edgar_days_since_likely_earnings_8k",
+        "edgar_likely_earnings_8k_flag_7d",
+        "edgar_filed_to_period_lag_days",
+        "edgar_days_since_s1",
+        "edgar_s1_flag_180d",
+        "edgar_filings_count_7d",
+        "edgar_burst_flag",
+        "edgar_filing_density_accel",
+    ]
+
+    def add_edgar_extras_features(df, ticker=None):  # type: ignore[misc]
+        for c in EDGAR_EXTRAS_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GJ-GOV-EXTRAS: govtrades_extras_features (45 features). Wired 2026-05-20.
+# Wraps photis_govtrades_contracts (3) + photis_govtrades_lobbying_amt (3) +
+# synapse_gov_enhanced (39 market-wide). Distinct from govtrades_features (3
+# base congress-density features). See module docstring for unwired-module audit.
+# ---------------------------------------------------------------------------
+try:
+    from govtrades_extras_features import (  # noqa: E402
+        add_govtrades_extras_features,
+        GOVTRADES_EXTRAS_FEATURE_NAMES,
+    )
+    GOVTRADES_EXTRAS_AVAILABLE = True
+    logger.info(
+        "[v10] govtrades_extras_features loaded OK (%d cols)",
+        len(GOVTRADES_EXTRAS_FEATURE_NAMES),
+    )
+except Exception as _gov_extras_err:
+    logger.warning(
+        "[v10] govtrades_extras_features not importable: %s — 45 features zeroed",
+        _gov_extras_err,
+    )
+    GOVTRADES_EXTRAS_AVAILABLE = False
+    GOVTRADES_EXTRAS_FEATURE_NAMES = [  # type: ignore[assignment]
+        "gt_contracts_ttm_usd",
+        "gt_contracts_award_count_30d",
+        "gt_contracts_qoq_growth",
+        "gt_lob_amt_30d_usd",
+        "gt_lob_amt_qoq_growth",
+        "gt_lob_amt_ttm_usd",
+        # synapse_gov_* 39 names omitted from stub (module will fill if loaded)
+    ]
+
+    def add_govtrades_extras_features(df, ticker=None):  # type: ignore[misc]
+        for c in GOVTRADES_EXTRAS_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
 # Helper GK: ceo_personal_donation_flag_political_replay (FEC Schedule A
 # individual-contributions employer-search signal, 1 feature). Wired 2026-05-17.
 # Source: api.fec.gov/v1/schedules/schedule_a/ (public, no paid API key).
@@ -1530,8 +2049,758 @@ except Exception as _vt1_err:
 
 
 # ---------------------------------------------------------------------------
+# Helper GO: worldquant_alpha101_features (WorldQuant Alpha-101 single-ticker
+# adaptation, 25 features). Wired 2026-05-18.
+# Source: "101 Formulaic Alphas" Kakushadze (2016), github:lvlh2/alpha101 (MIT).
+# No paid API; pure OHLCV; cross-sectional rank replaced by ts_rank(window=20).
+# .shift(1)-safe: all inputs shifted 1 bar at module entry.
+# ---------------------------------------------------------------------------
+try:
+    from worldquant_alpha101_features import (  # noqa: E402
+        compute_worldquant_alpha101_features,
+        WQ_ALPHA101_FEATURE_NAMES,
+        WQ_ALPHA101_FEATURE_COUNT,
+    )
+    WQ_ALPHA101_AVAILABLE = True
+    logger.info("[v10] worldquant_alpha101_features loaded OK (%d features)", WQ_ALPHA101_FEATURE_COUNT)
+except Exception as _wqa101_err:
+    logger.warning(
+        "[v10] worldquant_alpha101_features not importable: %s — 25 features zeroed",
+        _wqa101_err,
+    )
+    WQ_ALPHA101_AVAILABLE = False
+    WQ_ALPHA101_FEATURE_COUNT = 25
+    WQ_ALPHA101_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "wq_a002", "wq_a003", "wq_a006", "wq_a007", "wq_a009",
+        "wq_a010", "wq_a012", "wq_a016", "wq_a017", "wq_a018",
+        "wq_a019", "wq_a020", "wq_a021", "wq_a022", "wq_a023",
+        "wq_a024", "wq_a025", "wq_a026", "wq_a030", "wq_a033",
+        "wq_a034", "wq_a035", "wq_a040", "wq_a043", "wq_a044",
+    ]
+
+    def compute_worldquant_alpha101_features(df: pd.DataFrame, ticker=None):  # type: ignore[misc]
+        """Stub: zero-fill all wq_alpha101 cols when module unavailable."""
+        for c in WQ_ALPHA101_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GN: regime_hmm_3state_vol_regime (3-state HMM vol regime, 3 features)
+# Wired 2026-05-18. Data source: standard daily OHLCV (Yang-Zhang vol estimator).
+# Features: hmm_3state_vol_regime (0/1/2), hmm_3state_vol_high_prob, hmm_3state_yz_vol_z21.
+# .shift(1)-safe: YZ vol computed same-bar, shifted by 1 before HMM input.
+# License: hmmlearn BSD-3-Clause; YZ estimator public domain (Yang-Zhang 2000 JF).
+# ---------------------------------------------------------------------------
+try:
+    from regime_hmm_3state_vol_regime_features import (  # noqa: E402
+        compute_regime_hmm_3state_vol_regime_features,
+        HMM_3STATE_FEATURE_NAMES,
+    )
+    HMM_3STATE_AVAILABLE = True
+    logger.info("[v10] regime_hmm_3state_vol_regime_features loaded OK")
+except Exception as _hmm3_err:
+    logger.warning(
+        "[v10] regime_hmm_3state_vol_regime_features not importable: %s — 3 features zeroed",
+        _hmm3_err,
+    )
+    HMM_3STATE_AVAILABLE = False
+    HMM_3STATE_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "hmm_3state_vol_regime",
+        "hmm_3state_vol_high_prob",
+        "hmm_3state_yz_vol_z21",
+    ]
+
+    def compute_regime_hmm_3state_vol_regime_features(df: pd.DataFrame, ticker=None):  # type: ignore[misc]
+        """Stub: zero-fill 3 hmm_3state cols when module unavailable."""
+        for c in HMM_3STATE_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GP: regime_changepoint_bayesian_vol_break (BOCPD vol-break, 3 features)
+# Wired 2026-05-18. Algorithm: Adams & MacKay (2007) BOCPD (arXiv:0710.3742).
+# Data source: 5-day realized variance from yfinance close (no paid API).
+# Features: bocpd_vol_break_prob, bocpd_vol_run_length_norm, bocpd_vol_regime_id.
+# .shift(1)-safe: 5-day RV is same-bar quantity; .shift(1) applied before BOCPD.
+# License: bocpd (alan-turing-institute) MIT; built-in fallback is pure numpy/scipy.
+# ---------------------------------------------------------------------------
+try:
+    from regime_changepoint_bayesian_vol_break_features import (  # noqa: E402
+        compute_regime_changepoint_bayesian_vol_break_features,
+        BOCPD_VOL_BREAK_FEATURE_NAMES,
+    )
+    BOCPD_VOL_BREAK_AVAILABLE = True
+    logger.info("[v10] regime_changepoint_bayesian_vol_break_features loaded OK")
+except Exception as _bocpd_err:
+    logger.warning(
+        "[v10] regime_changepoint_bayesian_vol_break_features not importable: %s — 3 features zeroed",
+        _bocpd_err,
+    )
+    BOCPD_VOL_BREAK_AVAILABLE = False
+    BOCPD_VOL_BREAK_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "bocpd_vol_break_prob",
+        "bocpd_vol_run_length_norm",
+        "bocpd_vol_regime_id",
+    ]
+
+    def compute_regime_changepoint_bayesian_vol_break_features(df: pd.DataFrame, ticker=None):  # type: ignore[misc]
+        """Stub: zero-fill 3 bocpd_vol cols when module unavailable."""
+        for c in BOCPD_VOL_BREAK_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GQ: add_stockstats_features (stockstats technical indicators, 28 features)
+# Wired 2026-05-18. Source: github:jealous/stockstats (BSD-3-Clause, no paid API).
+# Features: ss_macd/s/h, ss_rsi_14, ss_boll/ub/lb, ss_cci, ss_wr_14, ss_kdjk/d/j,
+#           ss_atr_14, ss_dma, ss_vr, ss_close_{5,10,20,50}_sma,
+#           ss_close_{5,20}_ema, ss_close_{5,10}_mstd, ss_mfi, ss_trix,
+#           ss_close_10_roc, ss_volume_5_sma.
+# .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+# ---------------------------------------------------------------------------
+try:
+    from add_stockstats_features_features import (  # noqa: E402
+        compute_add_stockstats_features,
+        STOCKSTATS_FEATURE_NAMES,
+        STOCKSTATS_FEATURE_COUNT,
+    )
+    STOCKSTATS_AVAILABLE = True
+    logger.info("[v10] add_stockstats_features loaded OK")
+except Exception as _ss_err:
+    logger.warning(
+        "[v10] add_stockstats_features not importable: %s — 28 features zeroed", _ss_err
+    )
+    STOCKSTATS_AVAILABLE = False
+    STOCKSTATS_FEATURE_COUNT = 28
+    STOCKSTATS_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "ss_macd", "ss_macds", "ss_macdh", "ss_rsi_14",
+        "ss_boll", "ss_boll_ub", "ss_boll_lb", "ss_cci", "ss_wr_14",
+        "ss_kdjk", "ss_kdjd", "ss_kdjj", "ss_atr_14", "ss_dma", "ss_vr",
+        "ss_close_5_sma", "ss_close_10_sma", "ss_close_20_sma", "ss_close_50_sma",
+        "ss_close_5_ema", "ss_close_20_ema",
+        "ss_close_5_mstd", "ss_close_10_mstd",
+        "ss_mfi", "ss_trix", "ss_close_10_roc", "ss_volume_5_sma",
+    ]
+
+    def compute_add_stockstats_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: zero-fill all 28 ss_* cols when module unavailable."""
+        for col in STOCKSTATS_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GR: add_talipp_features (talipp TA indicators, 8 features)
+# Wired 2026-05-18. Source: github:nardew/talipp (MIT, no paid API).
+# Features: talipp_tema_10, talipp_dema_10, talipp_hma_14, talipp_trix_10,
+#           talipp_dpo_20, talipp_roc_10, talipp_zlema_10, talipp_wma_10.
+# .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+# ---------------------------------------------------------------------------
+try:
+    from add_talipp_features_features import (  # noqa: E402
+        compute_add_talipp_features,
+        TALIPP_FEATURE_NAMES,
+        TALIPP_FEATURE_COUNT,
+    )
+    logger.info("[v10] add_talipp_features loaded OK")
+except Exception as _talipp_err:
+    logger.warning(
+        "[v10] add_talipp_features not importable: %s — 8 features zeroed", _talipp_err
+    )
+    TALIPP_FEATURE_COUNT = 8
+    TALIPP_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "talipp_tema_10", "talipp_dema_10", "talipp_hma_14", "talipp_trix_10",
+        "talipp_dpo_20", "talipp_roc_10", "talipp_zlema_10", "talipp_wma_10",
+    ]
+
+    def compute_add_talipp_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: zero-fill all 8 talipp_* cols when module unavailable."""
+        for col in TALIPP_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GS: add_jesse_features (Jesse-inspired TA indicators, 54 features)
+# Wired 2026-05-18. Source: github:jesse-ai/jesse (MIT, no paid API).
+# Features: moving averages, Ichimoku, Donchian, MACD, momentum oscillators,
+#           trend (ADX/Aroon/Supertrend), volatility (BB/KC), volume/micro.
+# .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+# ---------------------------------------------------------------------------
+try:
+    from add_jesse_features_features import (  # noqa: E402
+        compute_add_jesse_features_features,
+        JESSE_FEATURE_NAMES,
+        JESSE_FEATURE_COUNT,
+    )
+    logger.info("[v10] add_jesse_features loaded OK")
+except Exception as _jesse_err:
+    logger.warning(
+        "[v10] add_jesse_features not importable: %s — 54 features zeroed", _jesse_err
+    )
+    JESSE_FEATURE_COUNT = 54
+    JESSE_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "jesse_sma_10", "jesse_sma_20", "jesse_sma_50",
+        "jesse_ema_9", "jesse_ema_21", "jesse_wma_10", "jesse_vwma_10",
+        "jesse_ichi_tenkan", "jesse_ichi_kijun", "jesse_ichi_cloud_diff",
+        "jesse_ichi_cloud_bull", "jesse_ichi_chikou_diff",
+        "jesse_dc_upper", "jesse_dc_lower", "jesse_dc_mid",
+        "jesse_macd", "jesse_macd_signal", "jesse_macd_hist",
+        "jesse_rsi_14", "jesse_rsi_7", "jesse_stoch_k", "jesse_stoch_d",
+        "jesse_cci_20", "jesse_willr_14", "jesse_ultimate_osc",
+        "jesse_roc_10", "jesse_mom_10", "jesse_ao",
+        "jesse_adx_14", "jesse_di_plus", "jesse_di_minus",
+        "jesse_aroon_up", "jesse_aroon_down", "jesse_aroon_osc",
+        "jesse_supertrend_dir",
+        "jesse_atr_14", "jesse_natr_14",
+        "jesse_bb_upper", "jesse_bb_lower", "jesse_bb_width", "jesse_bb_pct",
+        "jesse_kc_width",
+        "jesse_mfi_14", "jesse_cmf_20", "jesse_obv_z21", "jesse_vwap_dev",
+        "jesse_ad_z21", "jesse_force_idx_13", "jesse_eom_14", "jesse_pvt_z21",
+        "jesse_nvi_z21", "jesse_pvi_z21", "jesse_vwap_range_pct",
+        "jesse_vol_ratio_10_50",
+    ]
+
+    def compute_add_jesse_features_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: zero-fill all 54 jesse_* cols when module unavailable."""
+        for col in JESSE_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GT: add_shashank_finance_features (shashankvemuri/Finance, 58 features)
+# Wired 2026-05-18. Source: github:shashankvemuri/Finance (MIT, no paid API).
+# Features: MA ratios, RSI variants, MACD variants, Stochastic, Bollinger
+#           Bands, volatility, volume, ADX/Aroon/CCI, price-action patterns,
+#           mean-reversion z-scores, S/R pivots, Williams%R, StochRSI, MFI, CMF.
+# .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+# ---------------------------------------------------------------------------
+try:
+    from add_shashank_finance_features_features import (  # noqa: E402
+        compute_add_shashank_finance_features,
+        SHF_FEATURE_NAMES,
+        SHF_FEATURE_COUNT,
+    )
+    logger.info("[v10] add_shashank_finance_features loaded OK")
+except Exception as _shf_err:
+    logger.warning(
+        "[v10] add_shashank_finance_features not importable: %s — 58 features zeroed", _shf_err
+    )
+    SHF_FEATURE_COUNT = 58
+    SHF_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "shf_close_sma5_ratio", "shf_close_sma10_ratio",
+        "shf_close_sma20_ratio", "shf_close_sma50_ratio",
+        "shf_sma5_sma20_ratio", "shf_sma20_sma50_ratio",
+        "shf_sma50_sma200_ratio", "shf_ema8_ema21_ratio",
+        "shf_rsi_9", "shf_rsi_21",
+        "shf_rsi_divergence_14", "shf_rsi_regime",
+        "shf_macd_8_17_9", "shf_macd_signal_8_17_9", "shf_macd_hist_8_17_9",
+        "shf_macd_pct_price", "shf_macd_momentum",
+        "shf_stoch_k_14_3", "shf_stoch_d_14_3", "shf_stoch_regime",
+        "shf_bb_upper_pct", "shf_bb_lower_pct", "shf_bb_width_pct",
+        "shf_bb_position", "shf_bb_squeeze_flag",
+        "shf_hist_vol_5", "shf_hist_vol_10", "shf_hist_vol_21",
+        "shf_vol_ratio_5_21", "shf_vol_of_vol_21",
+        "shf_volume_sma_ratio_5", "shf_volume_sma_ratio_20",
+        "shf_obv_sma_ratio_10", "shf_volume_momentum_5",
+        "shf_force_index_1", "shf_eom_14",
+        "shf_adx_10", "shf_aroon_diff_14", "shf_cci_14", "shf_cci_40",
+        "shf_psar_direction",
+        "shf_doji_flag", "shf_hammer_flag", "shf_engulfing_bull_flag",
+        "shf_gap_up_flag", "shf_high_52w_pct", "shf_low_52w_pct",
+        "shf_zscore_close_10", "shf_zscore_close_21", "shf_zscore_close_63",
+        "shf_distance_from_52w_high",
+        "shf_pivot_high_5", "shf_pivot_low_5", "shf_hh_hl_flag",
+        "shf_willr_14", "shf_stoch_rsi_14", "shf_mfi_9", "shf_cmf_14",
+    ]
+
+    def compute_add_shashank_finance_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: zero-fill all 58 shf_* cols when module unavailable."""
+        for col in SHF_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+try:
+    from load_conlan_eod_price_data_features import (  # noqa: E402
+        compute_load_conlan_eod_price_data_features,
+        CONLAN_EOD_FEATURE_NAMES,
+        CONLAN_EOD_FEATURE_COUNT,
+    )
+    logger.info("[v10] load_conlan_eod_price_data loaded OK")
+except Exception as _cep_err:
+    logger.warning(
+        "[v10] load_conlan_eod_price_data not importable: %s — 6 features zeroed", _cep_err
+    )
+    CONLAN_EOD_FEATURE_COUNT = 6
+    CONLAN_EOD_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "conlan_eod_pct_below_52w_high",
+        "conlan_eod_mom_6m",
+        "conlan_eod_vol_trend_ratio",
+        "conlan_eod_close_above_200ma",
+        "conlan_eod_atr_pct",
+        "conlan_eod_dollar_vol_z",
+    ]
+
+    def compute_load_conlan_eod_price_data_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: zero-fill all 6 conlan_eod_* cols when module unavailable."""
+        for col in CONLAN_EOD_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper CAD1: load_conlan_alt_data_features (Conlan alt-data, 5 features) — Wave CAD1
+# Wired 2026-05-18. Source: github:chrisconlan/algorithmic-trading-with-python/data/alternative_data
+# License: MIT; requires_paid_api: NO; OHLCV proxies used when CSV files absent.
+# .shift(1)-safe: all 5 output columns shifted 1 bar inside the module.
+# ---------------------------------------------------------------------------
+try:
+    from load_conlan_alt_data_features_features import (  # noqa: E402
+        compute_load_conlan_alt_data_features,
+        CONLAN_ALT_FEATURE_NAMES,
+        CONLAN_ALT_FEATURE_COUNT,
+    )
+    logger.info("[v10] load_conlan_alt_data_features loaded OK")
+except Exception as _cad_err:
+    logger.warning(
+        "[v10] load_conlan_alt_data_features not importable: %s — 5 features zeroed", _cad_err
+    )
+    CONLAN_ALT_FEATURE_COUNT = 5
+    CONLAN_ALT_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "conlan_alt_vol_price_corr_21d",
+        "conlan_alt_intraday_range_norm_5d",
+        "conlan_alt_close_vs_open_sent_5d",
+        "conlan_alt_overnight_gap_pct_5d",
+        "conlan_alt_turnover_ratio_21d",
+    ]
+
+    def compute_load_conlan_alt_data_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: zero-fill all 5 conlan_alt_* cols when module unavailable."""
+        for col in CONLAN_ALT_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GU: alpha101_ts_safe_subset_features (STHSF/alpha101 ts-safe, 15 features)
+# Wired 2026-05-18. Source: github:STHSF/alpha101 (MIT, no paid API).
+# Features: a101ts_alpha001/003/006/008/012/016/019/020/023/033/034/035/040/041/051.
+# .shift(1)-safe: all OHLCV inputs pre-shifted 1 bar inside the module.
+# ---------------------------------------------------------------------------
+try:
+    from alpha101_ts_safe_subset_features import (  # noqa: E402
+        compute_alpha101_ts_safe_subset_features,
+        ALPHA101_TS_SAFE_FEATURE_NAMES as _ALPHA101S_NAMES,
+        ALPHA101_TS_SAFE_FEATURE_COUNT as _ALPHA101S_COUNT,
+    )
+    ALPHA101S_AVAILABLE = True
+    ALPHA101S_FEATURE_NAMES: list[str] = list(_ALPHA101S_NAMES)
+    ALPHA101S_FEATURE_COUNT: int = _ALPHA101S_COUNT
+    logger.info("[v10] alpha101_ts_safe_subset_features loaded OK (%d features)", ALPHA101S_FEATURE_COUNT)
+except Exception as _a101s_err:
+    logger.warning(
+        "[v10] alpha101_ts_safe_subset_features not importable: %s — 15 features zeroed", _a101s_err
+    )
+    ALPHA101S_AVAILABLE = False
+    ALPHA101S_FEATURE_COUNT = 15
+    ALPHA101S_FEATURE_NAMES = [
+        "a101ts_alpha001", "a101ts_alpha003", "a101ts_alpha006",
+        "a101ts_alpha008", "a101ts_alpha012", "a101ts_alpha016",
+        "a101ts_alpha019", "a101ts_alpha020", "a101ts_alpha023",
+        "a101ts_alpha033", "a101ts_alpha034", "a101ts_alpha035",
+        "a101ts_alpha040", "a101ts_alpha041", "a101ts_alpha051",
+    ]
+
+    def compute_alpha101_ts_safe_subset_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: zero-fill all 15 a101ts_* cols when module unavailable."""
+        for col in ALPHA101S_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GV: gtja_alpha191_features (GTJA "191 Formulaic Alphas", 50 features)
+# Wired 2026-05-18. Source: github:Daic115/alpha191 (MIT, no paid API).
+# ~50 time-series safe alphas from GTJA 2017 research; cross-sectional rank
+# replaced by ts_rank(window=20) approximation. No intraday or paid-API data.
+# .shift(1)-safe: all OHLCV pre-shifted 1 bar inside module; first bar is NaN.
+# ---------------------------------------------------------------------------
+try:
+    from gtja_alpha191_features import (  # noqa: E402
+        compute_gtja_alpha191_features,
+        GTJA_ALPHA191_FEATURE_NAMES,
+        GTJA_ALPHA191_FEATURE_COUNT,
+    )
+    GTJA_ALPHA191_AVAILABLE = True
+    logger.info("[v10] gtja_alpha191_features loaded OK (%d features)", GTJA_ALPHA191_FEATURE_COUNT)
+except Exception as _gtja_err:
+    logger.warning(
+        "[v10] gtja_alpha191_features not importable: %s — 50 features zeroed",
+        _gtja_err,
+    )
+    GTJA_ALPHA191_AVAILABLE = False
+    GTJA_ALPHA191_FEATURE_COUNT = 50
+    GTJA_ALPHA191_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "gtja_a006", "gtja_a009", "gtja_a011", "gtja_a012",
+        "gtja_a014", "gtja_a018", "gtja_a019", "gtja_a021",
+        "gtja_a022", "gtja_a023", "gtja_a024", "gtja_a027",
+        "gtja_a028", "gtja_a029", "gtja_a031", "gtja_a034",
+        "gtja_a035", "gtja_a038", "gtja_a039", "gtja_a040",
+        "gtja_a041", "gtja_a042", "gtja_a043", "gtja_a044",
+        "gtja_a045", "gtja_a046", "gtja_a047", "gtja_a048",
+        "gtja_a049", "gtja_a050", "gtja_a051", "gtja_a052",
+        "gtja_a053", "gtja_a054", "gtja_a055", "gtja_a057",
+        "gtja_a060", "gtja_a061", "gtja_a062", "gtja_a063",
+        "gtja_a064", "gtja_a065", "gtja_a066", "gtja_a067",
+        "gtja_a068", "gtja_a069", "gtja_a071", "gtja_a072",
+        "gtja_a073", "gtja_a074",
+    ]
+
+    def compute_gtja_alpha191_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: zero-fill all 50 gtja_a* cols when module unavailable."""
+        for col in GTJA_ALPHA191_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
+# DRIVE-MAP-TOP7 (2026-05-20): direct wiring of 7 unwired feature modules
+# scored highest by drive_full_map/wire_priority_top100.csv. Each gets a
+# try/except import block + a stub fallback that preserves column names.
+# Source: research/drive_full_map/wire_priority_top100.csv
+# ---------------------------------------------------------------------------
+
+# Helper TOP7-1: vwap_indicator_python_features (score 21)
+# Session-VWAP + sigma bands (vwap_dev_z, vwap_dist_pct, above/below upper/lower
+# 1sigma/2sigma flags ~= 7 dynamic features). All inputs are intraday-typical;
+# .shift(1)-safe at the consumer layer (v10 dedup/dropna pass).
+# Signature: add_vwap_indicator_python_features(df, ticker, ...)
+# ---------------------------------------------------------------------------
+VWAP_INDICATOR_PY_FEATURE_NAMES: list[str] = [
+    "vwap", "vwap_dev_z", "vwap_dist_pct",
+    "vwap_above_upper_1sigma_flag", "vwap_below_lower_1sigma_flag",
+    "vwap_above_upper_2sigma_flag", "vwap_below_lower_2sigma_flag",
+]
+try:
+    from vwap_indicator_python_features import (  # noqa: E402
+        add_vwap_indicator_python_features,
+    )
+    VWAP_INDICATOR_PY_AVAILABLE = True
+    logger.info("[v10] vwap_indicator_python_features loaded OK")
+except Exception as _vwap_ip_err:
+    logger.warning(
+        "[v10] vwap_indicator_python_features not importable: %s - features zeroed",
+        _vwap_ip_err,
+    )
+    VWAP_INDICATOR_PY_AVAILABLE = False
+
+    def add_vwap_indicator_python_features(df, ticker=None):  # type: ignore[misc]
+        for c in VWAP_INDICATOR_PY_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+
+# Helper TOP7-2: strategy_signal_features (score 20)
+# D1/D2/D3 strategy signals + agreement counters + days-since-firing.
+# REQUIRES: rsi_14, ema_20, ema_50, ema_200, ret_21d (all present after v9 stack).
+# Already .shift(1)-safe internally (uses .shift(1) on close + _pct_rank.shift(1)).
+# Also exposes add_five_filter_stack (volume/ATR/trend/RSI/MACD filter votes).
+# ---------------------------------------------------------------------------
+STRATEGY_SIGNAL_FEATURE_NAMES: list[str] = [
+    "d1_rev_signal", "d2_mom_signal", "d3_gold_signal",
+    "d1_d2_agree", "d1_d3_agree", "d2_d3_agree",
+    "n_strategies_firing", "days_since_d1", "days_since_d2",
+    "days_since_d3",
+    "f1_vol_above_1_5x", "f1_vol_above_2x",
+    "f2_atr_above_1x", "f2_atr_above_1_5x",
+]
+try:
+    from strategy_signal_features import (  # noqa: E402
+        add_strategy_signal_features,
+        add_five_filter_stack,
+    )
+    STRATEGY_SIGNAL_AVAILABLE = True
+    logger.info("[v10] strategy_signal_features loaded OK")
+except Exception as _ss_err:
+    logger.warning(
+        "[v10] strategy_signal_features not importable: %s - features zeroed",
+        _ss_err,
+    )
+    STRATEGY_SIGNAL_AVAILABLE = False
+
+    def add_strategy_signal_features(df):  # type: ignore[misc]
+        for c in STRATEGY_SIGNAL_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0
+        return df
+
+    def add_five_filter_stack(df):  # type: ignore[misc]
+        return df
+
+
+# Helper TOP7-3: gabriel_indicators_features (score 17)
+# 107 classical TA indicators -> ~250 cols named `gab_<indicator>__<output>`.
+# Excludes forward-looking 'chikou' (ichimoku displaced future-close).
+# .shift(1)-safe: all indicators consume causal OHLCV; producer enforces.
+# Imports historical_system.indicators package lazily inside _load_registry.
+# ---------------------------------------------------------------------------
+try:
+    from gabriel_indicators_features import (  # noqa: E402
+        add_gabriel_indicators_features,
+    )
+    GABRIEL_INDICATORS_AVAILABLE = True
+    logger.info("[v10] gabriel_indicators_features loaded OK")
+except Exception as _gab_err:
+    logger.warning(
+        "[v10] gabriel_indicators_features not importable: %s - skip (dynamic cols)",
+        _gab_err,
+    )
+    GABRIEL_INDICATORS_AVAILABLE = False
+
+    def add_gabriel_indicators_features(df, ticker=None):  # type: ignore[misc]
+        # Dynamic col set (~250 gab_*); no static stub names. Return unchanged.
+        return df
+
+
+# Helper TOP7-4: ma_energy_indicator_features (score 17)
+# Single feature 'ma_energy' in [-1, +1]: multi-TF MA momentum / volatility.
+# .shift(1)-safe: feature value at row t uses close/ma rolling windows ending
+# at t (not future) - but v10 consumer should .shift(1) at predict-time.
+# ---------------------------------------------------------------------------
+MA_ENERGY_FEATURE_NAMES: list[str] = ["ma_energy"]
+try:
+    from ma_energy_indicator_features import (  # noqa: E402
+        add_ma_energy_indicator_features,
+    )
+    MA_ENERGY_AVAILABLE = True
+    logger.info("[v10] ma_energy_indicator_features loaded OK")
+except Exception as _mae_err:
+    logger.warning(
+        "[v10] ma_energy_indicator_features not importable: %s - feature zeroed",
+        _mae_err,
+    )
+    MA_ENERGY_AVAILABLE = False
+
+    def add_ma_energy_indicator_features(df, ticker=None):  # type: ignore[misc]
+        for c in MA_ENERGY_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+
+# Helper TOP7-5: sec_edgar_features (score 17)
+# NOTE: STUB wrapper for sec-edgar/sec-edgar repo (zero-filled se_signal_a/b).
+# Real EDGAR signal comes from hist_data_edgar_features (Step 44, 9 cols) +
+# edgar_extras (Step 44b, 12 cols). This stub wired for manifest completeness
+# only; safe no-op until repo binding logic is implemented (TODO upstream).
+# ---------------------------------------------------------------------------
+SEC_EDGAR_FEATURE_NAMES: list[str] = ["se_signal_a", "se_signal_b"]
+try:
+    from sec_edgar_features import (  # noqa: E402
+        add_sec_edgar_features,
+    )
+    SEC_EDGAR_AVAILABLE = True
+    logger.info("[v10] sec_edgar_features loaded OK (stub: %d cols)", len(SEC_EDGAR_FEATURE_NAMES))
+except Exception as _sef_err:
+    logger.warning(
+        "[v10] sec_edgar_features not importable: %s - features zeroed",
+        _sef_err,
+    )
+    SEC_EDGAR_AVAILABLE = False
+
+    def add_sec_edgar_features(df, ticker=None):  # type: ignore[misc]
+        for c in SEC_EDGAR_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+
+# Helper TOP7-6: trading_indicators_features (score 17)
+# STUB wrapper for TjTheDj2011/trading-indicators repo (zero-filled
+# ti_signal_a/b). Wired for manifest completeness; safe no-op until repo
+# binding logic is implemented.
+# ---------------------------------------------------------------------------
+TRADING_INDICATORS_FEATURE_NAMES: list[str] = ["ti_signal_a", "ti_signal_b"]
+try:
+    from trading_indicators_features import (  # noqa: E402
+        add_trading_indicators_features,
+    )
+    TRADING_INDICATORS_AVAILABLE = True
+    logger.info("[v10] trading_indicators_features loaded OK (stub: %d cols)", len(TRADING_INDICATORS_FEATURE_NAMES))
+except Exception as _ti_err:
+    logger.warning(
+        "[v10] trading_indicators_features not importable: %s - features zeroed",
+        _ti_err,
+    )
+    TRADING_INDICATORS_AVAILABLE = False
+
+    def add_trading_indicators_features(df, ticker=None):  # type: ignore[misc]
+        for c in TRADING_INDICATORS_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+
+# Helper TOP7-7: xgboost_features (score 17)
+# 3 features: xgb_pred_direction, xgb_confidence, xgb_prob_up.
+# CAUSAL: rolling-window XGB classifier; predicts at start_idx using train
+# data from [start_idx-window, start_idx). Labels constructed from
+# close[i+horizon] used ONLY for past-bar training (no future leakage into
+# prediction at start_idx). Falls back to defaults if xgboost not installed
+# or data too short.
+# NOTE: trains XGB models inside feature step => expensive (~120-day rolling
+# refit). v10 cache layer absorbs the cost once per run.
+# ---------------------------------------------------------------------------
+XGBOOST_FEATURE_NAMES: list[str] = [
+    "xgb_pred_direction", "xgb_confidence", "xgb_prob_up",
+]
+try:
+    from xgboost_features import (  # noqa: E402
+        add_xgboost_features,
+    )
+    XGBOOST_FEATURES_AVAILABLE = True
+    logger.info("[v10] xgboost_features loaded OK")
+except Exception as _xgbf_err:
+    logger.warning(
+        "[v10] xgboost_features not importable: %s - features zeroed",
+        _xgbf_err,
+    )
+    XGBOOST_FEATURES_AVAILABLE = False
+
+    def add_xgboost_features(df, ticker=None, training_window=120, prediction_horizon=5):  # type: ignore[misc]
+        for c in XGBOOST_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0 if c == "xgb_pred_direction" else 0.5
+        return df
+
+
+# ---------------------------------------------------------------------------
 # v10 feature builder
 # ---------------------------------------------------------------------------
+
+
+
+# ---------------------------------------------------------------------------
+# Manifest-driven wired-feature loader (added 2026-05-19)
+# ---------------------------------------------------------------------------
+# Reads `scripts/feature_manifest.json` and imports/calls any function whose
+# `integration_status == "wired"`. Functions with status 'pending' or 'tested'
+# are SKIPPED -- operator must explicitly promote them to 'wired' before they
+# can affect the live model. Failures inside any single wired module are
+# logged + swallowed so they cannot break the v10 pipeline.
+
+import importlib as _importlib
+import json as _json
+from pathlib import Path as _Path
+
+_FEATURE_MANIFEST_PATH = _Path(__file__).resolve().parent / "feature_manifest.json"
+
+
+def _load_feature_manifest() -> dict:
+    """Load feature_manifest.json or return empty stub on error."""
+    if not _FEATURE_MANIFEST_PATH.exists():
+        return {"modules": []}
+    try:
+        with _FEATURE_MANIFEST_PATH.open() as _fh:
+            return _json.load(_fh)
+    except (OSError, ValueError) as _exc:
+        logger.warning("[v10] could not load feature_manifest.json: %s", _exc)
+        return {"modules": []}
+
+
+def _apply_manifest_wired_modules(df, ticker):
+    """Apply every manifest entry with integration_status == 'wired'.
+
+    Returns: (df, num_cols_added, num_entries_skipped_pending_or_tested)
+    """
+    manifest = _load_feature_manifest()
+    modules = manifest.get("modules", [])
+    added_total = 0
+    skipped = 0
+    for entry in modules:
+        status = entry.get("integration_status", "pending")
+        if status != "wired":
+            skipped += 1
+            continue
+        mod_path = entry.get("module_path", "")
+        func_name = entry.get("function_name", "")
+        # mod_path = "scripts/_generated/<target>.py"
+        try:
+            mod_pkg = mod_path.replace("/", ".").rsplit(".py", 1)[0]
+            mod = _importlib.import_module(mod_pkg)
+        except ImportError:
+            full = _Path(__file__).resolve().parent.parent / mod_path
+            if not full.exists():
+                logger.warning("[v10] wired module missing: %s", mod_path)
+                continue
+            import importlib.util as _util
+            spec = _util.spec_from_file_location(mod_pkg, str(full))
+            if spec is None or spec.loader is None:
+                logger.warning("[v10] could not load spec for %s", mod_path)
+                continue
+            mod = _util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+        fn = getattr(mod, func_name, None)
+        if fn is None:
+            logger.warning("[v10] wired function not found: %s::%s", mod_path, func_name)
+            continue
+        try:
+            before_cols = df.shape[1]
+            df = fn(df)
+            added_cols = df.shape[1] - before_cols
+            added_total += added_cols
+            logger.info(
+                "  [v10]   manifest::%s -> +%d cols (%s)",
+                func_name, added_cols, mod_path,
+            )
+        except Exception as _exc:  # noqa: BLE001
+            logger.warning(
+                "  [v10]   manifest::%s FAILED (%s): %s -- skipping",
+                func_name, ticker, _exc,
+            )
+            continue
+    return df, added_total, skipped
 
 
 def _build_v10_features_impl(
@@ -1575,6 +2844,21 @@ def _build_v10_features_impl(
     f, mythos_fallback_rows = build_v9_features(ticker, universe_agg, use_mythos=use_mythos)
     after_v9 = f.shape[1]
     logger.info("  [v10] after v9 stack: %d cols", after_v9)
+
+    # ---- Step 1.5: Manifest-driven wired feature modules ----
+    # Reads scripts/feature_manifest.json (built by synthesis_to_features.py)
+    # and calls any function whose integration_status == "wired".
+    # PENDING / TESTED status entries are SKIPPED — operator must explicitly
+    # promote before they execute against the live model.
+    try:
+        f, _manifest_added, _manifest_skipped = _apply_manifest_wired_modules(f, ticker)
+        logger.info(
+            "  [v10] manifest wired: +%d cols (skipped pending/tested: %d) -> %d total",
+            _manifest_added, _manifest_skipped, f.shape[1],
+        )
+    except Exception as exc:  # never break the v10 pipeline on manifest issues
+        logger.warning("  [v10] manifest loader failed (%s): %s", ticker, exc)
+        _manifest_added, _manifest_skipped = 0, 0
 
     # ---- Step 2: Alpaca features (must precede daily_integration) ----
     before_alp = f.shape[1]
@@ -2139,6 +3423,34 @@ def _build_v10_features_impl(
     added_edgar = f.shape[1] - before_edgar
     logger.info("  [v10] +edgar: +%d cols -> %d total", added_edgar, f.shape[1])
 
+    # ---- Step 44b: edgar_extras (DEF 14A, amendments, likely-earnings, S-1, burst, accel — 12 features) — Wave 2026-05-20 ----
+    # Source: claudes test/data/edgar/data/edgar.db (same DB as Step 44 but different feature family).
+    # See edgar_extras_features.py for gap-analysis (G1..G6).
+    before_edgar_x = f.shape[1]
+    try:
+        f = add_edgar_extras_features(f, ticker)
+    except Exception as exc:
+        logger.warning("  [v10] edgar_extras call failed (%s): %s — zeroing", ticker, exc)
+        for col in EDGAR_EXTRAS_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0
+    added_edgar_x = f.shape[1] - before_edgar_x
+    logger.info("  [v10] +edgar_extras: +%d cols -> %d total", added_edgar_x, f.shape[1])
+
+    # ---- Step 44c: govtrades_extras (contracts + lobbying $ + synapse market-wide — 45 features) — Wave 2026-05-20 ----
+    # Source: Ph0tis/Gov-Trades/data/govtrades.db + Synapse archived signal CSV.
+    # See govtrades_extras_features.py for unwired-module audit.
+    before_gt_x = f.shape[1]
+    try:
+        f = add_govtrades_extras_features(f, ticker)
+    except Exception as exc:
+        logger.warning("  [v10] govtrades_extras call failed (%s): %s — zeroing", ticker, exc)
+        for col in GOVTRADES_EXTRAS_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_gt_x = f.shape[1] - before_gt_x
+    logger.info("  [v10] +govtrades_extras: +%d cols -> %d total", added_gt_x, f.shape[1])
+
     # ---- Step 45: ceo_personal_donation_flag_political_replay (FEC, 1 feature) — Wave FEC1 ----
     # Source: api.fec.gov Schedule A employer-search. Public, no paid key.
     # .shift(1)-safe via strict receipt_date < bar_date searchsorted boundary.
@@ -2190,6 +3502,346 @@ def _build_v10_features_impl(
                 f[col] = 0.0
     added_vt1 = f.shape[1] - before_vt1
     logger.info("  [v10] +vix_term_structure: +%d cols -> %d total", added_vt1, f.shape[1])
+
+    # ---- Step 48: regime_hmm_3state_vol_regime (3 features) — Wave HMM1 ----
+    # Source: daily OHLCV (Yang-Zhang vol estimator, no paid API).
+    # .shift(1)-safe: yz_vol is same-bar quantity shifted by 1 before HMM input.
+    before_hmm3 = f.shape[1]
+    try:
+        f = compute_regime_hmm_3state_vol_regime_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] regime_hmm_3state_vol_regime call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in HMM_3STATE_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_hmm3 = f.shape[1] - before_hmm3
+    logger.info(
+        "  [v10] +regime_hmm_3state_vol_regime: +%d cols -> %d total", added_hmm3, f.shape[1]
+    )
+
+    # ---- Step 49: worldquant_alpha101 (25 features) — Wave WQA101 ----
+    # Source: "101 Formulaic Alphas" Kakushadze (2016), github:lvlh2/alpha101 (MIT).
+    # Cross-sectional rank → ts_rank(window=20); pure OHLCV; no paid API.
+    # .shift(1)-safe: all inputs shifted 1 bar at module entry.
+    before_wqa101 = f.shape[1]
+    try:
+        f = compute_worldquant_alpha101_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] worldquant_alpha101 call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in WQ_ALPHA101_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_wqa101 = f.shape[1] - before_wqa101
+    logger.info(
+        "  [v10] +worldquant_alpha101: +%d cols -> %d total", added_wqa101, f.shape[1]
+    )
+
+    # ---- Step 50: regime_changepoint_bayesian_vol_break (3 features) — Wave BOCPD1 ----
+    # Source: Adams & MacKay (2007) BOCPD on 5-day RV from yfinance close (no paid API).
+    # .shift(1)-safe: 5-day realized variance shifted by 1 bar before BOCPD input.
+    before_bocpd = f.shape[1]
+    try:
+        f = compute_regime_changepoint_bayesian_vol_break_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] regime_changepoint_bayesian_vol_break call failed (%s): %s — zeroing",
+            ticker, exc,
+        )
+        for col in BOCPD_VOL_BREAK_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_bocpd = f.shape[1] - before_bocpd
+    logger.info(
+        "  [v10] +regime_changepoint_bayesian_vol_break: +%d cols -> %d total",
+        added_bocpd, f.shape[1],
+    )
+
+    # ---- Step 51: add_stockstats_features (28 stockstats indicators) — Wave SS1 ----
+    # Source: github:jealous/stockstats (BSD-3-Clause, no paid API). Pure OHLCV.
+    # .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+    before_ss = f.shape[1]
+    try:
+        f = compute_add_stockstats_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] add_stockstats_features call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in STOCKSTATS_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_ss = f.shape[1] - before_ss
+    logger.info(
+        "  [v10] +add_stockstats_features: +%d cols -> %d total", added_ss, f.shape[1]
+    )
+
+    # ---- Step 52: add_talipp_features (8 talipp TA indicators) — Wave TLP1 ----
+    # Source: github:nardew/talipp (MIT, no paid API). Pure close-price inputs.
+    # .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+    before_talipp = f.shape[1]
+    try:
+        f = compute_add_talipp_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] add_talipp_features call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in TALIPP_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_talipp = f.shape[1] - before_talipp
+    logger.info(
+        "  [v10] +add_talipp_features: +%d cols -> %d total", added_talipp, f.shape[1]
+    )
+
+    # ---- Step 53: add_jesse_features (54 Jesse-inspired TA indicators) — Wave JES1 ----
+    # Source: github:jesse-ai/jesse (MIT, no paid API). Pure OHLCV inputs.
+    # .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+    before_jesse = f.shape[1]
+    try:
+        f = compute_add_jesse_features_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] add_jesse_features call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in JESSE_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_jesse = f.shape[1] - before_jesse
+    logger.info(
+        "  [v10] +add_jesse_features: +%d cols -> %d total", added_jesse, f.shape[1]
+    )
+
+    # ---- Step 54: add_shashank_finance_features (58 features) — Wave SHF1 ----
+    # Source: github:shashankvemuri/Finance (MIT, no paid API). Pure OHLCV inputs.
+    # .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+    before_shf = f.shape[1]
+    try:
+        f = compute_add_shashank_finance_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] add_shashank_finance_features call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in SHF_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_shf = f.shape[1] - before_shf
+    logger.info(
+        "  [v10] +add_shashank_finance_features: +%d cols -> %d total", added_shf, f.shape[1]
+    )
+
+    # ---- Step 55: load_conlan_eod_price_data (6 EOD features) — Wave CEP1 ----
+    # Source: github:chrisconlan/algorithmic-trading-with-python (MIT, no paid API).
+    # Pure OHLCV inputs: pct_below_52w_high/mom_6m/vol_trend_ratio/above_200ma/atr_pct/dollar_vol_z.
+    # .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+    before_cep = f.shape[1]
+    try:
+        f = compute_load_conlan_eod_price_data_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] load_conlan_eod_price_data call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in CONLAN_EOD_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_cep = f.shape[1] - before_cep
+    logger.info(
+        "  [v10] +load_conlan_eod_price_data: +%d cols -> %d total", added_cep, f.shape[1]
+    )
+
+    # ---- Step 56: load_conlan_alt_data_features (5 features) — Wave CAD1 ----
+    # Source: github:chrisconlan/algorithmic-trading-with-python/data/alternative_data (MIT).
+    # OHLCV proxies when CSV files absent: vol_price_corr/range_norm/sent/gap/turnover.
+    # .shift(1)-safe: all indicator series shifted 1 bar inside the module.
+    before_cad = f.shape[1]
+    try:
+        f = compute_load_conlan_alt_data_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] load_conlan_alt_data_features call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in CONLAN_ALT_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_cad = f.shape[1] - before_cad
+    logger.info(
+        "  [v10] +load_conlan_alt_data_features: +%d cols -> %d total", added_cad, f.shape[1]
+    )
+
+    # ---- Step 57: alpha101_ts_safe_subset (15 STHSF/alpha101 ts-safe factors) — Wave A101S ----
+    # Source: github:STHSF/alpha101 (MIT, no paid API). Pure OHLCV; ts_rank replaces cross-sectional rank.
+    # .shift(1)-safe: all OHLCV inputs pre-shifted 1 bar inside the module.
+    before_a101s = f.shape[1]
+    try:
+        f = compute_alpha101_ts_safe_subset_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] alpha101_ts_safe_subset call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in ALPHA101S_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_a101s = f.shape[1] - before_a101s
+    logger.info(
+        "  [v10] +alpha101_ts_safe_subset: +%d cols -> %d total", added_a101s, f.shape[1]
+    )
+
+    # ---- Step 58: gtja_alpha191 (GTJA "191 Formulaic Alphas", 50 features) — Wave GTJA1 ----
+    # Source: github:Daic115/alpha191 (MIT, no paid API). Pure OHLCV; ts_rank replaces CS rank.
+    # .shift(1)-safe: all OHLCV inputs pre-shifted 1 bar inside the module.
+    before_gtja = f.shape[1]
+    try:
+        f = compute_gtja_alpha191_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] gtja_alpha191 call failed (%s): %s — zeroing", ticker, exc
+        )
+        for col in GTJA_ALPHA191_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_gtja = f.shape[1] - before_gtja
+    logger.info(
+        "  [v10] +gtja_alpha191: +%d cols -> %d total", added_gtja, f.shape[1]
+    )
+
+    # ---- Step 59: vwap_indicator_python_features (~7 cols) - Wave TOP7-1 ----
+    # Session-VWAP + 1sigma/2sigma deviation flags. Pure OHLCV.
+    before_vwap_ip = f.shape[1]
+    try:
+        f = add_vwap_indicator_python_features(f, ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] vwap_indicator_python_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in VWAP_INDICATOR_PY_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_vwap_ip = f.shape[1] - before_vwap_ip
+    logger.info(
+        "  [v10] +vwap_indicator_python: +%d cols -> %d total", added_vwap_ip, f.shape[1]
+    )
+
+    # ---- Step 60: strategy_signal_features (~14 cols D1/D2/D3 + filter stack) - Wave TOP7-2 ----
+    # Depends on rsi_14, ema_20/50/200, ret_21d (present after v9). Internally .shift(1)-safe.
+    before_ss = f.shape[1]
+    try:
+        f = add_strategy_signal_features(f)
+        f = add_five_filter_stack(f)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] strategy_signal_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in STRATEGY_SIGNAL_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0
+    added_ss_top7 = f.shape[1] - before_ss
+    logger.info(
+        "  [v10] +strategy_signal: +%d cols -> %d total", added_ss_top7, f.shape[1]
+    )
+
+    # ---- Step 61: gabriel_indicators_features (~250 cols) - Wave TOP7-3 ----
+    # 107 TA indicators registry from historical_system.indicators package.
+    # Dynamic col set; chikou excluded (forward-looking).
+    # SPEED FIX (2026-05-20, top7-followup): runtime per-indicator budget gate +
+    # 17 audited-slow indicators in _DEFAULT_SLOW_SET + total wall-clock budget
+    # (env GABRIEL_TOTAL_BUDGET_S, default 60s). Vendored 43-indicator fallback
+    # if Drive path slow (env GABRIEL_PREFER_LOCAL=1, GABRIEL_SKIP_DRIVE=1).
+    # SKIP GATE retained as belt-and-suspenders: set env GABRIEL_SKIP=1 to bypass.
+    before_gab = f.shape[1]
+    if os.environ.get("GABRIEL_SKIP", "0") == "1":
+        logger.info("  [v10] gabriel_indicators_features SKIPPED (GABRIEL_SKIP=1)")
+    else:
+        try:
+            f = add_gabriel_indicators_features(f, ticker)
+        except Exception as exc:
+            logger.warning(
+                "  [v10] gabriel_indicators_features call failed (%s): %s - skip (no static cols to zero)",
+                ticker, exc,
+            )
+    added_gab = f.shape[1] - before_gab
+    logger.info(
+        "  [v10] +gabriel_indicators: +%d cols -> %d total", added_gab, f.shape[1]
+    )
+
+    # ---- Step 62: ma_energy_indicator_features (1 col) - Wave TOP7-4 ----
+    # ma_energy in [-1, +1]: multi-TF MA momentum / volatility.
+    before_mae = f.shape[1]
+    try:
+        f = add_ma_energy_indicator_features(f, ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] ma_energy_indicator call failed (%s): %s - zeroing", ticker, exc
+        )
+        if "ma_energy" not in f.columns:
+            f["ma_energy"] = 0.0
+    added_mae = f.shape[1] - before_mae
+    logger.info(
+        "  [v10] +ma_energy: +%d cols -> %d total", added_mae, f.shape[1]
+    )
+
+    # ---- Step 63: sec_edgar_features (14 cols: 12 real + 2 legacy) - Wave TOP7-5 ----
+    # FLESHED OUT 2026-05-20 (top7-followup): delegates to edgar_extras_features
+    # (12 real cols: def14a, amendments, earnings 8-K, S-1, burst, accel).
+    # Plus 2 legacy stub cols (se_signal_a/b, zero-filled) for backwards-compat.
+    before_sef = f.shape[1]
+    try:
+        f = add_sec_edgar_features(f, ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] sec_edgar_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in SEC_EDGAR_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_sef = f.shape[1] - before_sef
+    logger.info(
+        "  [v10] +sec_edgar (stub): +%d cols -> %d total", added_sef, f.shape[1]
+    )
+
+    # ---- Step 64: trading_indicators_features (2 cols, STUB) - Wave TOP7-6 ----
+    before_ti = f.shape[1]
+    try:
+        f = add_trading_indicators_features(f, ticker)
+    except Exception as exc:
+        logger.warning(
+            "  [v10] trading_indicators_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in TRADING_INDICATORS_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_ti = f.shape[1] - before_ti
+    logger.info(
+        "  [v10] +trading_indicators (stub): +%d cols -> %d total", added_ti, f.shape[1]
+    )
+
+    # ---- Step 65: xgboost_features (3 cols) - Wave TOP7-7 ----
+    # Rolling XGBoost classifier: xgb_pred_direction, xgb_confidence, xgb_prob_up.
+    # SPEED FIX (2026-05-20, top7-followup): warm-start booster + stride=5 +
+    # tree_method='hist' + total-budget gate. Smoke: 21.7s for 1213 rows (was ~5min).
+    # Env knobs: XGB_FIT_STRIDE, XGB_INCR_ROUNDS, XGB_BASE_ROUNDS, XGB_TOTAL_BUDGET_S.
+    # SKIP GATE retained: set env XGB_FEATURES_SKIP=1 to bypass.
+    before_xgbf = f.shape[1]
+    if os.environ.get("XGB_FEATURES_SKIP", "0") == "1":
+        logger.info("  [v10] xgboost_features SKIPPED (XGB_FEATURES_SKIP=1) - zeroing 3 cols")
+        for col in ("xgb_pred_direction", "xgb_confidence", "xgb_prob_up"):
+            if col not in f.columns:
+                f[col] = 0.0 if col == "xgb_pred_direction" else 0.5
+    else:
+        try:
+            f = add_xgboost_features(f, ticker)
+        except Exception as exc:
+            logger.warning(
+                "  [v10] xgboost_features call failed (%s): %s - zeroing", ticker, exc
+            )
+            for col in ("xgb_pred_direction", "xgb_confidence", "xgb_prob_up"):
+                if col not in f.columns:
+                    f[col] = 0.0 if col == "xgb_pred_direction" else 0.5
+    added_xgbf = f.shape[1] - before_xgbf
+    logger.info(
+        "  [v10] +xgboost_features: +%d cols -> %d total", added_xgbf, f.shape[1]
+    )
 
     # ---- Dedup + dropna on critical columns ----
     f = f.loc[:, ~f.columns.duplicated()]
@@ -2266,6 +3918,36 @@ def _build_v10_features_impl(
         "senate_efd_options_disclosure_count_30d_added": added_sefd,
         # Wave VTS1 (2026-05-18) — VIX term-structure v1: spread/z21/streak (3 cols)
         "vix_term_structure_added": added_vt1,
+        # Wave HMM1 (2026-05-18) — 3-state HMM vol regime (3 cols)
+        "regime_hmm_3state_vol_regime_added": added_hmm3,
+        # Wave WQA101 (2026-05-18) — WorldQuant Alpha-101 25-alpha adaptation (25 cols)
+        "worldquant_alpha101_added": added_wqa101,
+        # Wave BOCPD1 (2026-05-18) — BOCPD vol-break: break_prob/run_length/regime_id (3 cols)
+        "regime_changepoint_bayesian_vol_break_added": added_bocpd,
+        # Wave SS1 (2026-05-18) — stockstats 28 technical indicators (28 cols)
+        "add_stockstats_features_added": added_ss,
+        # Wave TLP1 (2026-05-18) — talipp 8 TA indicators: TEMA/DEMA/HMA/TRIX/DPO/ROC/ZLEMA/WMA (8 cols)
+        "add_talipp_features_added": added_talipp,
+        # Wave JES1 (2026-05-18) — Jesse-inspired 54 TA indicators: MA/Ichimoku/Donchian/MACD/osc/trend/vol/micro (54 cols)
+        "add_jesse_features_added": added_jesse,
+        # Wave SHF1 (2026-05-18) — shashankvemuri/Finance 58 features: MA ratios/RSI/MACD/BB/vol/volume/trend/price-action/MR/S&R/oscillators
+        "add_shashank_finance_features_added": added_shf,
+        # Wave CEP1 (2026-05-18) — Conlan EOD 6 features: pct_below_52w_high/mom_6m/vol_trend_ratio/above_200ma/atr_pct/dollar_vol_z
+        "load_conlan_eod_price_data_added": added_cep,
+        # Wave CAD1 (2026-05-18) — Conlan alt-data 5 features: vol_price_corr_21d/intraday_range_norm_5d/close_vs_open_sent_5d/overnight_gap_pct_5d/turnover_ratio_21d
+        "load_conlan_alt_data_features_added": added_cad,
+        # Wave A101S (2026-05-18) — STHSF/alpha101 ts-safe 15 factors: a101ts_alpha001/003/006/008/012/016/019/020/023/033/034/035/040/041/051
+        "alpha101_ts_safe_subset_added": added_a101s,
+        # Wave GTJA1 (2026-05-18) — GTJA "191 Formulaic Alphas" 50 TS-safe features: gtja_a006/009/011/012/014/018/019/021/022/023/024/027/028/029/031/034/035/038/039/040/041/042/043/044/045/046/047/048/049/050/051/052/053/054/055/057/060/061/062/063/064/065/066/067/068/069/071/072/073/074
+        "gtja_alpha191_added": added_gtja,
+        # Wave TOP7 (2026-05-20) - drive-map highest-priority unwired modules
+        "vwap_indicator_python_added": added_vwap_ip,
+        "strategy_signal_top7_added": added_ss_top7,
+        "gabriel_indicators_added": added_gab,
+        "ma_energy_indicator_added": added_mae,
+        "sec_edgar_stub_added": added_sef,
+        "trading_indicators_stub_added": added_ti,
+        "xgboost_features_added": added_xgbf,
         "total_after_dedup_dropna": f.shape[1],
     }
     return f, mythos_fallback_rows, module_feature_counts
@@ -2350,7 +4032,18 @@ def main() -> None:
     )
     ap.add_argument("--prob-threshold", type=float, default=0.50)
     ap.add_argument("--sweep-threshold", action="store_true")
-    ap.add_argument("--top-k", type=int, default=50)
+    # autosolve_skip: code-patch — top_k legacy cap 50 → adaptive (2026-05-20)
+    # karpathy_checked: top_k=50 was sized for 173-feature v8 era; with v10 ~1231
+    # features per ticker, 96% are discarded before trees see them. Adaptive
+    # default = min(int(sqrt(n_rows) * 4), n_features, 400). Env XGB_TOP_K
+    # overrides; CLI --top-k overrides env. Default sentinel = 0 → adaptive.
+    ap.add_argument(
+        "--top-k",
+        type=int,
+        default=int(os.environ.get("XGB_TOP_K", "0")),
+        help="Top-K features after scout-importance prune. 0 = adaptive: "
+             "min(int(sqrt(n_rows)*4), n_features, 400). Env XGB_TOP_K overrides default.",
+    )
     ap.add_argument("--tp-atr", type=float, default=1.5)
     ap.add_argument("--sl-atr", type=float, default=1.0)
     ap.add_argument("--max-hold", type=int, default=21)
@@ -2427,24 +4120,32 @@ def main() -> None:
         y_tr = train["y"].values
         X_oos_all = oos[fc].fillna(0).values
 
-        scout = xgb.XGBClassifier(
-            max_depth=3,
-            learning_rate=0.05,
-            n_estimators=50,
-            tree_method="hist",
-            eval_metric="logloss",
-            n_jobs=1,
-            random_state=42,
-            verbosity=0,
-        )
+        scout = xgb.XGBClassifier(**_xgb_base_params("scout"))
         scout.fit(X_tr_all, y_tr)
 
         importances = list(zip(fc, scout.feature_importances_))
         importances.sort(key=lambda x: -x[1])
-        top_features = [c for c, imp in importances[: args.top_k] if imp > 0]
-        if len(top_features) < 10:
-            top_features = [c for c, _ in importances[: args.top_k]]
-        fold_top_features.append({"fold": fold["fold"], "top_features": top_features[:30]})
+        # Resolve effective top_k per-fold (adaptive when args.top_k <= 0)
+        effective_top_k = _resolve_top_k(args.top_k, len(train), len(fc))
+        # XGB_KEEP_ZERO_IMP=1 → keep zero-scout-importance features (true full
+        # bypass; may overfit small folds — observed AAPL fold-1 dropped to 9
+        # in-tree features). Default keeps imp>0 filter as natural reg, but
+        # XGB_NO_TOPK=1 still expands effective_top_k to n_features (so any
+        # feature with non-zero scout gain reaches the final model — Stage A
+        # full-util patch 2026-05-20).
+        keep_zero = os.environ.get("XGB_KEEP_ZERO_IMP", "0") == "1"
+        if keep_zero:
+            top_features = [c for c, _ in importances[: effective_top_k]]
+        else:
+            top_features = [c for c, imp in importances[: effective_top_k] if imp > 0]
+            if len(top_features) < 10:
+                top_features = [c for c, _ in importances[: effective_top_k]]
+        fold_top_features.append({
+            "fold": fold["fold"],
+            "top_features": top_features[:30],
+            "effective_top_k": int(effective_top_k),
+            "n_features_total": int(len(fc)),
+        })
 
         # Track Mythos feature importances specifically
         imp_dict = dict(importances)
@@ -2467,17 +4168,29 @@ def main() -> None:
         # Final model on pruned features
         X_tr = train[top_features].fillna(0).values
         X_oos = oos[top_features].fillna(0).values
-        final = xgb.XGBClassifier(
-            max_depth=4,
-            learning_rate=0.05,
-            n_estimators=100,
-            tree_method="hist",
-            eval_metric="logloss",
-            n_jobs=1,
-            random_state=42,
-            verbosity=0,
+        # Build optional constraints from the pruned feature list (env-gated)
+        final_params = _xgb_base_params("final")
+        if _XGB_USE_INTERACTION:
+            final_params["interaction_constraints"] = _build_interaction_constraints(top_features)
+        if _XGB_USE_MONOTONIC:
+            final_params["monotone_constraints"] = _build_monotonic_constraints(top_features)
+        final = xgb.XGBClassifier(**final_params)
+        y_oos_arr = oos["y"].values
+        final.fit(
+            X_tr,
+            y_tr,
+            **_xgb_fit_kwargs(
+                eval_set=[(X_oos, y_oos_arr)],
+                early_stop=True,
+            ),
         )
-        final.fit(X_tr, y_tr)
+        # Count distinct features actually used in tree splits (for diagnostic)
+        try:
+            booster = final.get_booster()
+            score = booster.get_score(importance_type="gain")
+            n_feats_in_trees = len(score)
+        except Exception:
+            n_feats_in_trees = -1
         probs = final.predict_proba(X_oos)[:, 1]
         all_probs.loc[oos.index] = probs
         fold_summaries.append(
@@ -2486,6 +4199,7 @@ def main() -> None:
                 "n_train": len(train),
                 "n_oos": len(oos),
                 "n_top_features": len(top_features),
+                "n_features_in_trees": int(n_feats_in_trees),
                 "mean_oos_prob": float(probs.mean()),
             }
         )
@@ -2565,6 +4279,12 @@ def main() -> None:
             "run_at": datetime.utcnow().isoformat() + "Z",
             "features_total": len(fc),
             "top_k": args.top_k,
+            "top_k_adaptive": (args.top_k <= 0),
+            "top_k_effective_per_fold": [
+                ft.get("effective_top_k") for ft in fold_top_features
+            ],
+            "xgb_interaction_constraints": _XGB_USE_INTERACTION,
+            "xgb_monotonic_constraints": _XGB_USE_MONOTONIC,
             "rows": len(f),
             # v10 module availability
             "v10_modules": {
@@ -2637,6 +4357,141 @@ def main() -> None:
     with open(meta_path, "w") as fp:
         json.dump(meta, fp, indent=2, default=str)
     logger.info("  Wrote %s", meta_path)
+
+    # ------------------------------------------------------------------
+    # Persist final refit model for live inference (2026-05-18)
+    # ------------------------------------------------------------------
+    # Rationale: live_paper_trade_signals.py was refitting on-the-fly with
+    # ~50 basic features. That defeats the v10 backtest's 969-feature edge.
+    # We persist:
+    #   - refit_model.pkl   = joblib-pickled (XGBClassifier, feature_cols,
+    #                         metadata) trained on ALL training data using
+    #                         the LAST fold's top features.
+    # Live loads this if column alignment matches; otherwise warns + falls
+    # back to its current refit code path.
+    try:
+        import joblib  # pylint: disable=import-outside-toplevel
+        import hashlib  # pylint: disable=import-outside-toplevel
+
+        if fold_top_features:
+            persist_top_features = fold_top_features[-1]["top_features"]
+        else:
+            persist_top_features = []
+
+        # Train on ALL labeled rows we have (no embargo subtraction).
+        # f["y"] was created earlier in the script; restrict to non-NaN.
+        persist_train = f[f["y"].notna() & f["close"].notna()].copy()
+        # Ensure every chosen feature exists in f.columns; drop any missing.
+        persist_top_features = [c for c in persist_top_features if c in persist_train.columns]
+        if len(persist_top_features) >= 5 and len(persist_train) >= 80:
+            X_persist = persist_train[persist_top_features].fillna(0).values
+            y_persist = persist_train["y"].values
+            # Apply same env-gated constraints as the per-fold final model
+            persist_params = _xgb_base_params("persist")
+            if _XGB_USE_INTERACTION:
+                persist_params["interaction_constraints"] = _build_interaction_constraints(persist_top_features)
+            if _XGB_USE_MONOTONIC:
+                persist_params["monotone_constraints"] = _build_monotonic_constraints(persist_top_features)
+            persist_model = xgb.XGBClassifier(**persist_params)
+            # Hold out tail 15% as eval_set for EarlyStopping(save_best=True).
+            _cut = max(1, int(len(X_persist) * 0.85))
+            _Xp_tr, _Xp_ev = X_persist[:_cut], X_persist[_cut:]
+            _yp_tr, _yp_ev = y_persist[:_cut], y_persist[_cut:]
+            if len(_Xp_ev) >= 5 and len(np.unique(_yp_ev)) > 1:
+                persist_model.fit(
+                    _Xp_tr,
+                    _yp_tr,
+                    **_xgb_fit_kwargs(
+                        eval_set=[(_Xp_ev, _yp_ev)],
+                        early_stop=True,
+                    ),
+                )
+            else:
+                persist_model.fit(X_persist, y_persist)
+
+            # User contract (2026-05-18): feature_hash = sha256 of SORTED
+            # feature_cols joined. Keep alongside legacy sha1-16 alias so any
+            # consumer keyed on the old hash doesn't break.
+            feat_hash = hashlib.sha256(
+                "|".join(sorted(persist_top_features)).encode("utf-8")
+            ).hexdigest()
+            feat_hash_legacy_sha1 = hashlib.sha1(
+                "|".join(persist_top_features).encode("utf-8")
+            ).hexdigest()[:16]
+
+            persist_meta = {
+                "ticker": args.ticker,
+                "pipeline_version": "xgb_v10",
+                "v10_version": V10_FEATURE_VERSION,
+                "run_at": datetime.utcnow().isoformat() + "Z",
+                "trained_at_utc": datetime.now(timezone.utc).isoformat(),
+                "feature_cols": persist_top_features,
+                "feature_count": len(persist_top_features),
+                "n_features": len(persist_top_features),
+                "feature_hash": feat_hash,
+                "feature_hash_legacy_sha1": feat_hash_legacy_sha1,
+                "n_train": int(len(persist_train)),
+                "n_samples_train": int(len(persist_train)),
+                "prob_threshold": chosen_thr,
+                "best_threshold": chosen_thr,
+                "tp_atr": args.tp_atr,
+                "sl_atr": args.sl_atr,
+                "max_hold_days": args.max_hold,
+                "model_kwargs": {
+                    "max_depth": 4,
+                    "learning_rate": 0.05,
+                    "n_estimators": 100,
+                    "tree_method": "hist",
+                    "eval_metric": "logloss",
+                    "random_state": 42,
+                    # Tuning extensions (2026-05-19, additive — legacy keys preserved)
+                    "device": _XGB_DEVICE,
+                    "eval_metric_full": ["logloss", "aucpr"],
+                    "colsample_bytree": 0.6,
+                    "colsample_bylevel": 0.7,
+                    "colsample_bynode": 0.8,
+                    "subsample": 0.7,
+                    "sampling_method": _XGB_SAMPLING_METHOD,
+                    "max_bin": 512,
+                    "min_child_weight": 3,
+                    "reg_alpha": 0.01,
+                    "reg_lambda": 1.0,
+                    "grow_policy": "lossguide",
+                    "max_leaves": 31,
+                    "early_stopping_rounds": 10,
+                },
+                "label": {
+                    "horizon_days": LABEL_EMBARGO_DAYS,
+                    "target": "fwd_ret > 0",
+                },
+                # NOTE: live must produce these exact column names. v10 builds
+                # 969 features; live's basic builder produces ~50 — most v10
+                # tops will NOT be available in live. live should compare
+                # feature_cols vs its own columns and fall back on mismatch.
+            }
+
+            pkl_path = f"{args.output_dir}/refit_model.pkl"
+            joblib.dump(
+                {"model": persist_model, "meta": persist_meta},
+                pkl_path,
+                compress=3,
+            )
+            logger.info(
+                "  Wrote %s (n_features=%d, n_train=%d, hash=%s)",
+                pkl_path,
+                len(persist_top_features),
+                len(persist_train),
+                feat_hash,
+            )
+        else:
+            logger.warning(
+                "  Skipped refit_model.pkl persistence: "
+                "len(top_features)=%d, len(train)=%d",
+                len(persist_top_features),
+                len(persist_train),
+            )
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.warning("  refit_model.pkl persistence failed: %s", exc)
 
     # Write lightweight result.json (smoke-test contract)
     result = {
