@@ -1,15 +1,15 @@
 {
-  "run_id": "26152836386",
+  "run_id": "26152840531",
   "completed": 1,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-20T09:18:08.774734Z",
+  "timestamp": "2026-05-20T09:18:27.709588Z",
   "jobs": [
     {
-      "ticker": "ABBV",
+      "ticker": "CSCO",
       "strategy": "ORB",
       "status": "completed",
-      "path": "backtests/ABBV/ORB/result.json"
+      "path": "backtests/CSCO/ORB/result.json"
     }
   ]
 }
