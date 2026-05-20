@@ -1,0 +1,12 @@
+{
+  "job_id": "1a35bb2f",
+  "ticker": "MSFT",
+  "strategy": "ML_XGB_v10_7_3",
+  "cloud": "github_actions",
+  "status": "failed",
+  "returncode": 1,
+  "completed_at": "2026-05-20T07:34:45.958540+00:00",
+  "runner_os": "ubuntu-latest",
+  "github_run_id": "26148078830",
+  "result": null
+}
