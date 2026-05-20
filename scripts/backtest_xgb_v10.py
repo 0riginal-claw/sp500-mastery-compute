@@ -4537,8 +4537,15 @@ def main() -> None:
         logger.warning("  refit_model.pkl persistence failed: %s", exc)
 
     # Write lightweight result.json (smoke-test contract)
+    # PATCH 2026-05-20: include `strategy` so the GH-Actions rollup writes
+    # backtests/<TICKER>/<STRATEGY>/result.json instead of UNKNOWN/. The
+    # rollup step reads `data.get("strategy", "UNKNOWN")` from this file
+    # (sweep.yml _rollup.py). Previously missing -> 75+ runs at UNKNOWN/.
+    # autosolve_skip: infra patch, not a new error
     result = {
         "ticker": args.ticker,
+        "strategy": args.strategy,
+        "strategy_variant": "ML_XGB_v10",
         "job_id": args.job_id,
         "pipeline_version": "xgb_v10",
         "features_total": len(fc),
