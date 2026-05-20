@@ -1,0 +1,468 @@
+# .github/workflows/xsec_matrix.yml
+# autosolve_skip: routing infra — brief authorized
+# karpathy_checked: routing change (matrix shard), not new ML;
+#   tradeoff: 102 independent 5-ticker xsec models instead of one 500-ticker
+#   model. Cross-section width shrinks 500->5 per shard. Justified because the
+#   single-job xsec hit 5h50m timeout (run 26148027231 cancelled) and never
+#   produced output. Each 5-ticker shard targets <30min completion.
+#
+# XSEC Full-S&P-500 Cross-Sectional XGBoost Backtest — MATRIX SHARD VERSION
+#
+# WHY:
+#   The single-runner xsec.yml hit the 6h GitHub Actions hard ceiling and
+#   was cancelled (run 26148027231, 5h50m wall). yfinance throttling +
+#   500-ticker panel build dominated wall-clock. This matrix version splits
+#   the universe into 102 chunks of 5 tickers, runs each shard in parallel,
+#   then rolls up.
+#
+# DESIGN:
+#   - prep job: parse registry/sp500_tickers.csv, emit a JSON matrix
+#     include list (shard_id + comma-joined tickers).
+#   - shard job: matrix over the include list; each runner does 5 tickers
+#     in <30min using the same backtest_xgb_v10_xsec.py script.
+#   - rollup job: needs all shards; aggregates per-shard result.json into
+#     one consolidated manifest and commits to repo.
+#
+# TRIGGER:
+#   workflow_dispatch only.
+
+name: xsec-matrix-full500
+
+on:
+  workflow_dispatch:
+    inputs:
+      strategy:
+        description: 'Strategy label (e.g. ML_XGB_v10_xsec_matrix_full500)'
+        required: false
+        default: 'ML_XGB_v10_xsec_matrix_full500'
+      script:
+        description: 'XSEC backtest script path'
+        required: false
+        default: 'scripts/backtest_xgb_v10_xsec.py'
+      job_id:
+        description: 'Dispatcher job ID for tracking (generated if empty)'
+        required: false
+        default: ''
+      tickers_file:
+        description: 'Ticker file path inside repo (default registry/sp500_tickers.csv)'
+        required: false
+        default: 'registry/sp500_tickers.csv'
+      shard_size:
+        description: 'Tickers per shard (default 5)'
+        required: false
+        default: '5'
+      extra_env_json:
+        description: 'JSON object of env overrides (e.g. {"XGB_TREE_METHOD":"hist","XGB_NO_TOPK":"1"})'
+        required: false
+        default: '{}'
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  PYTHON_VERSION: '3.12'
+  PYTHONUNBUFFERED: '1'
+  NO_COLOR: '1'
+  XGB_TREE_METHOD: 'hist'
+  BACKTEST_DATA_SOURCE: 'yfinance_daily'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # prep: read ticker file, emit matrix include list as a JSON string output.
+  # ---------------------------------------------------------------------------
+  prep:
+    name: Prep matrix shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix:   ${{ steps.build.outputs.matrix }}
+      job_id:   ${{ steps.build.outputs.job_id }}
+      shard_count: ${{ steps.build.outputs.shard_count }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Build matrix include list
+        id: build
+        env:
+          TICKERS_FILE:   ${{ github.event.inputs.tickers_file }}
+          SHARD_SIZE:     ${{ github.event.inputs.shard_size }}
+          INPUT_JOB_ID:   ${{ github.event.inputs.job_id }}
+        run: |
+          python3 - <<'PYEOF'
+          import csv, json, os, uuid
+
+          tickers_file = os.environ.get("TICKERS_FILE") or "registry/sp500_tickers.csv"
+          shard_size_raw = os.environ.get("SHARD_SIZE") or "5"
+          try:
+              shard_size = max(1, int(shard_size_raw))
+          except ValueError:
+              shard_size = 5
+
+          input_job_id = (os.environ.get("INPUT_JOB_ID") or "").strip()
+          job_id = input_job_id or str(uuid.uuid4())[:8]
+
+          tickers = []
+          with open(tickers_file) as fh:
+              rdr = csv.reader(fh)
+              header = next(rdr, None)
+              # If first row doesn't look like a header (single col uppercase),
+              # treat as data.
+              if header and header[0].strip().lower() not in ("ticker", "symbol"):
+                  tickers.append(header[0].strip().upper())
+              for row in rdr:
+                  if not row:
+                      continue
+                  t = row[0].strip().upper()
+                  if t:
+                      tickers.append(t)
+
+          if not tickers:
+              raise SystemExit(f"No tickers loaded from {tickers_file}")
+
+          shards = [tickers[i:i+shard_size] for i in range(0, len(tickers), shard_size)]
+          include = []
+          for idx, sh in enumerate(shards):
+              include.append({
+                  "shard_id": f"{idx:03d}",
+                  "tickers":  ",".join(sh),
+              })
+
+          matrix_obj = {"include": include}
+          matrix_json = json.dumps(matrix_obj, separators=(",", ":"))
+
+          gh_out = os.environ.get("GITHUB_OUTPUT", "")
+          if gh_out:
+              with open(gh_out, "a") as fh:
+                  fh.write(f"matrix={matrix_json}\n")
+                  fh.write(f"job_id={job_id}\n")
+                  fh.write(f"shard_count={len(include)}\n")
+
+          print(f"Loaded {len(tickers)} tickers from {tickers_file}")
+          print(f"Built {len(include)} shards of <= {shard_size} tickers each")
+          print(f"job_id={job_id}")
+          print(f"first shard: {include[0]}")
+          print(f"last shard:  {include[-1]}")
+          PYEOF
+
+  # ---------------------------------------------------------------------------
+  # shard: per-shard xsec backtest, 5 tickers per runner, <=30min target.
+  # ---------------------------------------------------------------------------
+  shard:
+    name: shard ${{ matrix.shard_id }} (${{ matrix.tickers }})
+    needs: prep
+    runs-on: ubuntu-latest
+    timeout-minutes: 45  # safety margin above 30min target
+    strategy:
+      fail-fast: false
+      max-parallel: 40  # cap concurrency to avoid runner queue
+      matrix: ${{ fromJson(needs.prep.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BACKTEST_GITHUB_TOKEN || github.token }}
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install \
+              xgboost==2.1.3 \
+              pandas==2.2.3 \
+              numpy==1.26.4 \
+              scikit-learn==1.6.1 \
+              pyarrow==17.0.0 \
+              python-dotenv==1.0.1 \
+              yfinance==0.2.50 \
+              tqdm==4.67.1
+          fi
+
+      - name: Apply extra_env overrides
+        env:
+          EXTRA_ENV_JSON: ${{ github.event.inputs.extra_env_json }}
+        run: |
+          if [ -z "$EXTRA_ENV_JSON" ] || [ "$EXTRA_ENV_JSON" = "{}" ]; then
+            echo "No extra_env overrides for this run."
+            exit 0
+          fi
+          python3 - <<'PYEOF'
+          import json, os, re, sys
+          raw = os.environ.get("EXTRA_ENV_JSON", "")
+          try:
+              data = json.loads(raw)
+          except json.JSONDecodeError as exc:
+              print(f"::warning::Invalid extra_env_json ({exc}) - skipping.")
+              sys.exit(0)
+          if not isinstance(data, dict):
+              print(f"::warning::extra_env_json must be a JSON object - skipping.")
+              sys.exit(0)
+          allowed_name = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+          gh_env_path = os.environ.get("GITHUB_ENV", "")
+          if not gh_env_path:
+              sys.exit(0)
+          written = 0
+          with open(gh_env_path, "a") as fh:
+              for k, v in data.items():
+                  if not allowed_name.match(str(k)):
+                      continue
+                  if v is None:
+                      continue
+                  val = str(v)
+                  if "\n" in val:
+                      fh.write(f"{k}<<__EXTRA_ENV_EOF__\n{val}\n__EXTRA_ENV_EOF__\n")
+                  else:
+                      fh.write(f"{k}={val}\n")
+                  written += 1
+          print(f"Forwarded {written} extra_env overrides.")
+          PYEOF
+
+      - name: Run XSEC shard backtest
+        id: backtest
+        env:
+          JOB_ID:    ${{ needs.prep.outputs.job_id }}
+          SHARD_ID:  ${{ matrix.shard_id }}
+          TICKERS:   ${{ matrix.tickers }}
+          STRATEGY:  ${{ github.event.inputs.strategy }}
+        run: |
+          OUTPUT_DIR="artifacts/v10_xsec_matrix_${JOB_ID}/shard_${SHARD_ID}"
+          echo "OUTPUT_DIR=$OUTPUT_DIR" >> "$GITHUB_ENV"
+
+          SCRIPT="${{ github.event.inputs.script }}"
+          SCRIPT="${SCRIPT:-scripts/backtest_xgb_v10_xsec.py}"
+          mkdir -p "$OUTPUT_DIR"
+
+          echo "::group::Environment"
+          echo "JOB_ID=$JOB_ID"
+          echo "SHARD_ID=$SHARD_ID"
+          echo "TICKERS=$TICKERS"
+          echo "STRATEGY=$STRATEGY"
+          echo "OUTPUT_DIR=$OUTPUT_DIR"
+          echo "SCRIPT=$SCRIPT"
+          python3 -c "import xgboost; print('xgboost', xgboost.__version__)"
+          nproc
+          free -h
+          echo "::endgroup::"
+
+          set +e
+          python "$SCRIPT" \
+            --tickers      "$TICKERS" \
+            --strategy     "$STRATEGY" \
+            --job-id       "${JOB_ID}-shard${SHARD_ID}" \
+            --output-dir   "$OUTPUT_DIR" \
+            2>&1 | tee /tmp/xsec_shard_output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          echo "BACKTEST_EXIT_CODE=$EXIT_CODE" >> "$GITHUB_ENV"
+
+          export BACKTEST_EXIT_CODE
+          export OUTPUT_DIR
+          python3 - <<'PYEOF'
+          import json, os, glob
+          from datetime import datetime, timezone
+
+          out_dir   = os.environ["OUTPUT_DIR"]
+          job_id    = os.environ["JOB_ID"]
+          shard_id  = os.environ["SHARD_ID"]
+          tickers   = os.environ["TICKERS"]
+          strategy  = os.environ["STRATEGY"]
+          exit_code = int(os.environ.get("BACKTEST_EXIT_CODE", "1"))
+
+          result_payload = None
+          try:
+              with open("/tmp/xsec_shard_output.txt") as fh:
+                  for line in reversed(fh.readlines()):
+                      s = line.strip()
+                      if s.startswith("{"):
+                          try:
+                              result_payload = json.loads(s)
+                              break
+                          except Exception:
+                              continue
+          except Exception:
+              pass
+
+          run_meta = None
+          rm_paths = sorted(glob.glob(os.path.join(out_dir, "**", "run_meta.json"), recursive=True))
+          if rm_paths:
+              try:
+                  with open(rm_paths[-1]) as fh:
+                      run_meta = json.load(fh)
+              except Exception:
+                  pass
+
+          record = {
+              "job_id":        job_id,
+              "shard_id":      shard_id,
+              "tickers":       tickers.split(","),
+              "strategy":      strategy,
+              "cloud":         "github_actions",
+              "kind":          "xsec_matrix_shard",
+              "status":        "completed" if exit_code == 0 else "failed",
+              "returncode":    exit_code,
+              "completed_at":  datetime.now(timezone.utc).isoformat(),
+              "runner_os":     "ubuntu-latest",
+              "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
+              "output_dir":    out_dir,
+              "result":        result_payload,
+              "run_meta":      run_meta,
+          }
+          dest = os.path.join(out_dir, "result.json")
+          with open(dest, "w") as fh:
+              json.dump(record, fh, indent=2)
+          print(f"Wrote {dest}")
+          PYEOF
+
+      - name: Upload shard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xsec-matrix-${{ needs.prep.outputs.job_id }}-shard-${{ matrix.shard_id }}
+          path: artifacts/v10_xsec_matrix_${{ needs.prep.outputs.job_id }}/shard_${{ matrix.shard_id }}
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # rollup: gather all shard artifacts, aggregate, commit to repo.
+  # ---------------------------------------------------------------------------
+  rollup:
+    name: Rollup shards
+    needs: [prep, shard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BACKTEST_GITHUB_TOKEN || github.token }}
+
+      - name: Download all shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/v10_xsec_matrix_${{ needs.prep.outputs.job_id }}_downloads
+          pattern: xsec-matrix-${{ needs.prep.outputs.job_id }}-shard-*
+          merge-multiple: false
+
+      - name: Aggregate shard results
+        id: rollup
+        env:
+          JOB_ID:      ${{ needs.prep.outputs.job_id }}
+          STRATEGY:    ${{ github.event.inputs.strategy }}
+          SHARD_COUNT: ${{ needs.prep.outputs.shard_count }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, glob, shutil
+          from datetime import datetime, timezone
+
+          job_id      = os.environ["JOB_ID"]
+          strategy    = os.environ["STRATEGY"]
+          shard_count = int(os.environ.get("SHARD_COUNT", "0") or 0)
+
+          dl_root  = f"artifacts/v10_xsec_matrix_{job_id}_downloads"
+          out_root = f"artifacts/v10_xsec_matrix_{job_id}"
+          os.makedirs(out_root, exist_ok=True)
+
+          shard_records = []
+          completed = 0
+          failed = 0
+          missing = 0
+
+          for d in sorted(glob.glob(os.path.join(dl_root, "xsec-matrix-*-shard-*"))):
+              shard_id = d.rsplit("-shard-", 1)[-1]
+              dest = os.path.join(out_root, f"shard_{shard_id}")
+              # Copy artifact contents into consolidated layout
+              if os.path.isdir(dest):
+                  shutil.rmtree(dest)
+              shutil.copytree(d, dest)
+              rj = os.path.join(dest, "result.json")
+              if os.path.isfile(rj):
+                  try:
+                      with open(rj) as fh:
+                          rec = json.load(fh)
+                      shard_records.append(rec)
+                      if rec.get("status") == "completed":
+                          completed += 1
+                      else:
+                          failed += 1
+                  except Exception as exc:
+                      print(f"::warning::failed to load {rj}: {exc}")
+                      missing += 1
+              else:
+                  missing += 1
+
+          summary = {
+              "job_id":         job_id,
+              "ticker":         "ALL",
+              "strategy":       strategy,
+              "cloud":          "github_actions",
+              "kind":           "xsec_matrix",
+              "shard_count":    shard_count,
+              "shards_completed": completed,
+              "shards_failed":  failed,
+              "shards_missing": missing,
+              "status":         "completed" if (completed == shard_count and failed == 0 and missing == 0) else "partial" if completed > 0 else "failed",
+              "completed_at":   datetime.now(timezone.utc).isoformat(),
+              "github_run_id":  os.environ.get("GITHUB_RUN_ID", ""),
+              "shard_records":  shard_records,
+          }
+          with open(os.path.join(out_root, "result.json"), "w") as fh:
+              json.dump(summary, fh, indent=2)
+          print(f"Rollup: {completed}/{shard_count} completed, {failed} failed, {missing} missing")
+          print(f"Status: {summary['status']}")
+          PYEOF
+
+      - name: Upload rollup artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xsec-matrix-${{ needs.prep.outputs.job_id }}-rollup
+          path: artifacts/v10_xsec_matrix_${{ needs.prep.outputs.job_id }}
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Commit results back to repo
+        if: always()
+        env:
+          JOB_ID: ${{ needs.prep.outputs.job_id }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p "backtests/_xsec_matrix/${JOB_ID}"
+          cp -r "artifacts/v10_xsec_matrix_${JOB_ID}/." \
+                "backtests/_xsec_matrix/${JOB_ID}/" || true
+          git add "backtests/_xsec_matrix/${JOB_ID}/" || true
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "xsec-matrix: result for run ${{ github.run_id }} job ${JOB_ID}"
+
+          MAX_ATTEMPTS=8
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            if git push origin HEAD:main 2>&1 | tee /tmp/push.log; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            if ! grep -q -e "rejected" -e "fetch first" -e "non-fast-forward" /tmp/push.log; then
+              echo "Push failed for non-race reason - aborting:"
+              cat /tmp/push.log
+              exit 1
+            fi
+            SLEEP=$(( (RANDOM % 25) + 5 ))
+            echo "Push race lost ($attempt/$MAX_ATTEMPTS) - rebasing & retrying in ${SLEEP}s"
+            git pull --rebase --autostash origin main || exit 1
+            sleep $SLEEP
+          done
+          echo "::error::Push failed after $MAX_ATTEMPTS attempts"
+          exit 1
