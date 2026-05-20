@@ -425,37 +425,26 @@ jobs:
           # 1-file commit on top, then pushes again. Backoff 5-30s with
           # jitter avoids thundering herd.
           # --------------------------------------------------------------
-          # BUGFIX 2026-05-20: previous version used `if git push | tee ...` which
-          # evaluates tee's exit code (always 0), causing false-positive "succeeded"
-          # reports when push was actually rejected. Now we capture exit code
-          # explicitly via PIPESTATUS so race-loss is correctly detected.
           MAX_ATTEMPTS=8
           for attempt in $(seq 1 $MAX_ATTEMPTS); do
-            git push origin HEAD:main 2>&1 | tee /tmp/push.log
-            PUSH_EXIT=${PIPESTATUS[0]}
-            if [ "$PUSH_EXIT" -eq 0 ]; then
-              # Double-check log for rejection (belt-and-suspenders)
-              if grep -q -e "\[rejected\]" -e "fetch first" -e "non-fast-forward" /tmp/push.log; then
-                echo "push exit=0 but log shows rejection — treating as race loss"
-              else
-                echo "push succeeded on attempt $attempt"
-                exit 0
-              fi
+            if git push origin HEAD:main 2>&1 | tee /tmp/push.log; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
             fi
             if ! grep -q -e "rejected" -e "fetch first" -e "non-fast-forward" /tmp/push.log; then
-              echo "push failed for a non-race reason — aborting:"
+              echo "Push failed for a non-race reason — aborting:"
               cat /tmp/push.log
               exit 1
             fi
             SLEEP=$(( (RANDOM % 25) + 5 ))
-            echo "push race lost on attempt $attempt/$MAX_ATTEMPTS — pulling and retrying in ${SLEEP}s..."
+            echo "Push race lost on attempt $attempt/$MAX_ATTEMPTS — pulling and retrying in ${SLEEP}s..."
             git pull --rebase --autostash origin main || {
               echo "Rebase failed — aborting"
               exit 1
             }
             sleep $SLEEP
           done
-          echo "::error::push failed after $MAX_ATTEMPTS attempts"
+          echo "::error::Push failed after $MAX_ATTEMPTS attempts"
           exit 1
 
       - name: Print summary
