@@ -34,11 +34,37 @@ import hashlib
 import json
 import logging
 import os
+import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+
+def _resolve_token():
+    """Prefer launchctl-managed classic OAuth (gho_*); env may have stale fine-grained PAT.
+
+    Some shells (e.g. parent Claude session) export a fine-grained PAT into the
+    environment that lacks contents:write on the compute repo, producing 404/422
+    against the Contents API. The daemon's launchd plist sets a working gho_*
+    token, but if anything ever spawns this script outside the plist scope (ad-hoc
+    test, manual invocation), env fallback can shadow it. Resolution order:
+      1. launchctl getenv GH_TOKEN if it starts with gho_ (classic OAuth)
+      2. env GH_TOKEN or GITHUB_TOKEN (any prefix)
+    """
+    try:
+        r = subprocess.run(
+            ["launchctl", "getenv", "GH_TOKEN"],
+            capture_output=True, text=True, timeout=2,
+        )
+        tok = (r.stdout or "").strip()
+        if tok.startswith("gho_"):
+            return tok
+    except Exception:
+        pass
+    env_tok = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+    return env_tok.strip()
 
 AI_ROOT = Path(
     os.environ.get(
@@ -54,7 +80,7 @@ LOG_FILE = LOG_DIR / "sync_compute_repo.log"
 OWNER = os.environ.get("GITHUB_OWNER", "0riginal-claw")
 REPO = os.environ.get("GITHUB_REPO", "sp500-mastery-compute")
 BRANCH = os.environ.get("GITHUB_BRANCH", "main")
-TOKEN = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+TOKEN = _resolve_token()
 DRY_RUN = os.environ.get("SYNC_DRY_RUN", "0") == "1"
 INTERVAL = int(os.environ.get("SYNC_INTERVAL_SEC", "0"))
 PUT_DELAY_SEC = 0.2
