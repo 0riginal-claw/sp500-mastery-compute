@@ -1,0 +1,20 @@
+{
+  "ticker": "TMO",
+  "strategy": "ORB",
+  "job_id": "verify-v3-TMO",
+  "cloud": "github_actions",
+  "status": "completed",
+  "returncode": 0,
+  "completed_at": "2026-05-20T09:14:04.356123Z",
+  "result": {
+    "n_trades": 49,
+    "win_rate": 0.3673469387755102,
+    "profit_factor": 0.8744607418818069,
+    "total_return_pct": -0.009923601524988584,
+    "max_drawdown_pct": -0.019296498787171157,
+    "prob_threshold": 0.5,
+    "rows": 1034,
+    "features_total": 645,
+    "data_source": "yfinance_daily"
+  }
+}
