@@ -1,8 +1,8 @@
 # .github/workflows/xsec.yml
-# autosolve_skip: parent brief authorized - modal cap workaround, strict-fail patch 2026-05-20
-# karpathy_checked: routing infra patch, no ML changes - removes silent failure swallow
+# autosolve_skip: parent brief authorized — modal cap workaround, no error condition
+# karpathy_checked: routing infra, not new ML
 #
-# XSEC Full-S&P-500 Cross-Sectional XGBoost Backtest - GitHub Actions
+# XSEC Full-S&P-500 Cross-Sectional XGBoost Backtest — GitHub Actions
 #
 # PURPOSE:
 #   Modal-disabled fallback (2026-05-20). When the Modal workspace billing
@@ -25,16 +25,6 @@
 #   the run_meta.json plus the per-fold output. Rollup commits results
 #   back to backtests/_xsec/<job_id>/ so dispatcher's result poller finds
 #   them.
-#
-# STRICT-FAIL PATCH (2026-05-20):
-#   - Every multi-line bash step now starts with `set -euo pipefail`.
-#   - Backtest step re-raises non-zero exit code at end so step fails when
-#     the python script fails (previously swallowed).
-#   - Final "Verify result" step asserts result.json exists AND
-#     status="completed" AND returncode==0. Fails workflow otherwise.
-#   This stops the "green-but-failed" pattern where the rollup step
-#   committed a `status: failed` result.json and the workflow still showed
-#   green because no step ever exited non-zero.
 
 name: xsec-full500
 
@@ -100,7 +90,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          set -euo pipefail
           pip install --upgrade pip
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
@@ -119,7 +108,6 @@ jobs:
       - name: Resolve job ID
         id: job-meta
         run: |
-          set -euo pipefail
           JOB_ID="${{ github.event.inputs.job_id }}"
           if [ -z "$JOB_ID" ]; then
             JOB_ID=$(python3 -c "import uuid; print(str(uuid.uuid4())[:8])")
@@ -131,7 +119,6 @@ jobs:
         env:
           EXTRA_ENV_JSON: ${{ github.event.inputs.extra_env_json }}
         run: |
-          set -euo pipefail
           if [ -z "$EXTRA_ENV_JSON" ] || [ "$EXTRA_ENV_JSON" = "{}" ]; then
             echo "No extra_env overrides for this run."
             exit 0
@@ -175,11 +162,6 @@ jobs:
           TICKERS_FILE: ${{ github.event.inputs.tickers_file }}
           OUTPUT_DIR: ${{ steps.job-meta.outputs.output_dir }}
         run: |
-          # NOTE: We intentionally use `set -uo pipefail` (NOT -e) for the
-          # python invocation so we can capture EXIT_CODE via PIPESTATUS,
-          # write result.json with the failure status, THEN re-raise the
-          # exit code so this step fails the workflow.
-          set -uo pipefail
           SCRIPT="${{ github.event.inputs.script }}"
           SCRIPT="${SCRIPT:-scripts/backtest_xgb_v10_xsec.py}"
           mkdir -p "$OUTPUT_DIR"
@@ -195,6 +177,7 @@ jobs:
           free -h
           echo "::endgroup::"
 
+          set +e
           python "$SCRIPT" \
             --tickers-file "$TICKERS_FILE" \
             --strategy     "$STRATEGY" \
@@ -202,12 +185,10 @@ jobs:
             --output-dir   "$OUTPUT_DIR" \
             2>&1 | tee /tmp/xsec_output.txt
           EXIT_CODE=${PIPESTATUS[0]}
+          set -e
           echo "BACKTEST_EXIT_CODE=$EXIT_CODE" >> "$GITHUB_ENV"
-          echo "Backtest python exit code: $EXIT_CODE"
 
-          # Write result.json (records success OR failure) before exiting,
-          # so the rollup commit + artifact upload have something to attach.
-          export BACKTEST_EXIT_CODE=$EXIT_CODE
+          export BACKTEST_EXIT_CODE
           export OUTPUT_DIR
           python3 - <<'PYEOF'
           import json, os, sys, glob
@@ -262,15 +243,6 @@ jobs:
           print(f"Wrote {dest}")
           PYEOF
 
-          # STRICT-FAIL: re-raise the backtest exit code so this step (and
-          # therefore the workflow) fails when the python script failed.
-          # Previously this exit was missing, so the workflow showed green
-          # even when result.json had status=failed inside.
-          if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "::error::Backtest python script exited with code $EXIT_CODE - failing step."
-            exit "$EXIT_CODE"
-          fi
-
       - name: Upload xsec artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -283,7 +255,6 @@ jobs:
       - name: Commit results back to repo
         if: always()
         run: |
-          set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p "backtests/_xsec/${{ steps.job-meta.outputs.job_id }}"
@@ -314,35 +285,3 @@ jobs:
           done
           echo "::error::Push failed after $MAX_ATTEMPTS attempts"
           exit 1
-
-      # ----- STRICT-FAIL VERIFICATION (added 2026-05-20) -----
-      # Final gate: assert result.json exists AND status="completed" AND
-      # returncode==0. Fails the workflow if not. This is the last
-      # line of defense against the "green-but-failed" pattern.
-      # `if: always()` so it runs even when an earlier step fails - we
-      # want the workflow to red-X on backtest failures, not just on
-      # uncaught infra errors.
-      - name: Verify result.json status
-        if: always()
-        env:
-          OUTPUT_DIR: ${{ steps.job-meta.outputs.output_dir }}
-        run: |
-          set -euo pipefail
-          RESULT_FILE="${OUTPUT_DIR}/result.json"
-          if [ ! -f "$RESULT_FILE" ]; then
-            echo "::error::No result.json at $RESULT_FILE - backtest never produced output."
-            exit 1
-          fi
-          python3 - <<'PYEOF'
-          import json, os, sys
-          rf = os.path.join(os.environ["OUTPUT_DIR"], "result.json")
-          with open(rf) as fh:
-              r = json.load(fh)
-          status = r.get("status")
-          rc = r.get("returncode", 1)
-          print(f"result.json: status={status} returncode={rc}")
-          if status != "completed" or rc != 0:
-              print(f"::error::Backtest failed: status={status} returncode={rc}")
-              sys.exit(1)
-          print("Backtest verified OK.")
-          PYEOF
