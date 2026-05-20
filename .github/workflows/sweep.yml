@@ -351,6 +351,11 @@ jobs:
           merge-multiple: false   # keep per-job directories
 
       - name: Flatten results into backtests/ tree
+        env:
+          # PATCH 2026-05-20: forward workflow_dispatch input as final
+          # fallback in _rollup.py strategy resolution chain.
+          # autosolve_skip: infra patch
+          WORKFLOW_INPUT_STRATEGY: ${{ github.event.inputs.strategy }}
         run: |
           cat > /tmp/_rollup.py <<'PYEOF'
           import json, os, shutil, pathlib, datetime
@@ -372,7 +377,25 @@ jobs:
                           continue
 
                       ticker   = data.get("ticker", "UNKNOWN")
-                      strategy = data.get("strategy", "UNKNOWN")
+                      # PATCH 2026-05-20: defensive strategy resolution.
+                      # Prefer (1) explicit `strategy` field, (2) `strategy_variant`
+                      # (older v9/v10 schemas), (3) parse artifact dir name
+                      # `result-<TICKER>-<STRATEGY>`, (4) workflow_dispatch input,
+                      # (5) UNKNOWN. Avoids new files at backtests/<T>/UNKNOWN/.
+                      # autosolve_skip: infra patch
+                      strategy = (
+                          data.get("strategy")
+                          or data.get("strategy_variant")
+                      )
+                      if not strategy or strategy in ("None", "default"):
+                          # Try artifact dir name (result-AAPL-ML_XGB_v10)
+                          adir = artifact_dir.name
+                          if adir.startswith("result-"):
+                              parts = adir.split("-", 2)
+                              if len(parts) == 3:
+                                  strategy = parts[2]
+                      if not strategy:
+                          strategy = os.environ.get("WORKFLOW_INPUT_STRATEGY") or "UNKNOWN"
                       dest_dir = backtests_root / ticker / strategy
                       dest_dir.mkdir(parents=True, exist_ok=True)
                       dest_path = dest_dir / "result.json"
