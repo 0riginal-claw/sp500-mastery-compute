@@ -1,15 +1,15 @@
 {
-  "run_id": "26148078830",
-  "completed": 0,
-  "failed": 1,
+  "run_id": "26151493986",
+  "completed": 1,
+  "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-20T07:36:36.786733Z",
+  "timestamp": "2026-05-20T08:46:01.025422Z",
   "jobs": [
     {
       "ticker": "MSFT",
-      "strategy": "ML_XGB_v10_7_3",
-      "status": "failed",
-      "path": "backtests/MSFT/ML_XGB_v10_7_3/result.json"
+      "strategy": "ORB",
+      "status": "completed",
+      "path": "backtests/MSFT/ORB/result.json"
     }
   ]
 }
