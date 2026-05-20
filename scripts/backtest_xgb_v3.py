@@ -30,11 +30,7 @@ import alt_data_features as adf
 import intraday_features as idf
 import cross_sectional_features as csf
 
-_WORK_DEFAULT_V3 = (
-    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com"
-    "/My Drive/AI-Tools/s&p500-ticker-mastery"
-)
-WORK = Path(os.environ.get("BACKTEST_WORK_DIR", _WORK_DEFAULT_V3))
+WORK = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery")
 
 
 # ─────────────────────────────────────────────────────────────────────
