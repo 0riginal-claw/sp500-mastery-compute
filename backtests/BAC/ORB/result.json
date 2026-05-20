@@ -1,0 +1,20 @@
+{
+  "ticker": "BAC",
+  "strategy": "ORB",
+  "job_id": "verify-v2-BAC",
+  "cloud": "github_actions",
+  "status": "completed",
+  "returncode": 0,
+  "completed_at": "2026-05-20T09:01:44.983539Z",
+  "result": {
+    "n_trades": 34,
+    "win_rate": 0.5294117647058824,
+    "profit_factor": 1.84168288430706,
+    "total_return_pct": 0.03252223705296118,
+    "max_drawdown_pct": -0.009989985903577733,
+    "prob_threshold": 0.5,
+    "rows": 1034,
+    "features_total": 645,
+    "data_source": "yfinance_daily"
+  }
+}
