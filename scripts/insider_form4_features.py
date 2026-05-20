@@ -47,6 +47,8 @@ Public API
 
 from __future__ import annotations
 
+import functools
+import json
 import logging
 import math
 import os
@@ -67,6 +69,15 @@ logger = logging.getLogger(__name__)
 # Root of the s&p500-ticker-mastery project (parent of scripts/)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _CACHE_DIR = _PROJECT_ROOT / "cache" / "form4_features"
+_EDGAR_CACHE_DIR = _PROJECT_ROOT / "cache" / "edgar"
+_CACHE_TTL = 604800  # 7 days — Form 4 data doesn't change retroactively
+
+# Ensure cache directories exist at module load time
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+_EDGAR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# In-process transaction cache: ticker -> txn DataFrame (avoids disk hits within one process)
+_txn_cache: Dict[str, pd.DataFrame] = {}
 
 _EDGAR_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik_padded}.json"
 _EDGAR_ARCHIVE_URL = (
@@ -108,13 +119,18 @@ _FEATURE_DTYPES: Dict[str, str] = {
 # SEC HTTP helpers
 # ---------------------------------------------------------------------------
 
+def _edgar_rate_limit() -> None:
+    """Enforce polite EDGAR request pacing (~8 req/s, safely under the 10/s cap)."""
+    time.sleep(_REQUEST_DELAY)
+
+
 def _get(url: str, retries: int = 3, backoff: float = 2.0) -> requests.Response:
     """HTTP GET with retry logic and rate-limit sleep."""
     headers = {"User-Agent": _USER_AGENT, "Accept-Encoding": "gzip, deflate"}
     last_exc: Exception = RuntimeError("no attempts made")
     for attempt in range(retries):
         try:
-            time.sleep(_REQUEST_DELAY)
+            _edgar_rate_limit()  # polite pacing before every network call
             resp = requests.get(url, headers=headers, timeout=20)
             if resp.status_code == 429:
                 wait = backoff * (2 ** attempt)
@@ -128,10 +144,12 @@ def _get(url: str, retries: int = 3, backoff: float = 2.0) -> requests.Response:
     raise last_exc
 
 
+@functools.lru_cache(maxsize=512)
 def _ticker_to_cik(ticker: str) -> Optional[str]:
     """
     Resolve ticker -> CIK string (10-digit zero-padded).
     Uses the EDGAR company tickers JSON (no auth required).
+    Result is cached in-process so repeated lookups for the same ticker skip the network.
     """
     url = "https://www.sec.gov/files/company_tickers.json"
     try:
@@ -488,12 +506,17 @@ def _cache_path(ticker: str) -> Path:
 
 def _load_cache(ticker: str) -> Optional[pd.DataFrame]:
     p = _cache_path(ticker)
-    if p.exists():
-        try:
-            df = pd.read_parquet(p)
-            return df
-        except Exception as exc:
-            logger.warning("Cache read failed for %s: %s", ticker, exc)
+    if not p.exists():
+        return None
+    age = time.time() - p.stat().st_mtime
+    if age > _CACHE_TTL:
+        logger.debug("Parquet cache expired for %s (age=%.0fs)", ticker, age)
+        return None
+    try:
+        df = pd.read_parquet(p)
+        return df
+    except Exception as exc:
+        logger.warning("Cache read failed for %s: %s", ticker, exc)
     return None
 
 
@@ -505,6 +528,69 @@ def _save_cache(ticker: str, df: pd.DataFrame) -> None:
         logger.info("Cached Form 4 transactions for %s -> %s", ticker, p)
     except Exception as exc:
         logger.warning("Cache write failed for %s: %s", ticker, exc)
+
+
+# ---------------------------------------------------------------------------
+# JSON disk cache helpers (cache/edgar/<TICKER>_form4.json, TTL=7 days)
+# ---------------------------------------------------------------------------
+
+def _json_cache_path(ticker: str) -> Path:
+    return _EDGAR_CACHE_DIR / f"{ticker.upper()}_form4.json"
+
+
+def _read_json_cache_file(p: Path, ticker: str) -> Optional[pd.DataFrame]:
+    """Deserialize a JSON cache file back to a transactions DataFrame."""
+    try:
+        with open(p, "r") as fh:
+            records = json.load(fh)
+        df = pd.DataFrame(records)
+        if not df.empty:
+            for col in ("filing_date", "transaction_date", "effective_date"):
+                if col in df.columns:
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
+        return df
+    except Exception as exc:
+        logger.warning("JSON cache read failed for %s: %s", ticker, exc)
+        return None
+
+
+def _load_json_cache(ticker: str) -> Optional[pd.DataFrame]:
+    """Load JSON cache only if it exists and is within the 7-day TTL."""
+    p = _json_cache_path(ticker)
+    if not p.exists():
+        return None
+    age = time.time() - p.stat().st_mtime
+    if age > _CACHE_TTL:
+        logger.debug("JSON cache expired for %s (age=%.0fs)", ticker, age)
+        return None
+    return _read_json_cache_file(p, ticker)
+
+
+def _load_json_cache_stale(ticker: str) -> Optional[pd.DataFrame]:
+    """Load JSON cache ignoring TTL — used as last resort when network fails."""
+    p = _json_cache_path(ticker)
+    if not p.exists():
+        return None
+    return _read_json_cache_file(p, ticker)
+
+
+def _save_json_cache(ticker: str, df: pd.DataFrame) -> None:
+    """Persist transactions DataFrame to the JSON cache file."""
+    _EDGAR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    p = _json_cache_path(ticker)
+    try:
+        df_copy = df.copy()
+        for col in df_copy.columns:
+            if pd.api.types.is_datetime64_any_dtype(df_copy[col]):
+                df_copy[col] = df_copy[col].dt.strftime("%Y-%m-%d").where(
+                    df_copy[col].notna(), None
+                )
+        records = df_copy.where(pd.notna(df_copy), None).to_dict(orient="records")
+        with open(p, "w") as fh:
+            json.dump(records, fh, default=str)
+        logger.info("JSON-cached Form 4 transactions for %s -> %s", ticker, p)
+    except Exception as exc:
+        logger.warning("JSON cache write failed for %s: %s", ticker, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -541,6 +627,18 @@ def add_insider_form4_features(
       www.sec.gov. Subsequent calls read from Parquet cache.
     - If the CIK cannot be resolved or EDGAR is unreachable the features are
       set to 0 / NaN and a WARNING is logged; the pipeline does NOT crash.
+
+    Environment-variable bypass (added 2026-05-17 — EDGAR rate-limit relief)
+    -----------------------------------------------------------------------
+    - ``BACKTEST_SKIP_FORM4=1`` — skip Form 4 entirely; return zero/NaN features
+      (no network, no cache reads).  Use when you want to disable the feature
+      block wholesale (e.g. ablation runs).
+    - ``BACKTEST_FORM4_CACHE_ONLY=1`` — use ONLY local caches (in-process / JSON
+      / Parquet, ignoring 7-day TTL — stale caches are accepted).  If no cache
+      exists for the ticker, zero/NaN features are returned instead of hitting
+      ``data.sec.gov``.  Use when EDGAR is rate-limiting / backoff-locked and
+      you need to unblock a backtest batch.
+    Default behavior (neither env var set) is unchanged.
     """
     ticker_upper = ticker.upper()
     out = daily_df.copy()
@@ -552,10 +650,83 @@ def add_insider_form4_features(
     else:
         daily_index_naive = daily_index
 
-    # --- Load or fetch transactions ---
+    # ------------------------------------------------------------------
+    # Env-var bypass (added 2026-05-17 for EDGAR rate-limit relief)
+    # ------------------------------------------------------------------
+    _skip_form4 = os.environ.get("BACKTEST_SKIP_FORM4", "") == "1"
+    _cache_only = os.environ.get("BACKTEST_FORM4_CACHE_ONLY", "") == "1"
+
+    if _skip_form4:
+        logger.info(
+            "BACKTEST_SKIP_FORM4=1 set; returning zero Form 4 features for %s "
+            "(no network, no cache).",
+            ticker_upper,
+        )
+        feat_df = _zero_features(daily_index)
+        feat_df.index = daily_index
+        for col, dtype in _FEATURE_DTYPES.items():
+            if col in feat_df.columns:
+                out[col] = feat_df[col].astype(dtype)
+            else:
+                out[col] = np.float32(0)
+        return out
+
+    # --- Load or fetch transactions (3-layer cache: process → JSON → Parquet → network) ---
     txn_df: Optional[pd.DataFrame] = None
     if not force_refresh:
-        txn_df = _load_cache(ticker_upper)
+        # Layer 1: in-process dict cache — zero I/O for repeated calls within one process
+        txn_df = _txn_cache.get(ticker_upper)
+        # Layer 2: JSON disk cache with 7-day TTL
+        if txn_df is None:
+            txn_df = _load_json_cache(ticker_upper)
+            if txn_df is not None:
+                _txn_cache[ticker_upper] = txn_df
+        # Layer 3: Parquet disk cache with 7-day TTL (promote to JSON on hit)
+        if txn_df is None:
+            txn_df = _load_cache(ticker_upper)
+            if txn_df is not None:
+                _txn_cache[ticker_upper] = txn_df
+                _save_json_cache(ticker_upper, txn_df)
+
+    # ------------------------------------------------------------------
+    # Cache-only bypass (added 2026-05-17): when BACKTEST_FORM4_CACHE_ONLY=1
+    # is set and the TTL-fresh caches missed, try STALE caches (ignore TTL)
+    # before giving up; never hit the network.
+    # ------------------------------------------------------------------
+    if txn_df is None and _cache_only:
+        # Try stale JSON cache
+        stale = _load_json_cache_stale(ticker_upper)
+        if stale is not None:
+            logger.info(
+                "BACKTEST_FORM4_CACHE_ONLY=1; using STALE JSON cache for %s.",
+                ticker_upper,
+            )
+            txn_df = stale
+            _txn_cache[ticker_upper] = txn_df
+        else:
+            # Try stale Parquet cache
+            p_stale = _cache_path(ticker_upper)
+            if p_stale.exists():
+                try:
+                    txn_df = pd.read_parquet(p_stale)
+                    logger.info(
+                        "BACKTEST_FORM4_CACHE_ONLY=1; using STALE Parquet cache for %s.",
+                        ticker_upper,
+                    )
+                    _txn_cache[ticker_upper] = txn_df
+                except Exception as exc:
+                    logger.warning(
+                        "BACKTEST_FORM4_CACHE_ONLY=1; stale Parquet read failed for %s: %s",
+                        ticker_upper, exc,
+                    )
+                    txn_df = None
+        if txn_df is None:
+            logger.warning(
+                "BACKTEST_FORM4_CACHE_ONLY=1 and no cache for %s; "
+                "returning zero Form 4 features (no network).",
+                ticker_upper,
+            )
+            txn_df = pd.DataFrame()
 
     if txn_df is None:
         # Resolve CIK
@@ -570,13 +741,34 @@ def add_insider_form4_features(
             try:
                 txn_df = _fetch_transactions_for_ticker(cik)
             except Exception as exc:
-                logger.warning(
-                    "Form 4 fetch failed for %s (%s); returning zero features.", ticker_upper, exc
-                )
-                txn_df = pd.DataFrame()
+                # Network failure: fall back to stale JSON cache, then stale Parquet
+                stale = _load_json_cache_stale(ticker_upper)
+                if stale is not None:
+                    logger.warning(
+                        "Form 4 fetch failed for %s (%s); using stale JSON cache.", ticker_upper, exc
+                    )
+                    txn_df = stale
+                else:
+                    p_stale = _cache_path(ticker_upper)
+                    if p_stale.exists():
+                        try:
+                            txn_df = pd.read_parquet(p_stale)
+                            logger.warning(
+                                "Form 4 fetch failed for %s (%s); using stale Parquet cache.",
+                                ticker_upper, exc,
+                            )
+                        except Exception:
+                            txn_df = None
+                    if txn_df is None:
+                        logger.warning(
+                            "Form 4 fetch failed for %s (%s); returning zero features.", ticker_upper, exc
+                        )
+                        txn_df = pd.DataFrame()
 
         if txn_df is not None and not txn_df.empty:
             _save_cache(ticker_upper, txn_df)
+            _save_json_cache(ticker_upper, txn_df)
+            _txn_cache[ticker_upper] = txn_df
         else:
             txn_df = pd.DataFrame()
 
