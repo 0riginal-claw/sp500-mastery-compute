@@ -70,7 +70,7 @@ SYNC_GLOBS = [
 # scripts that import it require the package structure to be present remotely.
 EXCLUDE_BASENAMES = {"__init__.py"}
 ALLOWLIST_INIT_DIR_SUBSTR = {"scripts/historical_system"}
-EXCLUDE_DIR_SUBSTR = {"__pycache__", "_generated", "_rescue"}
+EXCLUDE_DIR_SUBSTR = {"__pycache__", "_generated", "_rescue", "scripts/backups/", "/backups/"}
 
 logging.basicConfig(
     level=logging.INFO,
