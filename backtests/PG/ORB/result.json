@@ -1,0 +1,20 @@
+{
+  "ticker": "PG",
+  "strategy": "ORB",
+  "job_id": "verify-v2-PG",
+  "cloud": "github_actions",
+  "status": "completed",
+  "returncode": 0,
+  "completed_at": "2026-05-20T08:59:54.722689Z",
+  "result": {
+    "n_trades": 81,
+    "win_rate": 0.41975308641975306,
+    "profit_factor": 1.0347711144029232,
+    "total_return_pct": 0.002619513529762137,
+    "max_drawdown_pct": -0.012734856464819947,
+    "prob_threshold": 0.5,
+    "rows": 1034,
+    "features_total": 645,
+    "data_source": "yfinance_daily"
+  }
+}
