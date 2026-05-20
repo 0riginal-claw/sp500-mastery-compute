@@ -1,19 +1,19 @@
 {
   "ticker": "AAPL",
   "strategy": "ORB",
-  "job_id": "urllib_isolate_T14",
+  "job_id": "smoke-token-swap-2026-05-19",
   "cloud": "github_actions",
   "status": "completed",
   "returncode": 0,
-  "completed_at": "2026-05-18T00:59:57.424798Z",
+  "completed_at": "2026-05-20T04:51:52.529445Z",
   "result": {
-    "n_trades": 66,
-    "win_rate": 0.4696969696969697,
-    "profit_factor": 1.546876613070868,
-    "total_return_pct": 0.04000624286370538,
-    "max_drawdown_pct": -0.012421795669164449,
+    "n_trades": 60,
+    "win_rate": 0.5,
+    "profit_factor": 1.7413306194067029,
+    "total_return_pct": 0.047013641375422494,
+    "max_drawdown_pct": -0.015726942879973338,
     "prob_threshold": 0.5,
-    "rows": 1035,
+    "rows": 1034,
     "features_total": 645,
     "data_source": "yfinance_daily"
   }
