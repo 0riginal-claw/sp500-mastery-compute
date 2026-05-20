@@ -1,0 +1,20 @@
+{
+  "ticker": "V",
+  "strategy": "ORB",
+  "job_id": "verify-v2-V",
+  "cloud": "github_actions",
+  "status": "completed",
+  "returncode": 0,
+  "completed_at": "2026-05-20T09:00:47.733383Z",
+  "result": {
+    "n_trades": 101,
+    "win_rate": 0.43564356435643564,
+    "profit_factor": 1.2109731133948685,
+    "total_return_pct": 0.019951008865511606,
+    "max_drawdown_pct": -0.020272411138758904,
+    "prob_threshold": 0.5,
+    "rows": 1034,
+    "features_total": 645,
+    "data_source": "yfinance_daily"
+  }
+}
