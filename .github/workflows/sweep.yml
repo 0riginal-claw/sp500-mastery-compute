@@ -63,6 +63,10 @@ on:
         description: 'JSON array of strategies for matrix run, e.g. ["ORB","VWAP"]'
         required: false
         default: '["ORB","VWAP"]'
+      extra_env_json:
+        description: 'JSON object of per-job env overrides forwarded to the backtest script (e.g. {"XGB_NO_TOPK":"1"})'
+        required: false
+        default: '{}'
 
   # Auto-trigger when queue changes (optional — comment out if too noisy)
   # push:
@@ -187,6 +191,54 @@ jobs:
           fi
           echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
           echo "result_dir=backtests/${{ matrix.ticker }}/${{ matrix.strategy }}" >> "$GITHUB_OUTPUT"
+
+      # Forward per-job extra_env (added 2026-05-20): the dispatcher
+      # serializes its extra_env dict as a JSON string into inputs.extra_env_json
+      # (workflow_dispatch inputs are flat strings — nested objects rejected by
+      # the GH API). Decode into individual env vars by writing KEY=VALUE lines
+      # to $GITHUB_ENV so they apply to all subsequent steps in this job.
+      - name: Apply extra_env overrides
+        env:
+          EXTRA_ENV_JSON: ${{ github.event.inputs.extra_env_json }}
+        run: |
+          if [ -z "$EXTRA_ENV_JSON" ] || [ "$EXTRA_ENV_JSON" = "{}" ]; then
+            echo "No extra_env overrides for this run."
+            exit 0
+          fi
+          python3 - <<'PYEOF'
+          import json, os, re, sys
+          raw = os.environ.get("EXTRA_ENV_JSON", "")
+          try:
+              data = json.loads(raw)
+          except json.JSONDecodeError as exc:
+              print(f"::warning::Invalid extra_env_json ({exc}) — skipping.")
+              sys.exit(0)
+          if not isinstance(data, dict):
+              print(f"::warning::extra_env_json must be a JSON object, got {type(data).__name__} — skipping.")
+              sys.exit(0)
+          allowed_name = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+          gh_env_path = os.environ.get("GITHUB_ENV", "")
+          if not gh_env_path:
+              print("::warning::GITHUB_ENV is unset — cannot persist extra_env to subsequent steps.")
+              sys.exit(0)
+          written = 0
+          with open(gh_env_path, "a") as fh:
+              for k, v in data.items():
+                  if not allowed_name.match(str(k)):
+                      print(f"::warning::Skipping invalid env var name: {k!r}")
+                      continue
+                  if v is None:
+                      continue
+                  val = str(v)
+                  # Multi-line / JSON values: use the heredoc form GH supports
+                  if "\n" in val:
+                      fh.write(f"{k}<<__EXTRA_ENV_EOF__\n{val}\n__EXTRA_ENV_EOF__\n")
+                  else:
+                      fh.write(f"{k}={val}\n")
+                  written += 1
+                  print(f"  set {k}={val[:80]}{'...' if len(val)>80 else ''}")
+          print(f"Forwarded {written} extra_env overrides to subsequent steps.")
+          PYEOF
 
       - name: Run backtest
         id: backtest
