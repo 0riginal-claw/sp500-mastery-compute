@@ -266,31 +266,63 @@ def _xgb_base_params(stage: str) -> dict:
     }
 
 
-def _xgb_fit_kwargs(eval_set, early_stop: bool = False):
-    """Build fit() kwargs; gated for callback support (xgboost >= 1.6).
+def _xgb_version_tuple():
+    """Return xgboost version as (major, minor) tuple for API gating."""
+    try:
+        import xgboost as _xgb  # type: ignore[import-not-found]
+        parts = _xgb.__version__.split(".")
+        return (int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
+    except Exception:  # pragma: no cover
+        return (0, 0)
+
+
+_XGB_VER = _xgb_version_tuple()
+_XGB_2X = _XGB_VER >= (2, 0)
+
+
+def _xgb_callbacks(early_stop: bool = False):
+    """Return XGBoost callback list (or None) — used for both API styles.
+
+    In XGB 2.x callbacks MUST go to XGBClassifier() constructor.
+    In XGB 1.x callbacks can go to either constructor or fit(). We put them
+    in the constructor unconditionally so the same code path works on both
+    major versions.
 
     XGB_NO_TOPK=1 → bump EarlyStopping rounds 10 → 20. With n_estimators=500
     (vs 100), trees need longer patience to dynamically halt.
     """
+    if not early_stop:
+        return None
     no_topk = os.environ.get("XGB_NO_TOPK", "0") == "1"
     es_rounds = 20 if no_topk else 10
+    try:
+        from xgboost.callback import (  # type: ignore[import-not-found]
+            EarlyStopping,
+            EvaluationMonitor,
+        )
+        return [
+            EarlyStopping(rounds=es_rounds, save_best=True),
+            EvaluationMonitor(period=10),
+        ]
+    except Exception:  # pragma: no cover - older xgboost fallback
+        return None
+
+
+def _xgb_fit_kwargs(eval_set, early_stop: bool = False):
+    """Build fit() kwargs only (eval_set + verbose). Callbacks go to the
+    XGBClassifier constructor via _xgb_callbacks() — see XGB 2.x API change.
+
+    Kept for backward compat with existing call sites. Returns dict that does
+    NOT contain 'callbacks' (XGB 2.x raises TypeError if callbacks is passed
+    to fit()).
+    """
     fit_kw: dict = {}
     if eval_set is not None:
         fit_kw["eval_set"] = eval_set
         fit_kw["verbose"] = False
-    if early_stop:
-        try:
-            from xgboost.callback import (  # type: ignore[import-not-found]
-                EarlyStopping,
-                EvaluationMonitor,
-            )
-
-            fit_kw["callbacks"] = [
-                EarlyStopping(rounds=es_rounds, save_best=True),
-                EvaluationMonitor(period=10),
-            ]
-        except Exception:  # pragma: no cover - older xgboost fallback
-            pass
+    # NOTE: callbacks intentionally NOT placed in fit kwargs. See
+    # _xgb_callbacks() and pass result to XGBClassifier(callbacks=...).
+    _ = early_stop  # silence unused (kept in signature for ABI compat)
     return fit_kw
 
 from empyrical_risk_features_features import compute_empyrical_risk_features_features  # auto-wired 2026-05-18
@@ -4174,7 +4206,12 @@ def main() -> None:
             final_params["interaction_constraints"] = _build_interaction_constraints(top_features)
         if _XGB_USE_MONOTONIC:
             final_params["monotone_constraints"] = _build_monotonic_constraints(top_features)
-        final = xgb.XGBClassifier(**final_params)
+        # XGB 2.x: callbacks MUST be on constructor, not fit(). Use helper.
+        _final_callbacks = _xgb_callbacks(early_stop=True)
+        if _final_callbacks is not None:
+            final = xgb.XGBClassifier(**final_params, callbacks=_final_callbacks)
+        else:
+            final = xgb.XGBClassifier(**final_params)
         y_oos_arr = oos["y"].values
         final.fit(
             X_tr,
@@ -4392,12 +4429,18 @@ def main() -> None:
                 persist_params["interaction_constraints"] = _build_interaction_constraints(persist_top_features)
             if _XGB_USE_MONOTONIC:
                 persist_params["monotone_constraints"] = _build_monotonic_constraints(persist_top_features)
-            persist_model = xgb.XGBClassifier(**persist_params)
+            # XGB 2.x: callbacks MUST be on constructor, not fit().
             # Hold out tail 15% as eval_set for EarlyStopping(save_best=True).
             _cut = max(1, int(len(X_persist) * 0.85))
             _Xp_tr, _Xp_ev = X_persist[:_cut], X_persist[_cut:]
             _yp_tr, _yp_ev = y_persist[:_cut], y_persist[_cut:]
-            if len(_Xp_ev) >= 5 and len(np.unique(_yp_ev)) > 1:
+            _use_es = len(_Xp_ev) >= 5 and len(np.unique(_yp_ev)) > 1
+            _persist_callbacks = _xgb_callbacks(early_stop=True) if _use_es else None
+            if _persist_callbacks is not None:
+                persist_model = xgb.XGBClassifier(**persist_params, callbacks=_persist_callbacks)
+            else:
+                persist_model = xgb.XGBClassifier(**persist_params)
+            if _use_es:
                 persist_model.fit(
                     _Xp_tr,
                     _yp_tr,
