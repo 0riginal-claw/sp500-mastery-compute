@@ -1,15 +1,15 @@
 {
-  "run_id": "26145025784",
+  "run_id": "26147829239",
   "completed": 0,
-  "failed": 0,
+  "failed": 1,
   "total": 1,
-  "timestamp": "2026-05-20T06:22:26.037373Z",
+  "timestamp": "2026-05-20T07:24:48.992913Z",
   "jobs": [
     {
-      "ticker": "MSFT",
-      "strategy": "UNKNOWN",
-      "status": "ok",
-      "path": "backtests/MSFT/UNKNOWN/result.json"
+      "ticker": "ALL",
+      "strategy": "ML_XGB_v10_xsec_full500",
+      "status": "failed",
+      "path": "backtests/ALL/ML_XGB_v10_xsec_full500/result.json"
     }
   ]
 }
