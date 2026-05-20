@@ -61,10 +61,15 @@ PUT_DELAY_SEC = 0.2
 
 SYNC_GLOBS = [
     ".github/workflows/*.yml",
-    "scripts/*.py",
+    "scripts/**/*.py",            # recursive — pull nested scripts/*/foo.py
     "registry/*.csv",
 ]
+# __init__.py files are excluded by default (package markers shouldn't sync to
+# compute repo and overwrite remote scaffolding). However, the vendored
+# historical_system package needs its __init__.py files synced because the
+# scripts that import it require the package structure to be present remotely.
 EXCLUDE_BASENAMES = {"__init__.py"}
+ALLOWLIST_INIT_DIR_SUBSTR = {"scripts/historical_system"}
 EXCLUDE_DIR_SUBSTR = {"__pycache__", "_generated", "_rescue"}
 
 logging.basicConfig(
@@ -149,15 +154,21 @@ def sha1_blob_for_bytes(b):
 
 def enumerate_local():
     pairs = []
+    seen = set()  # dedupe (recursive globs can yield overlap)
     for pattern in SYNC_GLOBS:
         for p in PROJECT_ROOT.glob(pattern):
             if not p.is_file():
                 continue
-            if p.name in EXCLUDE_BASENAMES:
-                continue
-            if any(seg in str(p) for seg in EXCLUDE_DIR_SUBSTR):
-                continue
             rel = p.relative_to(PROJECT_ROOT).as_posix()
+            if rel in seen:
+                continue
+            if any(seg in rel for seg in EXCLUDE_DIR_SUBSTR):
+                continue
+            # __init__.py is excluded unless inside an allowlisted dir
+            if p.name in EXCLUDE_BASENAMES:
+                if not any(seg in rel for seg in ALLOWLIST_INIT_DIR_SUBSTR):
+                    continue
+            seen.add(rel)
             pairs.append((p, rel))
     return pairs
 
