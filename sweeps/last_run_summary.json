@@ -1,15 +1,15 @@
 {
-  "run_id": "26152840531",
+  "run_id": "26152846458",
   "completed": 1,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-20T09:18:27.709588Z",
+  "timestamp": "2026-05-20T09:18:54.084027Z",
   "jobs": [
     {
-      "ticker": "CSCO",
+      "ticker": "PEP",
       "strategy": "ORB",
       "status": "completed",
-      "path": "backtests/CSCO/ORB/result.json"
+      "path": "backtests/PEP/ORB/result.json"
     }
   ]
 }

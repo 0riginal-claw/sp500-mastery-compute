@@ -1,0 +1,20 @@
+{
+  "ticker": "PEP",
+  "strategy": "ORB",
+  "job_id": "verify-v3-PEP",
+  "cloud": "github_actions",
+  "status": "completed",
+  "returncode": 0,
+  "completed_at": "2026-05-20T09:18:39.342217Z",
+  "result": {
+    "n_trades": 82,
+    "win_rate": 0.43902439024390244,
+    "profit_factor": 1.1292959952952142,
+    "total_return_pct": 0.010672016540593698,
+    "max_drawdown_pct": -0.015975316736355646,
+    "prob_threshold": 0.5,
+    "rows": 1034,
+    "features_total": 645,
+    "data_source": "yfinance_daily"
+  }
+}
