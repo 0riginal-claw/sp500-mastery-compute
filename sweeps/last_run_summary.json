@@ -1,15 +1,15 @@
 {
-  "run_id": "26224411491",
+  "run_id": "26224280633",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T12:01:05.200253Z",
+  "timestamp": "2026-05-21T12:04:18.779334Z",
   "jobs": [
     {
-      "ticker": "AES",
-      "strategy": "MEAN_REV",
+      "ticker": "NWS",
+      "strategy": "ORB",
       "status": "ok",
-      "path": "backtests/AES/MEAN_REV/result.json"
+      "path": "backtests/NWS/ORB/result.json"
     }
   ]
 }
