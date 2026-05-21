@@ -1,0 +1,560 @@
+# .github/workflows/zgc_backtest_sweep.yml
+#
+# ZGC Daily Backtest Sweep — Scheduled S&P 500 Multi-Strategy Backtest
+#
+# karpathy_checked: routing/infra workflow, NO new ML model; uses existing
+#   backtest_xgb_v8.py with documented argparse interface. Success criteria:
+#   (1) workflow_dispatch + cron both schedule successfully; (2) shard jobs
+#   complete <30min wall; (3) leaderboard PR comment posted; (4) per-ticker
+#   result.json downloadable from artifacts; (5) no money / no destructive ops.
+# autosolve_skip: infra wiring, blocker-free
+#
+# WHY THIS EXISTS:
+#   sweep.yml (the existing workflow) is single-/few-ticker manual-dispatch.
+#   xsec_matrix.yml is xsec-specific (cross-sectional model, single strategy).
+#   This workflow is the LEADERBOARD-DRIVEN DAILY sweep:
+#     - chunked 500 tickers x N strategies into <=256-job batches
+#     - runs daily at 04:00 UTC (after US market close 20:00 EST = 01:00 UTC,
+#       buffer for yfinance EOD propagation)
+#     - rolls up per-ticker JSON results into a leaderboard PR comment
+#       (top 20 by PF, top 20 by Sharpe) + uploads sweeps/leaderboard.json
+#
+# TRIGGERS:
+#   1. workflow_dispatch — manual (smoke test, ad-hoc)
+#   2. schedule (cron)   — daily 04:00 UTC
+#
+# INPUTS (workflow_dispatch):
+#   strategies    : comma-separated (default "ORB" — single strategy until v8+
+#                   accepts multi-strategy; today --strategy is forwarded but
+#                   the v8 model is strategy-agnostic, so we treat strategy as
+#                   a label / output-dir suffix only)
+#   max_tickers   : cap the universe (default 500; use small number for smoke)
+#   tickers_file  : default registry/sp500_tickers.csv
+#   shard_size    : tickers per matrix cell (default 25 — keeps each job <30min)
+#   open_pr       : if "true", post leaderboard to a PR comment; if "false",
+#                   only upload artifact. Default "true" when scheduled.
+#
+# RESULT DELIVERY:
+#   Each ticker-shard uploads result-shard-${SHARD_ID}.json artifact.
+#   The rollup job downloads all, builds sweeps/leaderboard_${RUN_ID}.json,
+#   and posts a PR comment if open_pr=true and there's an open PR to comment on
+#   (uses the most recent open PR, or skips if none).
+#
+# QUOTA NOTES:
+#   - PUBLIC repo: unlimited Actions minutes
+#   - Matrix cap: 256 jobs/run. 500 tickers / shard_size=25 = 20 shards x N
+#     strategies. With N=5 strategies = 100 shards, fits in one matrix.
+#   - max-parallel: 20 (free tier) or 256 (paid). Stay at 20 to respect concurrency.
+
+name: zgc-backtest-sweep
+
+on:
+  workflow_dispatch:
+    inputs:
+      strategies:
+        description: 'Comma-separated strategy labels (forwarded as --strategy; v8 is strategy-agnostic so this is mostly a label)'
+        required: false
+        default: 'ORB'
+      max_tickers:
+        description: 'Cap universe (use 10 for smoke; 500 for full)'
+        required: false
+        default: '500'
+      tickers_file:
+        description: 'Ticker registry file path'
+        required: false
+        default: 'registry/sp500_tickers.csv'
+      shard_size:
+        description: 'Tickers per matrix cell (smaller = more parallel jobs)'
+        required: false
+        default: '25'
+      open_pr:
+        description: 'Post leaderboard to PR comment ("true"/"false")'
+        required: false
+        default: 'true'
+      extra_env_json:
+        description: 'Per-job env overrides as JSON object'
+        required: false
+        default: '{}'
+  schedule:
+    # Daily at 04:00 UTC = 23:00 EST previous day = ~3h after US close.
+    # Gives yfinance time to publish EOD bars.
+    - cron: '0 4 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+env:
+  PYTHON_VERSION: '3.12'
+  PYTHONUNBUFFERED: '1'
+  NO_COLOR: '1'
+  XGB_TREE_METHOD: 'hist'
+  BACKTEST_DATA_SOURCE: 'yfinance_daily'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # prep: read ticker registry, build matrix of (shard_id, tickers_csv, strategy)
+  # ---------------------------------------------------------------------------
+  prep:
+    name: Prep matrix shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix:      ${{ steps.build.outputs.matrix }}
+      shard_count: ${{ steps.build.outputs.shard_count }}
+      run_label:   ${{ steps.build.outputs.run_label }}
+      open_pr:     ${{ steps.build.outputs.open_pr }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Build matrix
+        id: build
+        env:
+          TICKERS_FILE: ${{ github.event.inputs.tickers_file || 'registry/sp500_tickers.csv' }}
+          MAX_TICKERS:  ${{ github.event.inputs.max_tickers || '500' }}
+          SHARD_SIZE:   ${{ github.event.inputs.shard_size || '25' }}
+          STRATEGIES:   ${{ github.event.inputs.strategies || 'ORB' }}
+          OPEN_PR:      ${{ github.event.inputs.open_pr || 'true' }}
+        run: |
+          python3 - <<'PYEOF'
+          import csv, json, os, datetime
+
+          tickers_file = os.environ.get("TICKERS_FILE", "registry/sp500_tickers.csv")
+          try:
+              max_tickers = int(os.environ.get("MAX_TICKERS", "500"))
+          except ValueError:
+              max_tickers = 500
+          try:
+              shard_size = max(1, int(os.environ.get("SHARD_SIZE", "25")))
+          except ValueError:
+              shard_size = 25
+
+          strategies_raw = os.environ.get("STRATEGIES", "ORB").strip()
+          strategies = [s.strip() for s in strategies_raw.split(",") if s.strip()]
+          if not strategies:
+              strategies = ["ORB"]
+
+          # Read ticker file (skip header row if present)
+          tickers = []
+          with open(tickers_file) as fh:
+              rdr = csv.reader(fh)
+              header = next(rdr, None)
+              if header and header[0].strip().lower() not in ("ticker", "symbol"):
+                  tickers.append(header[0].strip().upper())
+              for row in rdr:
+                  if not row:
+                      continue
+                  t = row[0].strip().upper()
+                  if t:
+                      tickers.append(t)
+          tickers = tickers[:max_tickers]
+
+          # Build shards
+          shards = []
+          shard_idx = 0
+          for strat in strategies:
+              for i in range(0, len(tickers), shard_size):
+                  chunk = tickers[i:i+shard_size]
+                  shards.append({
+                      "shard_id":    f"{strat}_s{shard_idx:03d}",
+                      "tickers_csv": ",".join(chunk),
+                      "strategy":    strat,
+                  })
+                  shard_idx += 1
+
+          # GitHub Actions matrix cap is 256 jobs/run
+          if len(shards) > 256:
+              print(f"::warning::Shard count {len(shards)} > 256; truncating to 256.")
+              shards = shards[:256]
+
+          matrix = {"include": shards}
+          run_label = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H%M")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as gh:
+              gh.write(f"matrix={json.dumps(matrix)}\n")
+              gh.write(f"shard_count={len(shards)}\n")
+              gh.write(f"run_label={run_label}\n")
+              gh.write(f"open_pr={os.environ.get('OPEN_PR','true')}\n")
+
+          print(f"shard_count={len(shards)} strategies={strategies} tickers={len(tickers)} (cap={max_tickers}, shard_size={shard_size})")
+          PYEOF
+
+  # ---------------------------------------------------------------------------
+  # sweep: run a shard (N tickers) per matrix cell
+  # ---------------------------------------------------------------------------
+  sweep:
+    name: Shard ${{ matrix.shard_id }}
+    needs: prep
+    if: needs.prep.outputs.shard_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJson(needs.prep.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install xgboost==2.1.3 pandas==2.2.3 'numpy>=2.0,<3' scikit-learn==1.6.1 \
+                        pyarrow==17.0.0 yfinance>=0.2.50 requests==2.32.3 \
+                        beautifulsoup4==4.12.3 lxml==5.3.0 pandas-ta-classic==0.4.47
+          fi
+
+      - name: Apply extra_env overrides
+        env:
+          EXTRA_ENV_JSON: ${{ github.event.inputs.extra_env_json || '{}' }}
+        run: |
+          if [ -z "$EXTRA_ENV_JSON" ] || [ "$EXTRA_ENV_JSON" = "{}" ]; then
+            echo "No extra_env overrides."
+            exit 0
+          fi
+          python3 - <<'PYEOF'
+          import json, os, re, sys
+          raw = os.environ.get("EXTRA_ENV_JSON", "")
+          try:
+              data = json.loads(raw)
+          except json.JSONDecodeError as exc:
+              print(f"::warning::Invalid extra_env_json ({exc}); skipping.")
+              sys.exit(0)
+          if not isinstance(data, dict):
+              sys.exit(0)
+          allowed = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+          gh_env = os.environ.get("GITHUB_ENV", "")
+          if not gh_env:
+              sys.exit(0)
+          with open(gh_env, "a") as fh:
+              for k, v in data.items():
+                  if not allowed.match(str(k)) or v is None:
+                      continue
+                  val = str(v)
+                  if "\n" in val:
+                      fh.write(f"{k}<<__EOF__\n{val}\n__EOF__\n")
+                  else:
+                      fh.write(f"{k}={val}\n")
+          PYEOF
+
+      - name: Run shard backtest
+        id: shard
+        env:
+          TICKERS:    ${{ matrix.tickers_csv }}
+          STRATEGY:   ${{ matrix.strategy }}
+          SHARD_ID:   ${{ matrix.shard_id }}
+          RUN_LABEL:  ${{ needs.prep.outputs.run_label }}
+        run: |
+          mkdir -p "shard_results/${SHARD_ID}"
+          IFS=',' read -ra TICKER_ARR <<< "$TICKERS"
+          echo "=== Shard ${SHARD_ID} — ${#TICKER_ARR[@]} tickers, strategy=${STRATEGY} ==="
+          SHARD_OK=0
+          SHARD_FAIL=0
+          for T in "${TICKER_ARR[@]}"; do
+              T="$(echo "$T" | tr -d '[:space:]')"
+              [ -z "$T" ] && continue
+              echo "--- $T ---"
+              mkdir -p "shard_results/${SHARD_ID}/${T}"
+              set +e
+              python scripts/backtest_xgb_v8.py \
+                  --ticker   "$T" \
+                  --strategy "$STRATEGY" \
+                  --out-dir  "shard_results/${SHARD_ID}/${T}" \
+                  --job-id   "${RUN_LABEL}_${SHARD_ID}_${T}" \
+                  > "shard_results/${SHARD_ID}/${T}/stdout.log" 2>&1
+              EC=$?
+              set -e
+              if [ "$EC" -eq 0 ]; then
+                  SHARD_OK=$((SHARD_OK+1))
+                  echo "  OK $T"
+              else
+                  SHARD_FAIL=$((SHARD_FAIL+1))
+                  echo "  FAIL $T (exit=$EC)"
+              fi
+          done
+          echo "=== Shard ${SHARD_ID} done: ok=${SHARD_OK} fail=${SHARD_FAIL} ==="
+          # Aggregate shard summary
+          python3 - <<'PYEOF'
+          import json, os, pathlib, datetime
+          shard_dir = pathlib.Path(f"shard_results/{os.environ['SHARD_ID']}")
+          rows = []
+          for tdir in sorted(shard_dir.iterdir()):
+              if not tdir.is_dir():
+                  continue
+              ticker = tdir.name
+              result_path = tdir / "result.json"
+              if not result_path.exists():
+                  rows.append({"ticker": ticker, "status": "no_result_json", "result": None})
+                  continue
+              try:
+                  with open(result_path) as f:
+                      data = json.load(f)
+              except Exception as e:
+                  rows.append({"ticker": ticker, "status": f"parse_error: {e}", "result": None})
+                  continue
+              # Extract headline metrics if present
+              m = data if isinstance(data, dict) else {}
+              row = {
+                  "ticker":    ticker,
+                  "strategy":  os.environ["STRATEGY"],
+                  "shard_id":  os.environ["SHARD_ID"],
+                  "status":    m.get("status", "completed"),
+                  "pf":        m.get("profit_factor") or m.get("PF") or m.get("pf"),
+                  "sharpe":    m.get("sharpe") or m.get("Sharpe"),
+                  "wr":        m.get("win_rate") or m.get("WR") or m.get("wr"),
+                  "n":         m.get("n_trades") or m.get("n"),
+                  "dd":        m.get("max_dd") or m.get("DD") or m.get("dd"),
+                  "raw":       m,
+              }
+              rows.append(row)
+          summary = {
+              "shard_id":  os.environ["SHARD_ID"],
+              "strategy":  os.environ["STRATEGY"],
+              "run_label": os.environ["RUN_LABEL"],
+              "ts":        datetime.datetime.utcnow().isoformat() + "Z",
+              "rows":      rows,
+          }
+          out = shard_dir / "shard_summary.json"
+          with open(out, "w") as f:
+              json.dump(summary, f, indent=2)
+          print(f"Wrote {out} ({len(rows)} tickers)")
+          PYEOF
+
+      - name: Upload shard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.shard_id }}
+          path: shard_results/${{ matrix.shard_id }}/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # rollup: aggregate all shards into leaderboard, post PR comment
+  # ---------------------------------------------------------------------------
+  rollup:
+    name: Rollup leaderboard
+    needs: [prep, sweep]
+    if: always() && needs.prep.outputs.shard_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BACKTEST_GITHUB_TOKEN || github.token }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download all shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all_shards/
+          pattern: shard-*
+          merge-multiple: false
+
+      - name: Aggregate leaderboard
+        id: leaderboard
+        env:
+          RUN_LABEL: ${{ needs.prep.outputs.run_label }}
+          RUN_ID:    ${{ github.run_id }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, pathlib, datetime
+
+          root = pathlib.Path("all_shards")
+          all_rows = []
+          shard_count_seen = 0
+          if root.exists():
+              for shard_dir in sorted(root.iterdir()):
+                  if not shard_dir.is_dir():
+                      continue
+                  shard_count_seen += 1
+                  ss = list(shard_dir.rglob("shard_summary.json"))
+                  if not ss:
+                      print(f"::warning::no shard_summary.json in {shard_dir}")
+                      continue
+                  try:
+                      with open(ss[0]) as f:
+                          data = json.load(f)
+                  except Exception as e:
+                      print(f"::warning::parse {ss[0]}: {e}")
+                      continue
+                  for row in data.get("rows", []):
+                      # Drop the bulky raw payload from the aggregated row
+                      row = {k: v for k, v in row.items() if k != "raw"}
+                      all_rows.append(row)
+
+          # Coerce numeric fields
+          def num(x):
+              try:
+                  if x is None: return None
+                  return float(x)
+              except Exception:
+                  return None
+
+          for r in all_rows:
+              for k in ("pf", "sharpe", "wr", "n", "dd"):
+                  r[k] = num(r.get(k))
+
+          completed = [r for r in all_rows if r.get("status") == "completed"]
+          failed    = [r for r in all_rows if r.get("status") not in ("completed", None)]
+          unknown   = [r for r in all_rows if r.get("status") is None]
+
+          # Rankings (filter requires PF > 1.2 AND Sharpe > 0.8 per brief)
+          def safe_sort_key_pf(r):
+              v = r.get("pf")
+              return v if v is not None else -1e18
+          def safe_sort_key_sharpe(r):
+              v = r.get("sharpe")
+              return v if v is not None else -1e18
+
+          top_pf      = sorted(completed, key=safe_sort_key_pf, reverse=True)[:20]
+          top_sharpe  = sorted(completed, key=safe_sort_key_sharpe, reverse=True)[:20]
+
+          high_quality = [
+              r for r in completed
+              if (r.get("pf") is not None and r["pf"] > 1.2)
+              and (r.get("sharpe") is not None and r["sharpe"] > 0.8)
+          ]
+
+          run_label = os.environ.get("RUN_LABEL", "")
+          run_id    = os.environ.get("RUN_ID", "")
+
+          leaderboard = {
+              "run_label":     run_label,
+              "run_id":        run_id,
+              "ts":            datetime.datetime.utcnow().isoformat() + "Z",
+              "total":         len(all_rows),
+              "completed":     len(completed),
+              "failed":        len(failed),
+              "unknown":       len(unknown),
+              "shards_seen":   shard_count_seen,
+              "high_quality":  high_quality,
+              "top_pf":        top_pf,
+              "top_sharpe":    top_sharpe,
+              "all_rows":      all_rows,
+          }
+
+          out_dir = pathlib.Path("sweeps")
+          out_dir.mkdir(parents=True, exist_ok=True)
+          out_path = out_dir / f"leaderboard_{run_label or run_id}.json"
+          with open(out_path, "w") as f:
+              json.dump(leaderboard, f, indent=2)
+          print(f"Wrote {out_path}")
+
+          # Also write a stable-name 'latest' pointer
+          latest_path = out_dir / "leaderboard_latest.json"
+          with open(latest_path, "w") as f:
+              json.dump(leaderboard, f, indent=2)
+          print(f"Wrote {latest_path}")
+
+          # Build a Markdown comment body
+          def fmt(v, p=3):
+              if v is None: return "—"
+              try: return f"{float(v):.{p}f}"
+              except Exception: return str(v)
+          def table(rows, score_field):
+              if not rows:
+                  return "_no rows_\n"
+              lines = ["| # | Ticker | Strategy | PF | Sharpe | WR | n | DD |",
+                       "|---|--------|----------|----|--------|----|---|----|"]
+              for i, r in enumerate(rows, 1):
+                  lines.append(f"| {i} | {r.get('ticker','—')} | {r.get('strategy','—')} | "
+                               f"{fmt(r.get('pf'))} | {fmt(r.get('sharpe'))} | "
+                               f"{fmt(r.get('wr'))} | {fmt(r.get('n'),0)} | {fmt(r.get('dd'))} |")
+              return "\n".join(lines) + "\n"
+
+          md = []
+          md.append(f"## ZGC Daily Backtest Sweep — {run_label}\n")
+          md.append(f"Run: [{run_id}](https://github.com/{os.environ.get('GITHUB_REPOSITORY','')}/actions/runs/{run_id})  \n")
+          md.append(f"Completed **{len(completed)}** / failed **{len(failed)}** / unknown **{len(unknown)}** (total **{len(all_rows)}** across **{shard_count_seen}** shards)\n")
+          md.append(f"\n### High-quality (PF > 1.2 AND Sharpe > 0.8): **{len(high_quality)}** tickers\n")
+          md.append(table(high_quality[:30], "pf"))
+          md.append("\n### Top 20 by Profit Factor\n")
+          md.append(table(top_pf, "pf"))
+          md.append("\n### Top 20 by Sharpe\n")
+          md.append(table(top_sharpe, "sharpe"))
+          md.append("\n_Artifact: `sweeps/leaderboard_latest.json` (full per-ticker JSON in `all_shards/shard-*` workflow artifacts)._\n")
+
+          body = "".join(md)
+          with open("/tmp/pr_comment_body.md", "w") as f:
+              f.write(body)
+          print(body[:2000])
+
+          # Outputs for next step
+          with open(os.environ["GITHUB_OUTPUT"], "a") as gh:
+              gh.write(f"total={len(all_rows)}\n")
+              gh.write(f"completed={len(completed)}\n")
+              gh.write(f"failed={len(failed)}\n")
+              gh.write(f"hq_count={len(high_quality)}\n")
+          PYEOF
+
+      - name: Commit leaderboard JSON
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sweeps/leaderboard_*.json || true
+          if git diff --cached --quiet; then
+            echo "No leaderboard changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(sweep): leaderboard from run ${{ github.run_id }}"
+          # Use the same push retry loop pattern as sweep.yml rollup (rebase + autostash)
+          MAX_ATTEMPTS=8
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            git push origin HEAD:main 2>&1 | tee /tmp/push.log
+            PUSH_EXIT=${PIPESTATUS[0]}
+            if [ "$PUSH_EXIT" -eq 0 ] && ! grep -q -e "\[rejected\]" -e "fetch first" -e "non-fast-forward" /tmp/push.log; then
+              echo "push succeeded on attempt $attempt"
+              exit 0
+            fi
+            SLEEP=$(( (RANDOM % 25) + 5 ))
+            echo "push race lost ${attempt}/${MAX_ATTEMPTS} — pulling rebase, retrying in ${SLEEP}s..."
+            git pull --rebase --autostash --strategy-option=theirs origin main || true
+            sleep $SLEEP
+          done
+          echo "::error::push failed after ${MAX_ATTEMPTS} attempts"
+          exit 1
+
+      - name: Post leaderboard PR comment
+        if: needs.prep.outputs.open_pr == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.BACKTEST_GITHUB_TOKEN || github.token }}
+        run: |
+          # Find most recently-updated open PR; comment on it. Skip if none.
+          PR_NUMBER=$(gh pr list --state open --json number,updatedAt \
+                       --jq 'sort_by(.updatedAt) | reverse | .[0].number' \
+                       --limit 10 || echo "")
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+              echo "No open PR to comment on; skipping (leaderboard committed to main)."
+              exit 0
+          fi
+          echo "Commenting on PR #$PR_NUMBER"
+          gh pr comment "$PR_NUMBER" --body-file /tmp/pr_comment_body.md
+
+      - name: Print final summary
+        if: always()
+        run: |
+          echo "=== ZGC sweep run ${{ github.run_id }} complete ==="
+          echo "Total:     ${{ steps.leaderboard.outputs.total }}"
+          echo "Completed: ${{ steps.leaderboard.outputs.completed }}"
+          echo "Failed:    ${{ steps.leaderboard.outputs.failed }}"
+          echo "High-Q:    ${{ steps.leaderboard.outputs.hq_count }}"
