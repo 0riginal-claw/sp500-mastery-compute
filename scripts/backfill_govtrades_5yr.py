@@ -25,22 +25,40 @@ TICKERS_PATH = _ROOT / "sp500_tickers.txt"
 OUT_DIR = _ROOT / "cache" / "govtrades_extras"
 MANIFEST = OUT_DIR / "_manifest.json"
 
-SENATE_API = "https://senatestockwatcher.com/api/v2/transactions"
-HOUSE_API = "https://housestockwatcher.com/api/v2/transactions"
+# Multiple endpoint candidates — try in order. First one that resolves wins.
+SENATE_CANDIDATES = [
+    "https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json",
+    "https://raw.githubusercontent.com/jeremiak/senate-stock-watcher-data/master/aggregate/all_transactions.json",
+    "https://senatestockwatcher.com/api/v2/transactions",
+]
+HOUSE_CANDIDATES = [
+    "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json",
+    "https://raw.githubusercontent.com/jeremiak/house-stock-watcher-data/master/data/all_transactions.json",
+    "https://housestockwatcher.com/api/v2/transactions",
+]
 
 
-def fetch_all(url: str, label: str) -> pd.DataFrame:
-    print(f"  [{label}] fetching {url} ...")
-    try:
-        r = requests.get(url, timeout=120, headers={"User-Agent": "Mozilla/5.0 sp500-mastery/1.0"})
-        r.raise_for_status()
-        data = r.json()
-        df = pd.DataFrame(data if isinstance(data, list) else data.get("transactions", data))
-        print(f"  [{label}] got {len(df)} rows, cols={list(df.columns)[:8]}")
-        return df
-    except Exception as e:
-        print(f"  [{label}] ERROR: {e}")
-        return pd.DataFrame()
+def fetch_all(candidates: list[str], label: str) -> pd.DataFrame:
+    for url in candidates:
+        print(f"  [{label}] trying {url} ...")
+        try:
+            r = requests.get(
+                url,
+                timeout=(30, 120),
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "application/json,*/*",
+                },
+            )
+            r.raise_for_status()
+            data = r.json()
+            df = pd.DataFrame(data if isinstance(data, list) else data.get("transactions", data))
+            print(f"  [{label}] OK: {len(df)} rows, cols={list(df.columns)[:8]}")
+            return df
+        except Exception as e:
+            print(f"  [{label}] FAIL: {e}")
+    print(f"  [{label}] all candidates failed")
+    return pd.DataFrame()
 
 
 def normalize(df: pd.DataFrame, chamber: str) -> pd.DataFrame:
@@ -80,8 +98,8 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
 
-    senate = normalize(fetch_all(SENATE_API, "senate"), "senate")
-    house = normalize(fetch_all(HOUSE_API, "house"), "house")
+    senate = normalize(fetch_all(SENATE_CANDIDATES, "senate"), "senate")
+    house = normalize(fetch_all(HOUSE_CANDIDATES, "house"), "house")
     full = pd.concat([senate, house], ignore_index=True) if not (senate.empty and house.empty) else pd.DataFrame()
 
     if full.empty:
