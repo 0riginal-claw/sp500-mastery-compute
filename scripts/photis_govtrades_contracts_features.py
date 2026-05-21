@@ -47,44 +47,25 @@ _quarterly_cache: dict[str, pd.DataFrame] = {}
 
 
 def _ensure_local_db() -> bool:
-    if os.path.exists(GOVTRADES_DB_LOCAL):
-        try:
-            with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
-                con.execute("SELECT COUNT(*) FROM gov_contracts_awards").fetchone()
-            return True
-        except Exception:
-            try:
-                os.remove(GOVTRADES_DB_LOCAL)
-            except OSError:
-                pass
-
+    """2026-05-21: direct read-only URI over Drive, no /tmp copy."""
     if not os.path.exists(GOVTRADES_DB_DRIVE):
         logger.warning("[gt_contracts] source DB missing: %s", GOVTRADES_DB_DRIVE)
         return False
-
     try:
-        src = sqlite3.connect(f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=30.0)
-        dst = sqlite3.connect(GOVTRADES_DB_LOCAL)
-        with dst:
-            src.backup(dst)
-        src.close()
-        dst.close()
+        with sqlite3.connect(
+            f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
+        ) as con:
+            con.execute("SELECT 1 FROM gov_contracts_awards LIMIT 1").fetchone()
         return True
     except Exception as e:
-        logger.warning("[gt_contracts] sqlite-backup failed: %s — trying shutil", e)
-
-    try:
-        shutil.copy2(GOVTRADES_DB_DRIVE, GOVTRADES_DB_LOCAL)
-        for sfx in ("-wal", "-shm"):
-            side = GOVTRADES_DB_DRIVE + sfx
-            if os.path.exists(side):
-                shutil.copy2(side, GOVTRADES_DB_LOCAL + sfx)
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
-            con.execute("SELECT COUNT(*) FROM gov_contracts_awards").fetchone()
-        return True
-    except Exception as e:
-        logger.warning("[gt_contracts] all copy strategies failed: %s", e)
+        logger.warning("[gt_contracts] read-only probe failed: %s", e)
         return False
+
+
+def _ro_connect():
+    return sqlite3.connect(
+        f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
+    )
 
 
 def _load_contracts(ticker: str) -> pd.DataFrame:
@@ -94,7 +75,7 @@ def _load_contracts(ticker: str) -> pd.DataFrame:
         _contracts_cache[ticker] = pd.DataFrame()
         return _contracts_cache[ticker]
     try:
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
+        with _ro_connect() as con:
             df = pd.read_sql_query(
                 "SELECT action_date, amount FROM gov_contracts_awards WHERE ticker = ?",
                 con,
@@ -117,7 +98,7 @@ def _load_quarterly(ticker: str) -> pd.DataFrame:
         _quarterly_cache[ticker] = pd.DataFrame()
         return _quarterly_cache[ticker]
     try:
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
+        with _ro_connect() as con:
             df = pd.read_sql_query(
                 "SELECT year, quarter, amount FROM gov_contracts_quarterly WHERE ticker = ?",
                 con,
