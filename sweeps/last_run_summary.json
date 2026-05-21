@@ -1,8 +1,15 @@
 {
-  "run_id": "26227324341",
+  "run_id": "26248811217",
   "completed": 0,
   "failed": 0,
-  "total": 0,
-  "timestamp": "2026-05-21T13:07:38.848843Z",
-  "jobs": []
+  "total": 1,
+  "timestamp": "2026-05-21T19:45:29.154082Z",
+  "jobs": [
+    {
+      "ticker": "FSLR",
+      "strategy": "VWAP",
+      "status": "ok",
+      "path": "backtests/FSLR/VWAP/result.json"
+    }
+  ]
 }
