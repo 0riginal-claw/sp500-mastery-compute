@@ -26,13 +26,29 @@ jobs:
   create-pr:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Create Pull Request
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          BASE="${{ github.event.inputs.base_branch || 'main' }}"
+          HEAD="${{ github.event.inputs.head_branch }}"
+          TITLE="${{ github.event.inputs.title || 'chore: autonomous PR from push trigger' }}"
+          BODY="${{ github.event.inputs.body || 'Auto-generated PR via GITHUB_TOKEN' }}"
+
+          # For push events, head_branch input is not available.
+          # Check predefined branches from repo in order of priority.
+          if [ -z "$HEAD" ]; then
+            echo "No head_branch from workflow_dispatch, checking for available branches..."
+            gh api repos/0riginal-claw/sp500-mastery-compute/git/refs/heads --jq '[.[].ref | sub("refs/heads/";"")]' 2>&1
+            # For now, exit with info (no auto-guess to avoid creating wrong PRs)
+            echo "Skipping PR creation on push trigger (no explicit head_branch)"
+            exit 0
+          fi
+
           gh pr create \
             --repo 0riginal-claw/sp500-mastery-compute \
-            --base "${{ github.event.inputs.base_branch || 'main' }}" \
-            --head "${{ github.event.inputs.head_branch }}" \
-            --title "${{ github.event.inputs.title || format('chore: auto PR from {0}', github.event.ref) }}" \
-            --body "${{ github.event.inputs.body || 'Auto-generated PR from push-triggered workflow' }}"
+            --base "$BASE" \
+            --head "$HEAD" \
+            --title "$TITLE" \
+            --body "$BODY"
