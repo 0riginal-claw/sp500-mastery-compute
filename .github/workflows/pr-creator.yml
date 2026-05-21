@@ -1,0 +1,36 @@
+name: pr-creator
+on:
+  workflow_dispatch:
+    inputs:
+      head_branch:
+        description: 'Branch to create PR from'
+        required: true
+      title:
+        description: 'PR title'
+        required: false
+        default: 'chore: autonomous PR'
+      body:
+        description: 'PR body'
+        required: false
+        default: 'Auto-generated via GITHUB_TOKEN'
+      base_branch:
+        description: 'Base branch'
+        required: false
+        default: 'main'
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --repo 0riginal-claw/sp500-mastery-compute \
+            --base "${{ github.event.inputs.base_branch }}" \
+            --head "${{ github.event.inputs.head_branch }}" \
+            --title "${{ github.event.inputs.title }}" \
+            --body "${{ github.event.inputs.body }}"
