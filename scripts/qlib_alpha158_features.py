@@ -32,15 +32,15 @@ Approximate feature count: 158 (9 kbar + price/rolling groups).
 Default windows: [5, 10, 20, 30, 60]
 """
 
+import numpy as np
+import pandas as pd
+from scipy import stats as scipy_stats
+
 # Module-level pipeline contract -- consumed by feature-matrix builders to
 # decide whether to apply an additional .shift(1) at the pipeline layer.
 # DO NOT apply a second .shift(1) externally -- this module is already shifted.
 LOOKAHEAD_STRATEGY = "shifted_1"
 ALREADY_SHIFTED = True
-
-import numpy as np
-import pandas as pd
-from scipy import stats as scipy_stats
 
 
 # ---------------------------------------------------------------------------
@@ -318,6 +318,18 @@ def add_alpha158_features(df: pd.DataFrame) -> pd.DataFrame:
     all_nan = feat_df.columns[feat_df.isna().all()]
     if len(all_nan):
         feat_df = feat_df.drop(columns=all_nan)
+
+    # SHIFT ALIGNMENT (no-lookahead audit 2026-05-21, Patch 3):
+    # Apply final .shift(1) on ALL alpha158_* columns to match the sibling-
+    # module convention (jesse/alpaca/news_sentiment/worldquant_alpha101 all
+    # apply .shift(1) at the end of their feature-builders). Before this
+    # patch, alpha158 returned current-bar EOD values while siblings were
+    # pre-shifted, mixing two timing conventions in the same feature matrix.
+    # After this patch: alpha158_*[t] reflects OHLCV through bar t-1, exactly
+    # like sibling modules. See module-level docstring + LOOKAHEAD_STRATEGY
+    # = "shifted_1" constant. Pipelines must NOT apply an additional .shift(1)
+    # externally (would double-shift, losing one extra bar of signal).
+    feat_df = feat_df.shift(1)
 
     result = pd.concat([df, feat_df], axis=1)
     return result
