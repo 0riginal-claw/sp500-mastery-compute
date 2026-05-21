@@ -1,3 +1,4 @@
+# autosolve_skip: multi-TF wire — 2026-05-21
 """master_sweep.py — Per-ticker A/B router for XGB strategy dispatch.
 
 PATCHED 2026-05-21: wires `mastery_priors_loader` + `feature_cache_loader` so
@@ -7,6 +8,20 @@ PATCHED 2026-05-21 (DSR+PBO): adds `--gate-check` post-sweep promotion gate
 using Deflated Sharpe Ratio + Probability of Backtest Overfitting (Bailey &
 López de Prado 2014). Filters ~22k expected false positives at 274k+ JobSpec
 scale (Bailey 2014: 8.4% of pure-noise strategies clear Sharpe>1.0 by chance).
+
+PATCHED 2026-05-21 (multi-TF): adds `--timeframes` (comma-sep, default
+"1Day" for backward compat) and `--strategy-tf-filter` to enumerate the
+(ticker × strategy × TF) cross-product. Each generated job carries
+BACKTEST_TIMEFRAME in extra_env so backtest_xgb_v10.py routes the loader
+to the correct Cache B TF.
+
+  Strategy/TF compatibility matrix (used to skip incoherent combos):
+    ORB         -> 1Min/5Min/15Min/30Min
+    VWAP        -> 1Min/5Min/15Min/30Min/45Min/1Hour
+    v10/default -> 1Hour/1Day
+    momentum    -> 1Hour/4Hour/8Hour/12Hour/1Day
+    catalyst    -> 1Day
+    mean_revert -> 5Min/15Min/30Min
 
 Priors-bias modes (--use-priors):
   - skip_mastered: drop tickers whose state/mastery.json shows PF >= 1.2
@@ -46,6 +61,26 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 BEST_PARQUET = SCRIPT_DIR.parent / 'cache' / 'per_ticker_best.parquet'
+
+# 2026-05-21 multi-TF wire — strategy/timeframe compatibility matrix.
+# Maps strategy label -> set of timeframes where the strategy makes sense.
+# Used by --strategy-tf-filter to skip incoherent (strategy, TF) cells.
+# Mirror of the warn-only check in backtest_xgb_v10.main().
+STRATEGY_TF_COMPAT: dict[str, set[str]] = {
+    "ORB":         {"1Min", "5Min", "15Min", "30Min"},
+    "VWAP":        {"1Min", "5Min", "15Min", "30Min", "45Min", "1Hour"},
+    "v10":         {"1Hour", "1Day"},
+    "ML_XGB_v10":  {"1Hour", "1Day"},   # alias used by default --strategy
+    "default":     {"1Day"},             # plain "default" sweeps stay daily
+    "momentum":    {"1Hour", "4Hour", "8Hour", "12Hour", "1Day"},
+    "catalyst":    {"1Day"},
+    "mean_revert": {"5Min", "15Min", "30Min"},
+}
+
+ALL_TIMEFRAMES = [
+    "1Min", "5Min", "15Min", "30Min", "45Min",
+    "1Hour", "4Hour", "8Hour", "12Hour", "1Day",
+]
 
 
 def load_best() -> pd.DataFrame:
@@ -126,6 +161,13 @@ def main() -> None:
     ap.add_argument('--gate-check', action='store_true',
                     help='Run DSR+PBO promotion gate on state/*/mastery.json '
                          '(post-sweep). Writes cache/mastered_dsr.parquet.')
+    # 2026-05-21 multi-TF wire
+    ap.add_argument('--timeframes', type=str, default='1Day',
+                    help='Comma-separated Cache B timeframes to sweep across '
+                         '(default "1Day" for back-compat). Use "all" for the '
+                         '10-TF set: ' + ",".join(ALL_TIMEFRAMES))
+    ap.add_argument('--strategy-tf-filter', action='store_true',
+                    help='Skip (strategy, TF) combos outside STRATEGY_TF_COMPAT')
     args = ap.parse_args()
 
     # --gate-check short-circuits the dispatcher (it's the promotion path)
@@ -167,48 +209,92 @@ def main() -> None:
             logger.info("Mastery priors loader active (skip_pf>=%.2f sharpe>=%.2f)",
                         args.prior_pf_thresh, args.prior_sharpe_thresh)
 
-    out: list[tuple[str, str | None, dict[str, str]]] = []
+    # 2026-05-21 multi-TF wire — resolve --timeframes (csv or "all").
+    if args.timeframes.strip().lower() == 'all':
+        tf_list = list(ALL_TIMEFRAMES)
+    else:
+        tf_list = [t.strip() for t in args.timeframes.split(',') if t.strip()]
+    # validate
+    bad_tfs = [t for t in tf_list if t not in ALL_TIMEFRAMES]
+    if bad_tfs:
+        ap.error(f"unknown timeframes: {bad_tfs}; choose from {ALL_TIMEFRAMES}")
+    logger.info("Sweeping %d timeframe(s): %s", len(tf_list), tf_list)
+
+    # Strategy/TF compat filter — drop incoherent combos.
+    if args.strategy_tf_filter:
+        allowed = STRATEGY_TF_COMPAT.get(args.strategy)
+        if allowed is None:
+            logger.warning(
+                "  --strategy-tf-filter on but strategy=%s not in compat map; "
+                "all TFs will run", args.strategy)
+            allowed_tfs = tf_list
+        else:
+            allowed_tfs = [t for t in tf_list if t in allowed]
+            dropped = sorted(set(tf_list) - set(allowed_tfs))
+            if dropped:
+                logger.info("  filter: dropped TFs %s for strategy=%s",
+                            dropped, args.strategy)
+        tf_list_for_strategy = allowed_tfs
+    else:
+        tf_list_for_strategy = tf_list
+
+    out: list[tuple[str, str, str | None, dict[str, str]]] = []
     skipped: list[tuple[str, str]] = []
     for tkr in tickers:
-        env = pick_env(tkr, best)
+        env_base = pick_env(tkr, best)
         if mp is not None:
             p_env, skip, reason = priors_bias_env(tkr, mp)
             if skip:
                 skipped.append((tkr, reason))
                 logger.info("  [SKIP] %s: %s", tkr, reason)
                 continue
-            env.update(p_env)
+            env_base.update(p_env)
             if p_env:
                 logger.info("  %s: priors-bias env=%s (%s)", tkr, p_env, reason)
-        if args.smoke:
-            jid = None
-            logger.info("  [SMOKE] %s -> env=%s (not enqueued)", tkr, env)
-        else:
-            sweeps_dir = SCRIPT_DIR.parent / 'sweeps'
-            sweeps_dir.mkdir(parents=True, exist_ok=True)
-            for attempt in range(3):
-                try:
-                    jid = cd.enqueue_job(
-                        ticker=tkr,
-                        strategy=args.strategy,
-                        script=args.script,
-                        priority=args.priority,
-                        extra_env=env if env else None,
-                        subprocess_fallback=False,
-                    )
-                    break
-                except Exception as exc:
-                    logger.warning("  enqueue_job attempt %d failed: %s", attempt + 1, exc)
-                    if attempt == 2:
-                        raise
-                    import time; time.sleep(2)
-            logger.info("  enqueued %s job=%s env=%s", tkr, jid, env)
-        out.append((tkr, jid, env))
+
+        # Per-TF expansion: one job per (ticker, strategy, TF).
+        for tf in tf_list_for_strategy:
+            env = dict(env_base)
+            env['BACKTEST_TIMEFRAME'] = tf
+            if args.smoke:
+                jid = None
+                logger.info("  [SMOKE] %s tf=%s -> env=%s (not enqueued)",
+                            tkr, tf, env)
+            else:
+                sweeps_dir = SCRIPT_DIR.parent / 'sweeps'
+                sweeps_dir.mkdir(parents=True, exist_ok=True)
+                # Tag strategy label with TF so sweeps/dispatched.jsonl
+                # and downstream rollups can bin by (strategy, TF) without
+                # extra parsing. Format: "<strategy>__<tf>" preserves the
+                # original strategy as a prefix for grep-ability.
+                strategy_tagged = f"{args.strategy}__{tf}"
+                for attempt in range(3):
+                    try:
+                        jid = cd.enqueue_job(
+                            ticker=tkr,
+                            strategy=strategy_tagged,
+                            script=args.script,
+                            priority=args.priority,
+                            extra_env=env if env else None,
+                            subprocess_fallback=False,
+                        )
+                        break
+                    except Exception as exc:
+                        logger.warning(
+                            "  enqueue_job attempt %d failed: %s",
+                            attempt + 1, exc)
+                        if attempt == 2:
+                            raise
+                        import time; time.sleep(2)
+                logger.info("  enqueued %s tf=%s job=%s env=%s",
+                            tkr, tf, jid, env)
+            out.append((tkr, tf, jid, env))
 
     mode = '[SMOKE]' if args.smoke else ''
-    print(f"\n{mode} Dispatched {len(out)} jobs (skipped {len(skipped)} via priors).")
-    for tkr, jid, env in out:
-        print(f"  {tkr}: job={jid} env={env}")
+    print(f"\n{mode} Dispatched {len(out)} jobs across {len(tf_list_for_strategy)} TF(s) "
+          f"(skipped {len(skipped)} via priors).")
+    for tkr, tf, jid, env in out:
+        print(f"  {tkr} tf={tf}: job={jid} env={env}")
     if skipped:
         print("\n  -- skipped --")
         for tkr, reason in skipped:
