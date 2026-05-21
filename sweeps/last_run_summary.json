@@ -1,15 +1,15 @@
 {
-  "run_id": "26215888187",
+  "run_id": "26218811798",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T09:57:09.913298Z",
+  "timestamp": "2026-05-21T09:58:33.437620Z",
   "jobs": [
     {
-      "ticker": "NVDA",
-      "strategy": "v10",
+      "ticker": "ETR",
+      "strategy": "v10_xsec",
       "status": "ok",
-      "path": "backtests/NVDA/v10/result.json"
+      "path": "backtests/ETR/v10_xsec/result.json"
     }
   ]
 }
