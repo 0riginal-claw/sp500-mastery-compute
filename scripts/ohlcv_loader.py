@@ -86,10 +86,18 @@ class OhlcvLoader:
         cache_b_root: Optional[Path] = None,
         fallback_yfinance_5yr_root: Optional[Path] = None,
         allow_network_fallback: bool = True,
+        local_ssd_root: Optional[Path] = None,
     ):
         self.cache_b_root = Path(cache_b_root or DEFAULT_CACHE_B_ROOT)
         self.yf5y_root = Path(fallback_yfinance_5yr_root or DEFAULT_YF5Y_ROOT)
         self.allow_network = allow_network_fallback
+        # Local SSD mirror for FUSE-bypass. Set to None to disable.
+        # Env var ZG_DISABLE_LOCAL_SSD=1 also disables.
+        import os as _os
+        if _os.environ.get("ZG_DISABLE_LOCAL_SSD") == "1":
+            self.local_ssd_root = None
+        else:
+            self.local_ssd_root = Path(local_ssd_root or DEFAULT_LOCAL_SSD_ROOT)
 
     # ------------------------------------------------------------------
     # Public API
@@ -141,6 +149,33 @@ class OhlcvLoader:
             logger.warning("ohlcv_loader: unknown timeframe %r (skip Cache B)", timeframe)
             return None
         parent_dir, tf_dir = TIMEFRAME_DIR_MAP[timeframe]
+
+        # FUSE-bypass: prefer local SSD mirror if it exists and has the ticker.
+        # Local layout: <local_ssd_root>/<tf_dir>/<ticker>/*.parquet
+        # Falls back to Drive on miss (per-ticker; partial mirror is OK).
+        if self.local_ssd_root is not None:
+            local_dir = self.local_ssd_root / tf_dir / ticker
+            if local_dir.exists():
+                local_parquets = sorted(
+                    p for p in local_dir.glob("*.parquet")
+                    if p.stat().st_size > 0
+                )
+                if local_parquets:
+                    dfs = []
+                    for p in local_parquets:
+                        df_one = self._read_parquet_with_retry(p, retries=2, delay_s=0.1)
+                        if df_one is not None:
+                            dfs.append(df_one)
+                    if dfs:
+                        logger.debug(
+                            "ohlcv_loader: source=local_ssd ticker=%s tf=%s n_parquet=%d",
+                            ticker, timeframe, len(dfs),
+                        )
+                        df = pd.concat(dfs, ignore_index=True)
+                        return self._normalize_cache_b(df)
+                    # local files all unreadable -> fall through to Drive
+
+        # Drive path (slower; FUSE-throttled).
         ticker_dir = self.cache_b_root / parent_dir / tf_dir / ticker
         if not ticker_dir.exists():
             return None
@@ -154,6 +189,10 @@ class OhlcvLoader:
                 dfs.append(df_one)
         if not dfs:
             return None
+        logger.debug(
+            "ohlcv_loader: source=drive_fuse ticker=%s tf=%s n_parquet=%d",
+            ticker, timeframe, len(dfs),
+        )
         df = pd.concat(dfs, ignore_index=True)
         return self._normalize_cache_b(df)
 
