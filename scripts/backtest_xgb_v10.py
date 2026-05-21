@@ -4321,9 +4321,14 @@ def _build_v10_features_impl(
     # 107 TA indicators registry from historical_system.indicators package.
     # Dynamic col set; chikou excluded (forward-looking).
     # SPEED FIX (2026-05-20, top7-followup): runtime per-indicator budget gate +
-    # 17 audited-slow indicators in _DEFAULT_SLOW_SET + total wall-clock budget
-    # (env GABRIEL_TOTAL_BUDGET_S, default 60s). Vendored 43-indicator fallback
-    # if Drive path slow (env GABRIEL_PREFER_LOCAL=1, GABRIEL_SKIP_DRIVE=1).
+    # total wall-clock budget (env GABRIEL_TOTAL_BUDGET_S, default 60s). Vendored
+    # 43-indicator fallback if Drive path slow (env GABRIEL_PREFER_LOCAL=1,
+    # GABRIEL_SKIP_DRIVE=1).
+    # LEAK-RECOVER (2026-05-21, ref a3ee919): 3 real leaky indicators patched
+    # in-place (ichimoku_cloud chikou->NaN, williams_fractal confirm-delay,
+    # zig_zag online-pivot). 16 phantom names removed from _DEFAULT_SLOW_SET
+    # (they never matched any registered indicator name). fisher_transform
+    # re-enabled (leak-safe). Net col delta: +2 (fisher) + 1 (zigzag_lag) = +3.
     # SKIP GATE retained as belt-and-suspenders: set env GABRIEL_SKIP=1 to bypass.
     before_gab = f.shape[1]
     if os.environ.get("GABRIEL_SKIP", "0") == "1":
