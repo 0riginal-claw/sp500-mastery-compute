@@ -50,10 +50,13 @@ except ImportError:
 
 # ---------------------------------------------------------------------------
 # Data source configuration — controlled by BACKTEST_DATA_SOURCE env var.
-#   local_parquet   (default): read from local 1-min parquet files on Drive
+#   cache_b_alpaca  (NEW DEFAULT 2026-05-21): Cache B GOLD via ohlcv_loader
+#                   — 5yr Alpaca multi-TF (1Min..1Day), 502 tickers, monthly parquet.
+#                   Falls back to yfinance_5yr local then yfinance net.
+#   local_parquet            : legacy 1-min parquet at "claudes test/..." (resampled)
 #   yfinance_daily           : fetch 5-year daily OHLCV from yfinance (no Drive needed)
 # ---------------------------------------------------------------------------
-_DATA_SOURCE = os.environ.get("BACKTEST_DATA_SOURCE", "local_parquet").strip().lower()
+_DATA_SOURCE = os.environ.get("BACKTEST_DATA_SOURCE", "cache_b_alpaca").strip().lower()
 
 DATA_ROOT = os.environ.get(
     "BACKTEST_DATA_ROOT",
@@ -64,6 +67,29 @@ DATA_ROOT = os.environ.get(
 
 # Cache dir for yfinance downloads so re-runs within the same job are fast.
 _YF_CACHE_DIR = os.environ.get("BACKTEST_YF_CACHE", "/tmp/data_cache")
+
+# Cache B (Alpaca 5yr) loader — imported lazily to keep cold-start cheap.
+_CACHE_B_LOADER = None
+
+
+def _get_cache_b_loader():
+    """Return shared ohlcv_loader.OhlcvLoader instance (lazy import)."""
+    global _CACHE_B_LOADER
+    if _CACHE_B_LOADER is None:
+        from ohlcv_loader import OhlcvLoader  # local module
+        _CACHE_B_LOADER = OhlcvLoader()
+    return _CACHE_B_LOADER
+
+
+def _load_daily_cache_b(ticker: str) -> pd.DataFrame:
+    """Load daily OHLCV from Cache B (Alpaca 5yr GOLD) via ohlcv_loader.
+
+    Returns the same shape as _load_daily_yfinance(): columns
+    [open, high, low, close, volume], tz-naive DatetimeIndex 'timestamp'.
+    Internal fallbacks (handled by OhlcvLoader): yfinance_5yr local parquet,
+    then yfinance network.
+    """
+    return _get_cache_b_loader().load(ticker, timeframe="1Day")
 
 
 def _load_daily_yfinance(ticker: str) -> pd.DataFrame:
@@ -103,12 +129,18 @@ def _load_daily_yfinance(ticker: str) -> pd.DataFrame:
 def load_daily(ticker: str) -> pd.DataFrame:
     """Load daily OHLCV bars for ticker.
 
-    Routes to yfinance or local parquet based on BACKTEST_DATA_SOURCE env var.
+    Routes based on BACKTEST_DATA_SOURCE env var:
+      cache_b_alpaca (default 2026-05-21): Cache B GOLD via ohlcv_loader, with
+                     internal fallback to yfinance_5yr local parquet then network.
+      yfinance_daily : 5y daily fetch from yfinance (CI-friendly, no Drive).
+      local_parquet  : legacy "claudes test/..." 1-min parquet resampled to RTH daily.
     """
+    if _DATA_SOURCE == "cache_b_alpaca":
+        return _load_daily_cache_b(ticker)
     if _DATA_SOURCE == "yfinance_daily":
         return _load_daily_yfinance(ticker)
 
-    # Default: local 1-min parquet -> resample to daily RTH bars
+    # Legacy: local 1-min parquet -> resample to daily RTH bars
     df = pd.read_parquet(f"{DATA_ROOT}/{ticker}.parquet").set_index("timestamp").sort_index()
     et = df.index.tz_convert("America/New_York")
     rth = df[((et.hour > 9) | ((et.hour == 9) & (et.minute >= 30))) & (et.hour < 16)].copy()
