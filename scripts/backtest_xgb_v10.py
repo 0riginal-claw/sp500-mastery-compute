@@ -4212,6 +4212,68 @@ def _build_v10_features_impl(
     added_fp = f.shape[1] - before_fp
     logger.info("  [v10] +footprint_analyzer: +%d cols -> %d total", added_fp, f.shape[1])
 
+    # ---- Step 72: harmonic_patterns_features (30 cols) — Wave BG1 (2026-05-21) ----
+    # Gartley/Bat/Butterfly/Crab/Shark/Cypher/etc detectors on rolling zigzag.
+    # .shift(1)-safe inside module. Pure OHLC; no external API.
+    before_hp = f.shape[1]
+    try:
+        f = compute_harmonic_patterns_features(f, ticker=ticker)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "  [v10] harmonic_patterns_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in HARMONIC_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_hp = f.shape[1] - before_hp
+    logger.info("  [v10] +harmonic_patterns: +%d cols -> %d total", added_hp, f.shape[1])
+
+    # ---- Step 73: chart_patterns_features (35 cols) — Wave BG2 (2026-05-21) ----
+    # H&S, double top/bottom, triangle, wedge, flag, pennant, channel + aggregates.
+    # .shift(1)-safe inside module.
+    before_cp = f.shape[1]
+    try:
+        f = compute_chart_patterns_features(f, ticker=ticker)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "  [v10] chart_patterns_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in CHART_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_cp = f.shape[1] - before_cp
+    logger.info("  [v10] +chart_patterns: +%d cols -> %d total", added_cp, f.shape[1])
+
+    # ---- Step 74: regression_channels_features (12 cols) — Wave BG3 (2026-05-21) ----
+    # Rolling linreg ±2σ channels for N=20/50/100. .shift(1)-safe.
+    before_rc = f.shape[1]
+    try:
+        f = compute_regression_channels_features(f, ticker=ticker)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "  [v10] regression_channels_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in REGRESSION_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_rc = f.shape[1] - before_rc
+    logger.info("  [v10] +regression_channels: +%d cols -> %d total", added_rc, f.shape[1])
+
+    # ---- Step 75: auto_support_resistance_features (10 cols) — Wave BG4 (2026-05-21) ----
+    # Pivot-cluster S/R zone detection. .shift(1)-safe.
+    before_sr = f.shape[1]
+    try:
+        f = compute_auto_support_resistance_features(f, ticker=ticker)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "  [v10] auto_support_resistance_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in AUTO_SR_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_sr = f.shape[1] - before_sr
+    logger.info("  [v10] +auto_support_resistance: +%d cols -> %d total", added_sr, f.shape[1])
+
     # ---- Dedup + dropna on critical columns ----
     f = f.loc[:, ~f.columns.duplicated()]
     f = f.dropna(subset=["rsi_14", "atr_14", "ema_200", "fwd_ret_21d", "y"])
