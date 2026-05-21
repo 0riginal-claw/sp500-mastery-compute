@@ -925,6 +925,147 @@ except Exception as _tod_err:
             df["time_of_day_bucket"] = 2  # default mid-day fallback
         return df
 
+# ---------------------------------------------------------------------------
+# Quick-Wire Wave (2026-05-21) — 6 READY-but-UNWIRED modules
+# ---------------------------------------------------------------------------
+try:
+    from candlestick_features import (  # noqa: E402
+        add_candlestick_features,
+        feature_columns as _cdl_feature_columns,
+    )
+    CDL_AVAILABLE = True
+    CDL_FEATURE_NAMES = _cdl_feature_columns(include_rolling=True)
+    logger.info("[v10] candlestick_features loaded OK (%d cols)", len(CDL_FEATURE_NAMES))
+except Exception as _cdl_err:
+    logger.warning("[v10] candlestick_features not importable: %s — zeroing", _cdl_err)
+    CDL_AVAILABLE = False
+    CDL_FEATURE_NAMES = []
+    def add_candlestick_features(df, rolling_window=5, include_rolling=True):  # type: ignore[misc]
+        return df
+
+try:
+    from oc2_donchian_c003_features import add_oc2_donchian_c003_features  # noqa: E402
+    DONCH_C003_AVAILABLE = True
+    DONCH_C003_FEATURE_NAMES = [
+        "c003_donchian_upper20", "c003_donchian_lower40", "c003_atr14",
+        "c003_breakout_signal", "c003_session_bar_idx", "c003_opening_range_flag",
+        "c003_vol_confirm_flag", "c003_or_breakout", "c003_vol_breakout",
+        "c003_combined_signal", "c003_is_first_signal_day", "c003_atr_expansion",
+    ]
+    logger.info("[v10] oc2_donchian_c003_features loaded OK (12 cols)")
+except Exception as _dc003_err:
+    logger.warning("[v10] oc2_donchian_c003_features not importable: %s — 12 features zeroed", _dc003_err)
+    DONCH_C003_AVAILABLE = False
+    DONCH_C003_FEATURE_NAMES = [
+        "c003_donchian_upper20", "c003_donchian_lower40", "c003_atr14",
+        "c003_breakout_signal", "c003_session_bar_idx", "c003_opening_range_flag",
+        "c003_vol_confirm_flag", "c003_or_breakout", "c003_vol_breakout",
+        "c003_combined_signal", "c003_is_first_signal_day", "c003_atr_expansion",
+    ]
+    def add_oc2_donchian_c003_features(df, ticker=None, **kw):  # type: ignore[misc]
+        for c in DONCH_C003_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+try:
+    from oc2_donchian_mtf_features import add_oc2_donchian_mtf_features  # noqa: E402
+    DONCH_MTF_AVAILABLE = True
+    DONCH_MTF_FEATURE_NAMES = [
+        "mtf_donchian_upper20", "mtf_breakout_signal", "mtf_ema63_above",
+        "mtf_sma600_above", "mtf_three_tf_aligned", "mtf_vol_surge_flag",
+        "mtf_atr_expanding", "mtf_no_lunch_flag", "mtf_stacked_four_filter",
+        "mtf_adx14", "mtf_adx_gt25", "mtf_adx_gt20", "mtf_cmf21",
+        "mtf_cmf_positive", "mtf_mdd_composite", "mtf_n_filters_passing",
+    ]
+    logger.info("[v10] oc2_donchian_mtf_features loaded OK (16 cols)")
+except Exception as _dmtf_err:
+    logger.warning("[v10] oc2_donchian_mtf_features not importable: %s — 16 features zeroed", _dmtf_err)
+    DONCH_MTF_AVAILABLE = False
+    DONCH_MTF_FEATURE_NAMES = [
+        "mtf_donchian_upper20", "mtf_breakout_signal", "mtf_ema63_above",
+        "mtf_sma600_above", "mtf_three_tf_aligned", "mtf_vol_surge_flag",
+        "mtf_atr_expanding", "mtf_no_lunch_flag", "mtf_stacked_four_filter",
+        "mtf_adx14", "mtf_adx_gt25", "mtf_adx_gt20", "mtf_cmf21",
+        "mtf_cmf_positive", "mtf_mdd_composite", "mtf_n_filters_passing",
+    ]
+    def add_oc2_donchian_mtf_features(df, ticker=None, **kw):  # type: ignore[misc]
+        for c in DONCH_MTF_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+try:
+    from oc2_donchian_per_ticker_selectivity_features import (  # noqa: E402
+        add_oc2_donchian_per_ticker_selectivity_features,
+    )
+    DONCH_SEL_AVAILABLE = True
+    DONCH_SEL_FEATURE_NAMES = [
+        "sel_donchian20_upper", "sel_donchian20_lower", "sel_avg_atr14",
+        "sel_current_atr_vs_avg", "sel_win_rate_60d",
+        "sel_false_breakout_rate_60d", "sel_breakout_frequency_60d",
+        "sel_optimal_window", "sel_selectivity_score", "sel_is_high_selectivity",
+    ]
+    logger.info("[v10] oc2_donchian_per_ticker_selectivity_features loaded OK (10 cols)")
+except Exception as _dsel_err:
+    logger.warning("[v10] oc2_donchian_per_ticker_selectivity_features not importable: %s — 10 features zeroed", _dsel_err)
+    DONCH_SEL_AVAILABLE = False
+    DONCH_SEL_FEATURE_NAMES = [
+        "sel_donchian20_upper", "sel_donchian20_lower", "sel_avg_atr14",
+        "sel_current_atr_vs_avg", "sel_win_rate_60d",
+        "sel_false_breakout_rate_60d", "sel_breakout_frequency_60d",
+        "sel_optimal_window", "sel_selectivity_score", "sel_is_high_selectivity",
+    ]
+    def add_oc2_donchian_per_ticker_selectivity_features(df, ticker=None, **kw):  # type: ignore[misc]
+        for c in DONCH_SEL_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+try:
+    from py_market_profile_features import add_py_market_profile_features  # noqa: E402
+    PYMP_AVAILABLE = True
+    PYMP_FEATURE_NAMES = [
+        "pymp_poc_price", "pymp_value_area_high", "pymp_value_area_low",
+        "pymp_value_area_width_pct", "pymp_close_position_in_va",
+        "pymp_initial_balance_range_pct",
+    ]
+    logger.info("[v10] py_market_profile_features loaded OK (6 cols)")
+except Exception as _pymp_err:
+    logger.warning("[v10] py_market_profile_features not importable: %s — 6 features zeroed", _pymp_err)
+    PYMP_AVAILABLE = False
+    PYMP_FEATURE_NAMES = [
+        "pymp_poc_price", "pymp_value_area_high", "pymp_value_area_low",
+        "pymp_value_area_width_pct", "pymp_close_position_in_va",
+        "pymp_initial_balance_range_pct",
+    ]
+    def add_py_market_profile_features(df, ticker):  # type: ignore[misc]
+        for c in PYMP_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
+try:
+    from footprint_analyzer_features import add_footprint_features  # noqa: E402
+    FP_AVAILABLE = True
+    FP_FEATURE_NAMES = [
+        "fp_vol_concentration", "fp_bid_ask_imbalance",
+        "fp_support_level", "fp_resistance_level",
+    ]
+    logger.info("[v10] footprint_analyzer_features loaded OK (4 cols)")
+except Exception as _fp_err:
+    logger.warning("[v10] footprint_analyzer_features not importable: %s — 4 features zeroed", _fp_err)
+    FP_AVAILABLE = False
+    FP_FEATURE_NAMES = [
+        "fp_vol_concentration", "fp_bid_ask_imbalance",
+        "fp_support_level", "fp_resistance_level",
+    ]
+    def add_footprint_features(df, ticker, **kw):  # type: ignore[misc]
+        for c in FP_FEATURE_NAMES:
+            if c not in df.columns:
+                df[c] = 0.0
+        return df
+
 try:
     from gabriel_priors_features import (  # noqa: E402
         add_gabriel_priors_features,
@@ -2752,6 +2893,126 @@ except Exception as _xgbf_err:
 
 
 # ---------------------------------------------------------------------------
+# BIG-GAP Wave (2026-05-21): harmonic + chart + regression channels + auto S/R
+# ---------------------------------------------------------------------------
+# Helper BG1: harmonic_patterns_features (30 cols)
+# Source: external-repos/HarmonicPatterns (Djoffrey). Pure OHLC inputs.
+# .shift(1)-safe: all output series shifted 1 bar inside the module.
+try:
+    from harmonic_patterns_features import (  # noqa: E402
+        compute_harmonic_patterns_features,
+        HARMONIC_FEATURE_NAMES,
+        HARMONIC_FEATURE_COUNT,
+    )
+    logger.info("[v10] harmonic_patterns_features loaded OK")
+except Exception as _hp_err:  # noqa: BLE001
+    logger.warning(
+        "[v10] harmonic_patterns_features not importable: %s - 30 features zeroed",
+        _hp_err,
+    )
+    HARMONIC_FEATURE_COUNT = 30
+    HARMONIC_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        f"harmonic_{p}_{k}"
+        for p in ("gartley", "bat", "altbat", "butterfly", "crab",
+                  "deepcrab", "shark", "five_o", "cypher", "abcd")
+        for k in ("active", "PRZ_dist", "completion_pct")
+    ][:30]
+
+    def compute_harmonic_patterns_features(  # type: ignore[misc]
+        df, ticker=None, zigzag_period=13, err_allowed=0.08,
+    ):
+        for col in HARMONIC_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# Helper BG2: chart_patterns_features (35 cols)
+# Pure-python classical chart-pattern detectors (H&S, double top/bottom,
+# triangle, wedge, flag, pennant, channel) + aggregates.
+# .shift(1)-safe: all output series shifted 1 bar inside the module.
+try:
+    from chart_patterns_features import (  # noqa: E402
+        compute_chart_patterns_features,
+        CHART_FEATURE_NAMES,
+        CHART_FEATURE_COUNT,
+    )
+    logger.info("[v10] chart_patterns_features loaded OK")
+except Exception as _cp_err:  # noqa: BLE001
+    logger.warning(
+        "[v10] chart_patterns_features not importable: %s - 35 features zeroed",
+        _cp_err,
+    )
+    CHART_FEATURE_COUNT = 35
+    CHART_FEATURE_NAMES: list[str] = []  # type: ignore[no-redef]
+
+    def compute_chart_patterns_features(df, ticker=None):  # type: ignore[misc]
+        for col in CHART_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# Helper BG3: regression_channels_features (12 cols)
+# Rolling linear-regression ±2σ channels on log(close) for N=20/50/100.
+# .shift(1)-safe inside the module.
+try:
+    from regression_channels_features import (  # noqa: E402
+        compute_regression_channels_features,
+        REGRESSION_FEATURE_NAMES,
+        REGRESSION_FEATURE_COUNT,
+    )
+    logger.info("[v10] regression_channels_features loaded OK")
+except Exception as _rc_err:  # noqa: BLE001
+    logger.warning(
+        "[v10] regression_channels_features not importable: %s - 12 features zeroed",
+        _rc_err,
+    )
+    REGRESSION_FEATURE_COUNT = 12
+    REGRESSION_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        f"reg_channel_{k}_{w}"
+        for w in (20, 50, 100)
+        for k in ("slope", "width", "pos_pct", "breakout")
+    ]
+
+    def compute_regression_channels_features(df, ticker=None):  # type: ignore[misc]
+        for col in REGRESSION_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# Helper BG4: auto_support_resistance_features (10 cols)
+# Pivot-based S/R zone detection with proximity-clustering.
+# .shift(1)-safe inside the module.
+try:
+    from auto_support_resistance_features import (  # noqa: E402
+        compute_auto_support_resistance_features,
+        AUTO_SR_FEATURE_NAMES,
+        AUTO_SR_FEATURE_COUNT,
+    )
+    logger.info("[v10] auto_support_resistance_features loaded OK")
+except Exception as _sr_err:  # noqa: BLE001
+    logger.warning(
+        "[v10] auto_support_resistance_features not importable: %s - 10 features zeroed",
+        _sr_err,
+    )
+    AUTO_SR_FEATURE_COUNT = 10
+    AUTO_SR_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "auto_sr_above_dist", "auto_sr_below_dist",
+        "auto_sr_strength_above", "auto_sr_strength_below",
+        "auto_sr_n_levels", "auto_sr_above_age_bars", "auto_sr_below_age_bars",
+        "auto_sr_range_pct", "auto_sr_position_in_range", "auto_sr_breakout_score",
+    ]
+
+    def compute_auto_support_resistance_features(df, ticker=None):  # type: ignore[misc]
+        for col in AUTO_SR_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# ---------------------------------------------------------------------------
 # v10 feature builder
 # ---------------------------------------------------------------------------
 
@@ -3879,6 +4140,78 @@ def _build_v10_features_impl(
         "  [v10] +xgboost_features: +%d cols -> %d total", added_xgbf, f.shape[1]
     )
 
+    # ---- Step 66: candlestick_features (TA-Lib CDL patterns, ~188 cols) — Wave QW1 ----
+    before_cdl = f.shape[1]
+    try:
+        f = add_candlestick_features(f, rolling_window=5, include_rolling=True)
+    except Exception as exc:
+        logger.warning("  [v10] candlestick call failed (%s): %s — zeroing", ticker, exc)
+        for col in CDL_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0
+    added_cdl = f.shape[1] - before_cdl
+    logger.info("  [v10] +candlestick_features: +%d cols -> %d total", added_cdl, f.shape[1])
+
+    # ---- Step 67: oc2_donchian_c003 (cycle003 Donchian breakout, 12 cols) — Wave QW2 ----
+    before_dc003 = f.shape[1]
+    try:
+        f = add_oc2_donchian_c003_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning("  [v10] oc2_donchian_c003 call failed (%s): %s — zeroing", ticker, exc)
+        for col in DONCH_C003_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_dc003 = f.shape[1] - before_dc003
+    logger.info("  [v10] +oc2_donchian_c003: +%d cols -> %d total", added_dc003, f.shape[1])
+
+    # ---- Step 68: oc2_donchian_mtf (multi-TF Donchian + filter stack, 16 cols) — Wave QW3 ----
+    before_dmtf = f.shape[1]
+    try:
+        f = add_oc2_donchian_mtf_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning("  [v10] oc2_donchian_mtf call failed (%s): %s — zeroing", ticker, exc)
+        for col in DONCH_MTF_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_dmtf = f.shape[1] - before_dmtf
+    logger.info("  [v10] +oc2_donchian_mtf: +%d cols -> %d total", added_dmtf, f.shape[1])
+
+    # ---- Step 69: oc2_donchian_per_ticker_selectivity (per-ticker selectivity, 10 cols) — Wave QW4 ----
+    before_dsel = f.shape[1]
+    try:
+        f = add_oc2_donchian_per_ticker_selectivity_features(f, ticker=ticker)
+    except Exception as exc:
+        logger.warning("  [v10] oc2_donchian_selectivity call failed (%s): %s — zeroing", ticker, exc)
+        for col in DONCH_SEL_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_dsel = f.shape[1] - before_dsel
+    logger.info("  [v10] +oc2_donchian_selectivity: +%d cols -> %d total", added_dsel, f.shape[1])
+
+    # ---- Step 70: py_market_profile (TPO volume profile POC/VAH/VAL, 6 cols) — Wave QW5 ----
+    before_pymp = f.shape[1]
+    try:
+        f = add_py_market_profile_features(f, ticker)
+    except Exception as exc:
+        logger.warning("  [v10] py_market_profile call failed (%s): %s — zeroing", ticker, exc)
+        for col in PYMP_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_pymp = f.shape[1] - before_pymp
+    logger.info("  [v10] +py_market_profile: +%d cols -> %d total", added_pymp, f.shape[1])
+
+    # ---- Step 71: footprint_analyzer (volume profile + imbalance proxy, 4 cols) — Wave QW6 ----
+    before_fp = f.shape[1]
+    try:
+        f = add_footprint_features(f, ticker)
+    except Exception as exc:
+        logger.warning("  [v10] footprint_analyzer call failed (%s): %s — zeroing", ticker, exc)
+        for col in FP_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_fp = f.shape[1] - before_fp
+    logger.info("  [v10] +footprint_analyzer: +%d cols -> %d total", added_fp, f.shape[1])
+
     # ---- Dedup + dropna on critical columns ----
     f = f.loc[:, ~f.columns.duplicated()]
     f = f.dropna(subset=["rsi_14", "atr_14", "ema_200", "fwd_ret_21d", "y"])
@@ -3984,6 +4317,13 @@ def _build_v10_features_impl(
         "sec_edgar_stub_added": added_sef,
         "trading_indicators_stub_added": added_ti,
         "xgboost_features_added": added_xgbf,
+        # Wave QW (2026-05-21) — quick-wire 6 READY-but-UNWIRED modules
+        "candlestick_features_added": added_cdl,
+        "oc2_donchian_c003_added": added_dc003,
+        "oc2_donchian_mtf_added": added_dmtf,
+        "oc2_donchian_per_ticker_selectivity_added": added_dsel,
+        "py_market_profile_added": added_pymp,
+        "footprint_analyzer_added": added_fp,
         "total_after_dedup_dropna": f.shape[1],
     }
     return f, mythos_fallback_rows, module_feature_counts
@@ -4585,6 +4925,10 @@ def main() -> None:
     result = {
         "ticker": args.ticker,
         "strategy": args.strategy,
+        # 2026-05-21 multi-TF wire — keep result.json self-describing so
+        # mastery aggregator can bin by (strategy, timeframe) without
+        # cross-referencing run_meta.json.
+        "timeframe": args.timeframe,
         "strategy_variant": "ML_XGB_v10",
         "job_id": args.job_id,
         "pipeline_version": "xgb_v10",
