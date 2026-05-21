@@ -1,15 +1,15 @@
 {
-  "run_id": "26221562289",
+  "run_id": "26221563637",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T11:00:50.703621Z",
+  "timestamp": "2026-05-21T11:02:44.899619Z",
   "jobs": [
     {
-      "ticker": "NTRS",
-      "strategy": "MEAN_REV",
+      "ticker": "ADSK",
+      "strategy": "v10_xsec",
       "status": "ok",
-      "path": "backtests/NTRS/MEAN_REV/result.json"
+      "path": "backtests/ADSK/v10_xsec/result.json"
     }
   ]
 }
