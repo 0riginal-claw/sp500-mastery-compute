@@ -2,21 +2,33 @@
 mythos_features.py — OpenMythos financial embedding inference module.
 
 Public API:
-    compute_mythos_embedding(ticker, end_date) -> np.ndarray[256]
+    compute_mythos_embedding(ticker, end_date) -> np.ndarray[256] or np.ndarray[0]
 
 Environment variables:
     MYTHOS_CHECKPOINT_PATH  -- path to the trained checkpoint .pt file.
                                Defaults to the path in mythos_features_contract.json.
+    MYTHOS_DISABLED         -- if "1"/"true"/"yes" (default since 2026-05-21),
+                               disable the transformer entirely. The function
+                               returns an empty (0,) array and downstream feature
+                               builders skip the 256-col concat step. OpenClaw
+                               audit (2026-05-21) ranked Mythos #2 for removal —
+                               every training row was wasting 256 zero-fill cols
+                               with no signal added.
 
 Caching:
     Results are written to /tmp/mythos_emb_cache/<ticker>_<end_date>.npy.
     On re-call for the same (ticker, end_date) the cached array is returned
-    without a model forward pass.
+    without a model forward pass. Cache is bypassed when MYTHOS_DISABLED=1.
 
 Graceful degradation:
     If the checkpoint is missing or fails to load, a zero vector of shape (256,)
     is returned and a WARNING is logged. This prevents the XGBoost pipeline from
     crashing when the checkpoint is not yet available.
+
+Restoration:
+    To re-enable Mythos: set MYTHOS_DISABLED=0 in env (or unset). The on-disk
+    checkpoint + parquet cache are preserved at /tmp/mythos_emb_cache/ and
+    AI-Tools/s&p500-ticker-mastery/paper_trade/mythos_embeddings/ for rebuild.
 """
 
 from __future__ import annotations
@@ -31,6 +43,25 @@ from typing import Optional
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Master disable switch (2026-05-21, OpenClaw audit rank #2 — drop transformer)
+# ---------------------------------------------------------------------------
+# When True (default since 2026-05-21), compute_mythos_embedding returns an
+# empty array of shape (0,), signaling downstream feature builders to SKIP
+# the 256-col concat step. This frees those 256 columns for future wired
+# features (TabTransformer/FT-Transformer or backlog stubs).
+#
+# Override:
+#   export MYTHOS_DISABLED=0          # re-enable transformer (restoration)
+#   export MYTHOS_DISABLED=1          # explicit disable (matches default)
+_MYTHOS_DISABLED_RAW = os.environ.get("MYTHOS_DISABLED", "1").strip().lower()
+MYTHOS_DISABLED: bool = _MYTHOS_DISABLED_RAW in ("1", "true", "yes", "on")
+if MYTHOS_DISABLED:
+    logger.info(
+        "[mythos] MYTHOS_DISABLED=1 — transformer dropped per OC audit 2026-05-21; "
+        "emitting empty (0,) embeddings."
+    )
 
 # ---------------------------------------------------------------------------
 # Ensure open_mythos is importable (installed in external-repos/OpenMythos).
@@ -623,9 +654,14 @@ def compute_mythos_embedding(
 
     Example:
         >>> emb = compute_mythos_embedding("AAPL", "2024-03-15")
-        >>> assert emb.shape == (256,)
-        >>> assert emb.dtype == np.float32
+        >>> # default (MYTHOS_DISABLED=1): shape == (0,)
+        >>> # re-enabled (MYTHOS_DISABLED=0): shape == (256,), dtype float32
     """
+    # Master disable switch — return empty array so downstream concat sees
+    # zero new columns rather than 256 zero-fill columns.
+    if MYTHOS_DISABLED:
+        return np.zeros(0, dtype=np.float32)
+
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_file = CACHE_DIR / f"{ticker}_{end_date}.npy"
 
@@ -722,11 +758,17 @@ def compute_mythos_embedding(
 
 
 def get_feature_names() -> list[str]:
-    """Return the ordered list of 256 embedding feature names.
+    """Return the ordered list of embedding feature names.
+
+    When MYTHOS_DISABLED=1 (default since 2026-05-21), returns an empty list
+    so downstream feature builders emit zero Mythos columns. When re-enabled,
+    returns ["mythos_emb_0", ..., "mythos_emb_255"].
 
     Returns:
-        List of strings ["mythos_emb_0", ..., "mythos_emb_255"].
+        List of feature-name strings (length 0 when disabled, 256 when active).
     """
+    if MYTHOS_DISABLED:
+        return []
     return [f"mythos_emb_{i}" for i in range(EMBEDDING_DIM)]
 
 
@@ -746,8 +788,12 @@ def compute_mythos_embeddings_batch(
 
     Returns:
         np.ndarray of shape (N, 256) where N = len(ticker_date_pairs).
+        When MYTHOS_DISABLED=1 returns shape (N, 0) — caller's column concat
+        must tolerate empty column blocks (build_v9_features already does).
         Rows correspond to input order; failed rows are zeros.
     """
+    if MYTHOS_DISABLED:
+        return np.zeros((len(ticker_date_pairs), 0), dtype=np.float32)
     results = np.zeros((len(ticker_date_pairs), EMBEDDING_DIM), dtype=np.float32)
     for i, (ticker, end_date) in enumerate(ticker_date_pairs):
         results[i] = compute_mythos_embedding(
@@ -793,6 +839,11 @@ def compute_mythos_embedding_batch(
         >>> assert result["AAPL"].shape == (256,)
         >>> assert result["AAPL"].dtype == np.float32
     """
+    if MYTHOS_DISABLED:
+        # Master switch: return empty dict — caller treats missing tickers as
+        # "no embedding produced" and downstream concat sees zero new columns.
+        return {}
+
     import pandas as pd
     import torch
 
