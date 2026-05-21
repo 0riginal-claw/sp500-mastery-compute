@@ -1,15 +1,15 @@
 {
-  "run_id": "26224279694",
+  "run_id": "26224411491",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T11:59:44.250246Z",
+  "timestamp": "2026-05-21T12:01:05.200253Z",
   "jobs": [
     {
       "ticker": "AES",
-      "strategy": "VWAP",
+      "strategy": "MEAN_REV",
       "status": "ok",
-      "path": "backtests/AES/VWAP/result.json"
+      "path": "backtests/AES/MEAN_REV/result.json"
     }
   ]
 }
