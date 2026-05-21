@@ -1895,12 +1895,23 @@ def _submit_mac_local(job: Job, dry_run: bool = False,
 
     python = cfg.get("python_bin",
                      "/Users/orginal/.venvs/sp500-mastery/bin/python")
+    # Canonical output dir = RESULTS_DIR / <ticker> / <strategy>; backtest_xgb_v10
+    # requires --output-dir / --out-dir (one-of, required) and writes result.json
+    # there. Prior to 2026-05-21 this arg was omitted and every mac_local job
+    # died at argparse with "one of the arguments --output-dir --out-dir is
+    # required", producing 87k+ completion_poll_timeout failures (1h each).
+    # Fix: derive from RESULTS_DIR + job.ticker + job.strategy and mkdir before
+    # spawn so the worker can write result.json into the path the completion
+    # poller checks (Job.result_file()).
+    output_dir = RESULTS_DIR / job.ticker / job.strategy
+    output_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
         python,
         str(PROJECT_ROOT / job.script),
         "--ticker",   job.ticker,
         "--strategy", job.strategy,
         "--job-id",   job.job_id,
+        "--output-dir", str(output_dir),
     ]
 
     if dry_run:
