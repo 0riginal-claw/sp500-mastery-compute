@@ -247,6 +247,19 @@ def _run_backtest_local(
 # ---------------------------------------------------------------------------
 if _MODAL_AVAILABLE and app is not None:
 
+    # Tier-S #7 (2026-05-21): Memory Snapshots + keep_warm pool.
+    # - enable_memory_snapshot=True: Modal snapshots the post-import CPU/RAM
+    #   state of the container and forks future cold starts from it (3-10x
+    #   faster cold-start; cuts the ~6-8s import cost of xgboost/sklearn/pandas).
+    # - min_containers=2: keeps 2 warm containers idle so fan-out bursts hit
+    #   warm pool first (zero cold-start latency for the first 2 jobs).
+    # - scaledown_window=300: idle containers live 5 min before scaledown,
+    #   amortizing warm-pool cost across bursty sweeps. (Modal SDK ≥0.74:
+    #   `container_idle_timeout` was renamed to `scaledown_window` and
+    #   `keep_warm` was renamed to `min_containers`.)
+    # If the running Modal SDK doesn't support these knobs, the decorator
+    # call will TypeError at import time — fail-loud is desired so the
+    # operator sees the SDK-version mismatch immediately.
     @app.function(
         cpu=1.0,
         memory=768,          # MB — our jobs use ~200 MB; headroom for imports
@@ -256,6 +269,10 @@ if _MODAL_AVAILABLE and app is not None:
             backoff_coefficient=2.0,
             initial_delay=5.0,
         ),
+        # Tier-S #7: memory snapshot + warm pool
+        enable_memory_snapshot=True,
+        min_containers=2,
+        scaledown_window=300,
         # NOTE: mounts=[] was removed in Modal 1.x.  Local code is now bundled
         # into the image via .add_local_dir() above; no mounts= needed here.
         #
