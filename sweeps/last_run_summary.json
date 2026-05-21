@@ -1,15 +1,15 @@
 {
-  "run_id": "26254697086",
+  "run_id": "26254698558",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T21:46:08.704839Z",
+  "timestamp": "2026-05-21T21:47:51.818167Z",
   "jobs": [
     {
-      "ticker": "PHM",
-      "strategy": "v10_xsec",
+      "ticker": "APO",
+      "strategy": "ORB",
       "status": "ok",
-      "path": "backtests/PHM/v10_xsec/result.json"
+      "path": "backtests/APO/ORB/result.json"
     }
   ]
 }
