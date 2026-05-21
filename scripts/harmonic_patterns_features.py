@@ -93,6 +93,22 @@ try:
         sys.modules["talib"] = _types.ModuleType("talib")
         sys.modules["talib.abstract"] = _stub_ta
 
+    # Stub IPython if absent (upstream has a leftover `from IPython.core.debugger import set_trace`)
+    try:
+        importlib.import_module("IPython.core.debugger")
+    except ImportError:
+        import types as _types
+        _ipy = _types.ModuleType("IPython")
+        _ipy_core = _types.ModuleType("IPython.core")
+        _ipy_dbg = _types.ModuleType("IPython.core.debugger")
+
+        def _noop_set_trace(*a, **kw):  # pragma: no cover
+            return None
+        _ipy_dbg.set_trace = _noop_set_trace
+        sys.modules["IPython"] = _ipy
+        sys.modules["IPython.core"] = _ipy_core
+        sys.modules["IPython.core.debugger"] = _ipy_dbg
+
     try:
         from harmonic_functions import HarmonicDetector  # noqa: E402
         _HP_AVAILABLE = True
