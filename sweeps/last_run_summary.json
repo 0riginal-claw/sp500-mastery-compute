@@ -1,15 +1,15 @@
 {
-  "run_id": "26215889581",
+  "run_id": "26215888187",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T09:56:18.169347Z",
+  "timestamp": "2026-05-21T09:57:09.913298Z",
   "jobs": [
     {
-      "ticker": "AAPL",
+      "ticker": "NVDA",
       "strategy": "v10",
       "status": "ok",
-      "path": "backtests/AAPL/v10/result.json"
+      "path": "backtests/NVDA/v10/result.json"
     }
   ]
 }
