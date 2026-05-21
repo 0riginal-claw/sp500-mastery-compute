@@ -1,15 +1,15 @@
 {
-  "run_id": "26248806438",
+  "run_id": "26251787694",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T19:49:26.563389Z",
+  "timestamp": "2026-05-21T20:45:19.774592Z",
   "jobs": [
     {
-      "ticker": "PEG",
+      "ticker": "PFG",
       "strategy": "VWAP",
       "status": "ok",
-      "path": "backtests/PEG/VWAP/result.json"
+      "path": "backtests/PFG/VWAP/result.json"
     }
   ]
 }
