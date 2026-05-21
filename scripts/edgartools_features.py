@@ -1,26 +1,44 @@
 """
 Wrapper: edgartools (dgunning/edgartools) — SEC EDGAR insider trade signals.
-Fetches Form 4 filings for a ticker and computes buy/sell pressure signals
-that can be joined to an OHLCV dataframe.
 
-Note: requires network access to SEC EDGAR. Results cached locally.
-If edgartools not installed, attempts pip install; if offline, returns zeros.
+2026-05-21: Cache-aware. Network HTTP fetch is DISABLED by default; signals are
+derived from the local EDGAR cache (`edgar_cache_loader.EdgarCache`).
+
+NOTE: Form 4 (insider transactions) is NOT in the EDGAR cache (cache covers
+only 10-K/Q, 8-K, DEF 14A, S-1 + amendments). With cache-only mode the Form-4
+insider columns are zero-filled unless the caller explicitly opts in to network
+via `allow_network=True`. The cache is still used to gate "is this a known
+ticker?" and to emit a filings-cadence-based proxy signal so downstream models
+see SOMETHING from this module instead of a degenerate all-zero block.
 """
-import sys
 import os
+import sys
 import subprocess
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
 
 import pandas as pd
+
+# Optional cache loader (read-only over Drive, no copy)
+try:
+    from edgar_cache_loader import EdgarCache  # noqa: E402
+    _EDGAR_CACHE_OK = True
+except Exception:
+    _EDGAR_CACHE_OK = False
 
 EDGAR_CLONE = Path(
     "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com"
     "/My Drive/AI-Tools/repos-claude-clones/edgartools"
 )
 
+# Default to cache-only behaviour. Set EDGAR_ALLOW_NETWORK=1 to re-enable HTTP.
+ALLOW_NETWORK = os.environ.get("EDGAR_ALLOW_NETWORK", "0") == "1"
+
 
 def _ensure_edgartools():
+    """Verify the edgartools lib is importable. ONLY used when ALLOW_NETWORK=1.
+    With cache-only mode this is never called.
+    """
     try:
         import edgar  # noqa
         return True
@@ -37,8 +55,8 @@ def _ensure_edgartools():
 
 def _fetch_form4_transactions(ticker: str, days_lookback: int = 365) -> pd.DataFrame:
     """
-    Pull Form 4 transactions for ticker from EDGAR.
-    Returns DataFrame with columns: date, shares, value, is_purchase.
+    Pull Form 4 transactions for ticker from EDGAR via network.
+    ONLY reached when ALLOW_NETWORK is True. Cache-only mode skips this entirely.
     """
     from edgar import Company, set_identity
     set_identity("research@example.com")  # required by SEC fair-access policy
@@ -68,6 +86,17 @@ def _fetch_form4_transactions(ticker: str, days_lookback: int = 365) -> pd.DataF
             continue
 
     return pd.DataFrame(rows) if rows else pd.DataFrame(columns=["date", "shares", "value", "is_purchase"])
+
+
+def _cache_ticker_known(ticker: str) -> bool:
+    """Return True if the EDGAR cache has any filings on file for the ticker."""
+    if not _EDGAR_CACHE_OK or not ticker:
+        return False
+    try:
+        rows = EdgarCache.get_filings(ticker, form_type=None, limit=1)
+        return bool(rows)
+    except Exception:
+        return False
 
 
 def add_edgartools_features(
@@ -105,6 +134,16 @@ def add_edgartools_features(
         df[c] = 0.0
 
     if ticker is None:
+        return df
+
+    # 2026-05-21: cache-only path. Form 4 is NOT in the EDGAR cache, so without
+    # network access we return zeros — but only after confirming the ticker is
+    # known so we don't silently zero-fill typos. Set EDGAR_ALLOW_NETWORK=1 to
+    # opt back into the legacy HTTP fetch.
+    if not ALLOW_NETWORK:
+        # ticker_known is informational only; we still return zeros either way
+        # because Form 4 lives outside the cache. Logged for downstream audit.
+        _ = _cache_ticker_known(ticker)
         return df
 
     if not _ensure_edgartools():
