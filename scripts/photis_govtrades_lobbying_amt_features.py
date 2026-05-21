@@ -34,7 +34,8 @@ GOVTRADES_DB_DRIVE = (
     "GoogleDrive-zachgladstone@gmail.com/My Drive/"
     "Ph0tis/Gov-Trades/data/govtrades.db"
 )
-GOVTRADES_DB_LOCAL = "/tmp/govtrades_lobbying_amt_features.db"
+# 2026-05-21: NO /tmp copy — read-only URI direct over Drive.
+GOVTRADES_DB_LOCAL = GOVTRADES_DB_DRIVE
 
 FEATURE_NAMES: list[str] = [
     "gt_lob_amt_30d_usd",
@@ -46,44 +47,25 @@ _lob_amt_cache: dict[str, pd.DataFrame] = {}
 
 
 def _ensure_local_db() -> bool:
-    if os.path.exists(GOVTRADES_DB_LOCAL):
-        try:
-            with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
-                con.execute("SELECT COUNT(*) FROM lobbying").fetchone()
-            return True
-        except Exception:
-            try:
-                os.remove(GOVTRADES_DB_LOCAL)
-            except OSError:
-                pass
-
+    """2026-05-21: direct read-only URI over Drive, no /tmp copy."""
     if not os.path.exists(GOVTRADES_DB_DRIVE):
         logger.warning("[gt_lob_amt] source DB missing: %s", GOVTRADES_DB_DRIVE)
         return False
-
     try:
-        src = sqlite3.connect(f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=30.0)
-        dst = sqlite3.connect(GOVTRADES_DB_LOCAL)
-        with dst:
-            src.backup(dst)
-        src.close()
-        dst.close()
+        with sqlite3.connect(
+            f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
+        ) as con:
+            con.execute("SELECT 1 FROM lobbying LIMIT 1").fetchone()
         return True
     except Exception as e:
-        logger.warning("[gt_lob_amt] sqlite-backup failed: %s — trying shutil", e)
-
-    try:
-        shutil.copy2(GOVTRADES_DB_DRIVE, GOVTRADES_DB_LOCAL)
-        for sfx in ("-wal", "-shm"):
-            side = GOVTRADES_DB_DRIVE + sfx
-            if os.path.exists(side):
-                shutil.copy2(side, GOVTRADES_DB_LOCAL + sfx)
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
-            con.execute("SELECT COUNT(*) FROM lobbying").fetchone()
-        return True
-    except Exception as e:
-        logger.warning("[gt_lob_amt] all copy strategies failed: %s", e)
+        logger.warning("[gt_lob_amt] read-only probe failed: %s", e)
         return False
+
+
+def _ro_connect():
+    return sqlite3.connect(
+        f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
+    )
 
 
 def _load_lobbying(ticker: str) -> pd.DataFrame:
@@ -93,7 +75,7 @@ def _load_lobbying(ticker: str) -> pd.DataFrame:
         _lob_amt_cache[ticker] = pd.DataFrame()
         return _lob_amt_cache[ticker]
     try:
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
+        with _ro_connect() as con:
             df = pd.read_sql_query(
                 "SELECT date, amount FROM lobbying WHERE ticker = ?",
                 con,
