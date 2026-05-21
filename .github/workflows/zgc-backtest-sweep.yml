@@ -1,0 +1,171 @@
+name: ZGC Backtest Sweep (matrix)
+
+# Move per-ticker backtest compute OFF the Mac mini onto GitHub Actions
+# (FREE for public repos — unlimited Linux minutes).
+#
+# Strategy matrix shards 500 tickers × strategies × hyperparams into parallel
+# jobs. Triggered on push to a chosen branch, scheduled, or manually.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: 'Comma-separated ticker list (or "ALL" for the S&P 500)'
+        default: 'AAPL,MSFT,NVDA,GOOGL,AMZN'
+        required: true
+      strategies:
+        description: 'Comma-separated strategies'
+        default: 'orb,vwap,momentum,catalyst,xgb'
+        required: true
+      timeframe:
+        description: 'Timeframe (1d, 1h, 5m, 1m)'
+        default: '5m'
+        required: true
+  schedule:
+    # Daily at 02:00 UTC (after market close)
+    - cron: '0 2 * * *'
+
+# Hard cap on parallelism; GH Actions free tier = 20 concurrent jobs
+concurrency:
+  group: zgc-backtest-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prep:
+    name: Prepare ticker shards
+    runs-on: ubuntu-latest
+    outputs:
+      tickers: ${{ steps.shard.outputs.tickers }}
+      strategies: ${{ steps.shard.outputs.strategies }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shard tickers + strategies
+        id: shard
+        run: |
+          set -euo pipefail
+          # Build JSON arrays for the matrix
+          INPUT_T="${{ github.event.inputs.tickers || 'AAPL,MSFT,NVDA,GOOGL,AMZN' }}"
+          INPUT_S="${{ github.event.inputs.strategies || 'orb,vwap,momentum,catalyst,xgb' }}"
+
+          if [ "$INPUT_T" = "ALL" ]; then
+            # Expand to S&P 500 list (read from repo if present, else fallback)
+            if [ -f scripts/sp500_tickers.txt ]; then
+              TICKERS_JSON=$(python3 -c "import json; print(json.dumps([l.strip() for l in open('scripts/sp500_tickers.txt') if l.strip()]))")
+            else
+              TICKERS_JSON='["AAPL","MSFT","NVDA","GOOGL","AMZN","META","TSLA","BRK.B","UNH","JNJ"]'
+            fi
+          else
+            TICKERS_JSON=$(python3 -c "import json,sys; t='$INPUT_T'.split(','); print(json.dumps([x.strip() for x in t if x.strip()]))")
+          fi
+
+          STRATEGIES_JSON=$(python3 -c "import json,sys; s='$INPUT_S'.split(','); print(json.dumps([x.strip() for x in s if x.strip()]))")
+
+          echo "tickers=$TICKERS_JSON" >> "$GITHUB_OUTPUT"
+          echo "strategies=$STRATEGIES_JSON" >> "$GITHUB_OUTPUT"
+          echo "TICKERS shape: $TICKERS_JSON"
+          echo "STRATEGIES shape: $STRATEGIES_JSON"
+
+  backtest:
+    name: Backtest ${{ matrix.ticker }} × ${{ matrix.strategy }}
+    needs: prep
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        ticker: ${{ fromJSON(needs.prep.outputs.tickers) }}
+        strategy: ${{ fromJSON(needs.prep.outputs.strategies) }}
+    env:
+      TIMEFRAME: ${{ github.event.inputs.timeframe || '5m' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install requirements
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # Common backtest deps
+          pip install --quiet pandas numpy yfinance scikit-learn xgboost pyarrow
+      - name: Run backtest
+        id: bt
+        run: |
+          set -euo pipefail
+          TICKER="${{ matrix.ticker }}"
+          STRAT="${{ matrix.strategy }}"
+          mkdir -p artifacts
+          OUT="artifacts/${STRAT}_${TICKER}_${TIMEFRAME}.json"
+
+          # Pick the script to run based on strategy
+          case "$STRAT" in
+            orb) SCRIPT="scripts/orb_${STRAT}_backtest.py" ;;
+            vwap) SCRIPT="scripts/vwap_${STRAT}_backtest.py" ;;
+            momentum) SCRIPT="scripts/momentum_${STRAT}_backtest.py" ;;
+            catalyst) SCRIPT="scripts/catalyst_${STRAT}_backtest.py" ;;
+            xgb) SCRIPT="scripts/backtest_xgb_v10.py" ;;
+            *) SCRIPT="scripts/backtest_${STRAT}.py" ;;
+          esac
+
+          if [ ! -f "$SCRIPT" ]; then
+            echo "WARN: script $SCRIPT not in repo — running smoke stub"
+            python3 -c "import json,sys; json.dump({'ticker':'$TICKER','strategy':'$STRAT','timeframe':'$TIMEFRAME','status':'stub','note':'script missing — wire $SCRIPT to enable'},open('$OUT','w'))"
+            exit 0
+          fi
+
+          python3 "$SCRIPT" --ticker "$TICKER" --timeframe "$TIMEFRAME" --out "$OUT" || {
+            echo "FAILED $TICKER × $STRAT" >&2
+            python3 -c "import json; json.dump({'ticker':'$TICKER','strategy':'$STRAT','timeframe':'$TIMEFRAME','status':'failed'},open('$OUT','w'))"
+          }
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-${{ matrix.strategy }}-${{ matrix.ticker }}
+          path: artifacts/*.json
+          retention-days: 7
+
+  aggregate:
+    name: Aggregate results
+    needs: backtest
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all_artifacts
+      - name: Aggregate to single CSV
+        run: |
+          mkdir -p aggregated
+          python3 <<'PY'
+          import os, json, csv, glob, pathlib
+          rows = []
+          for p in glob.glob("all_artifacts/**/*.json", recursive=True):
+              try:
+                  d = json.load(open(p))
+                  rows.append(d)
+              except Exception as e:
+                  print(f"skip {p}: {e}")
+          if rows:
+              keys = sorted({k for r in rows for k in r.keys()})
+              with open("aggregated/results.csv","w",newline="") as f:
+                  w = csv.DictWriter(f, fieldnames=keys)
+                  w.writeheader()
+                  for r in rows: w.writerow(r)
+              print(f"aggregated {len(rows)} rows -> aggregated/results.csv")
+          else:
+              print("no rows to aggregate")
+          PY
+      - name: Upload aggregated CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: aggregated-results
+          path: aggregated/results.csv
+          retention-days: 30
