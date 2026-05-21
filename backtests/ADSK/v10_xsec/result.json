@@ -2,7 +2,7 @@
   "ticker": "ADSK",
   "strategy": "v10_xsec",
   "strategy_variant": "ML_XGB_v10",
-  "job_id": "43a3b5c6",
+  "job_id": "29aade54",
   "pipeline_version": "xgb_v10",
   "features_total": 1379,
   "rows": 1034,
