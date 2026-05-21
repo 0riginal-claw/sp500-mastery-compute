@@ -43,7 +43,9 @@ GOVTRADES_DB_DRIVE = (
     "GoogleDrive-zachgladstone@gmail.com/My Drive/"
     "Ph0tis/Gov-Trades/data/govtrades.db"
 )
-GOVTRADES_DB_LOCAL = "/tmp/govtrades_wave_a.db"
+# 2026-05-21: NO local copy — read SQLite directly over Drive in read-only URI
+# mode. Prior /tmp copy via sqlite3.backup() deadlocked on Drive-FUSE.
+GOVTRADES_DB_LOCAL = GOVTRADES_DB_DRIVE  # retained for back-compat with callers
 
 GOVTRADES_FEATURE_NAMES: list[str] = [
     "congress_trade_density_5d",
@@ -58,68 +60,29 @@ _lob_cache: dict[str, np.ndarray] = {}
 
 
 def _ensure_local_db() -> bool:
-    """Copy govtrades.db to /tmp once per process using SQLite's online backup
-    API. Returns True if local copy exists and is queryable.
-
-    Falls back to shutil.copy2 + WAL/SHM sidecar copy if backup() fails.
-    A raw shutil.copy2 of a WAL-mode DB without its sidecars can produce a
-    "database disk image is malformed" error on read, so we attempt the safer
-    path first.
+    """Verify the Drive-resident SQLite is reachable for read-only access.
+    2026-05-21: switched from /tmp copy to direct read-only URI over Drive.
+    Returns True if a probe query succeeds; False otherwise (graceful fallback).
     """
-    if os.path.exists(GOVTRADES_DB_LOCAL):
-        # Verify it's queryable; if not, force re-copy.
-        try:
-            with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
-                con.execute("SELECT COUNT(*) FROM congress_trades").fetchone()
-            return True
-        except Exception:
-            try:
-                os.remove(GOVTRADES_DB_LOCAL)
-            except OSError:
-                pass
-
     if not os.path.exists(GOVTRADES_DB_DRIVE):
         logger.warning("[govtrades] source DB missing: %s", GOVTRADES_DB_DRIVE)
         return False
-
-    # --- Try SQLite online backup API (resilient to WAL) ---
     try:
-        src = sqlite3.connect(f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=30.0)
-        dst = sqlite3.connect(GOVTRADES_DB_LOCAL)
-        with dst:
-            src.backup(dst)
-        src.close()
-        dst.close()
-        # Sanity probe
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
-            con.execute("SELECT COUNT(*) FROM congress_trades").fetchone()
-        logger.info("[govtrades] sqlite-backup -> %s OK", GOVTRADES_DB_LOCAL)
+        with sqlite3.connect(
+            f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
+        ) as con:
+            con.execute("SELECT 1 FROM congress_trades LIMIT 1").fetchone()
         return True
     except Exception as e:
-        logger.warning("[govtrades] sqlite-backup failed (%s) — trying shutil+wal", e)
-
-    # --- Fallback: copy DB + WAL + SHM sidecars (best effort) ---
-    try:
-        shutil.copy2(GOVTRADES_DB_DRIVE, GOVTRADES_DB_LOCAL)
-        for sfx in ("-wal", "-shm"):
-            src_side = GOVTRADES_DB_DRIVE + sfx
-            if os.path.exists(src_side):
-                try:
-                    shutil.copy2(src_side, GOVTRADES_DB_LOCAL + sfx)
-                except Exception as ee:
-                    logger.debug("[govtrades] sidecar %s copy skipped: %s", sfx, ee)
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0) as con:
-            con.execute("SELECT COUNT(*) FROM congress_trades").fetchone()
-        logger.info("[govtrades] shutil-copy+wal -> %s OK", GOVTRADES_DB_LOCAL)
-        return True
-    except Exception as e:
-        logger.warning("[govtrades] all copy strategies failed: %s", e)
-        # Wipe broken /tmp file
-        try:
-            os.remove(GOVTRADES_DB_LOCAL)
-        except OSError:
-            pass
+        logger.warning("[govtrades] read-only probe failed: %s", e)
         return False
+
+
+def _ro_connect():
+    """Return a fresh read-only connection to the Drive SQLite."""
+    return sqlite3.connect(
+        f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
+    )
 
 
 def _classify_tx(tx_type: str) -> int:
@@ -144,7 +107,7 @@ def _load_congress(ticker: str) -> tuple[np.ndarray, np.ndarray]:
         _ct_cache[ticker] = (np.array([], dtype=np.int64), np.array([], dtype=np.int8))
         return _ct_cache[ticker]
     try:
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=30.0) as con:
+        with _ro_connect() as con:
             df = pd.read_sql_query(
                 "SELECT transaction_date, transaction_type FROM congress_trades WHERE ticker = ?",
                 con,
@@ -175,7 +138,7 @@ def _load_lobbying(ticker: str) -> np.ndarray:
         _lob_cache[ticker] = np.array([], dtype=np.int64)
         return _lob_cache[ticker]
     try:
-        with sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=30.0) as con:
+        with _ro_connect() as con:
             df = pd.read_sql_query(
                 "SELECT date FROM lobbying WHERE ticker = ?", con, params=(ticker,)
             )
