@@ -610,8 +610,27 @@ def update_memory_index() -> bool:
 
 
 # ----------------------------- main ------------------------------------------
+def _write_heartbeat(status: str = "running") -> None:
+    """Atomic heartbeat write (six-fail-fix F7 — 2026-05-20)."""
+    try:
+        import tempfile
+        hb_dir = AI_ROOT / "state" / "memory_auto_save"
+        hb_dir.mkdir(parents=True, exist_ok=True)
+        hb = hb_dir / "heartbeat.json"
+        import time as _t
+        import json as _j
+        payload = _j.dumps({"ts": int(_t.time()), "pid": os.getpid(), "status": status})
+        with tempfile.NamedTemporaryFile(dir=str(hb_dir), delete=False, mode="w") as tmp:
+            tmp.write(payload)
+            tmp_path = tmp.name
+        os.replace(tmp_path, hb)
+    except Exception:
+        pass
+
+
 def main() -> int:
     log.info("memory_auto_save start (pid=%d)", os.getpid())
+    _write_heartbeat("start")
     results = {
         "per_ticker_best": False,
         "pacing_history": False,
@@ -640,6 +659,7 @@ def main() -> int:
     except Exception as e:
         log.exception("memory_index failed: %s", e)
     log.info("memory_auto_save done — %s", results)
+    _write_heartbeat("done")
     return 0
 
 
