@@ -82,14 +82,21 @@ def _get_cache_b_loader():
 
 
 def _load_daily_cache_b(ticker: str) -> pd.DataFrame:
-    """Load daily OHLCV from Cache B (Alpaca 5yr GOLD) via ohlcv_loader.
+    """Load OHLCV from Cache B (Alpaca 5yr GOLD) via ohlcv_loader.
+
+    2026-05-21 (multi-TF wire): the timeframe is now selectable via
+    BACKTEST_TIMEFRAME env var (default "1Day" for backward compat). All 10
+    TFs supported: 1Min, 5Min, 15Min, 30Min, 45Min, 1Hour, 4Hour, 8Hour,
+    12Hour, 1Day. Higher-level callers (backtest_xgb_v10.main) set the env
+    var from their `--timeframe` CLI arg before calling build_v10_features().
 
     Returns the same shape as _load_daily_yfinance(): columns
     [open, high, low, close, volume], tz-naive DatetimeIndex 'timestamp'.
     Internal fallbacks (handled by OhlcvLoader): yfinance_5yr local parquet,
-    then yfinance network.
+    then yfinance network (only kicks in when TF == "1Day").
     """
-    return _get_cache_b_loader().load(ticker, timeframe="1Day")
+    tf = os.environ.get("BACKTEST_TIMEFRAME", "1Day").strip() or "1Day"
+    return _get_cache_b_loader().load(ticker, timeframe=tf)
 
 
 def _load_daily_yfinance(ticker: str) -> pd.DataFrame:
