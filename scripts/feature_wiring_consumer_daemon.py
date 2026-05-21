@@ -1447,13 +1447,18 @@ def _read_one(path: str):  # -> Optional[pd.DataFrame]
     # fallback. Bench (30 files, 272MB): pandas=4.93s -> polars->pandas=1.93s
     # (2.55x speedup). All downstream consumers see pd.DataFrame, zero API
     # change. If polars import fails, falls back to pandas transparently.
+    # Drop polars-injected __index_level_*__ cols to match pandas shape.
     if pd is None:
         return None
     try:
         if path.endswith(".parquet"):
             try:
                 import polars as _pl  # type: ignore[import-not-found]
-                return _pl.read_parquet(path).to_pandas(use_pyarrow_extension_array=False)
+                _df = _pl.read_parquet(path).to_pandas(use_pyarrow_extension_array=False)
+                _drop = [c for c in _df.columns if str(c).startswith("__index_level_")]
+                if _drop:
+                    _df = _df.drop(columns=_drop)
+                return _df
             except Exception:  # noqa: BLE001
                 return pd.read_parquet(path)
         if path.endswith(".csv"):
