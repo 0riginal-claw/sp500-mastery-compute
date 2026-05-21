@@ -68,10 +68,26 @@ FRED_SERIES = {
 }
 
 
-def fetch_series(sid: str, start: str) -> pd.DataFrame:
+def fetch_series(sid: str, start: str, retries: int = 3) -> pd.DataFrame:
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}&cosd={start}"
-    r = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0 sp500-mastery/1.0"})
-    r.raise_for_status()
+    last = None
+    for attempt in range(retries):
+        try:
+            r = requests.get(
+                url,
+                timeout=(30, 90),  # (connect, read)
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "text/csv,*/*",
+                },
+            )
+            r.raise_for_status()
+            break
+        except Exception as e:
+            last = e
+            time.sleep(2 ** attempt)
+    else:
+        raise last  # pragma: no cover
     df = pd.read_csv(io.StringIO(r.text))
     # Schema: observation_date,<SID>   (or DATE,<SID> historically)
     date_col = "observation_date" if "observation_date" in df.columns else df.columns[0]
