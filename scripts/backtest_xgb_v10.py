@@ -53,6 +53,26 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 # ---------------------------------------------------------------------------
+# purgedcv - Lopez de Prado purged K-Fold + embargo diagnostics (wired 2026-05-21)
+# Backtest integrity: assert no temporal leakage between train/oos folds and
+# enforce LABEL_EMBARGO_DAYS embargo gap (already applied in train_end_emb).
+# Soft-import: degrades to no-op if purgedcv missing. pypbo (Probability of
+# Backtest Overfitting) is GitHub-only / no setup.py -> not installable; use
+# purgedcv.deflated_sharpe_ratio + probabilistic_sharpe_ratio as replacement.
+# ---------------------------------------------------------------------------
+try:
+    from purgedcv import PurgedKFold as _PurgedKFold  # noqa: F401
+    from purgedcv.diagnostics import (
+        assert_no_temporal_leakage as _pcv_assert_no_leak,
+        assert_embargo_respected as _pcv_assert_embargo,
+    )
+    _PURGEDCV_AVAILABLE = True
+except ImportError:
+    _PURGEDCV_AVAILABLE = False
+    _pcv_assert_no_leak = None
+    _pcv_assert_embargo = None
+
+# ---------------------------------------------------------------------------
 # Path setup
 # ---------------------------------------------------------------------------
 
@@ -3013,6 +3033,75 @@ except Exception as _sr_err:  # noqa: BLE001
 
 
 # ---------------------------------------------------------------------------
+# OC-AUDIT Wave (2026-05-21): sector aggregate + market regime HMM (5-state)
+# ---------------------------------------------------------------------------
+# Helper OC4: sector_aggregate_features (60 cols)
+# Pools same-bar features across all S&P500 tickers in same GICS sector and
+# emits sector_<f>_mean / sector_<f>_std / ticker_vs_sector_<f>_z for the
+# top-20 importance-weighted technical features. .shift(1)-safe inside module.
+try:
+    from sector_aggregate_features import (  # noqa: E402
+        compute_sector_aggregate_features,
+        SECTOR_FEATURE_NAMES,
+        SECTOR_FEATURE_COUNT,
+    )
+    logger.info("[v10] sector_aggregate_features loaded OK (%d cols)", SECTOR_FEATURE_COUNT)
+except Exception as _sa_err:  # noqa: BLE001
+    logger.warning(
+        "[v10] sector_aggregate_features not importable: %s - 60 features zeroed",
+        _sa_err,
+    )
+    SECTOR_FEATURE_COUNT = 60
+    _SECTOR_CORE_FEATS = (
+        "ret_1d", "ret_5d", "ret_21d", "ret_63d",
+        "rsi_14", "rsi_21", "atr_14", "atr_pct",
+        "adx_14", "cci_20", "bb_pct", "bb_width",
+        "vol_ratio", "ema_5_gt_ema_20", "macd_hist",
+        "ema_20", "ema_50", "ema_200", "close", "vol_sma_20",
+    )
+    SECTOR_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        f"{prefix}{f}{suffix}"
+        for f in _SECTOR_CORE_FEATS
+        for prefix, suffix in (("sector_", "_mean"), ("sector_", "_std"), ("ticker_vs_sector_", "_z"))
+    ]
+
+    def compute_sector_aggregate_features(df, ticker=None):  # type: ignore[misc]
+        for col in SECTOR_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 0.0
+        return df
+
+
+# Helper OC5: market_regime_hmm_features (7 cols = 1 state + 5 probs + persistence)
+# 5-state GaussianHMM on (log VIX 21d MA, cross-sectional vol, sector pair-corr).
+# Strict .shift(1) on the observation series — no same-bar macro leakage.
+try:
+    from market_regime_hmm_features import (  # noqa: E402
+        compute_market_regime_hmm_features,
+        REGIME_FEATURE_NAMES,
+        REGIME_FEATURE_COUNT,
+    )
+    logger.info("[v10] market_regime_hmm_features loaded OK (%d cols)", REGIME_FEATURE_COUNT)
+except Exception as _mr_err:  # noqa: BLE001
+    logger.warning(
+        "[v10] market_regime_hmm_features not importable: %s - 7 features zeroed",
+        _mr_err,
+    )
+    REGIME_FEATURE_COUNT = 7
+    REGIME_FEATURE_NAMES: list[str] = [  # type: ignore[no-redef]
+        "regime_state",
+        "regime_prob_0", "regime_prob_1", "regime_prob_2", "regime_prob_3", "regime_prob_4",
+        "regime_persistence",
+    ]
+
+    def compute_market_regime_hmm_features(df, ticker=None):  # type: ignore[misc]
+        for col in REGIME_FEATURE_NAMES:
+            if col not in df.columns:
+                df[col] = 1.0 if col == "regime_prob_2" else (2 if col == "regime_state" else 0)
+        return df
+
+
+# ---------------------------------------------------------------------------
 # v10 feature builder
 # ---------------------------------------------------------------------------
 
@@ -4274,6 +4363,37 @@ def _build_v10_features_impl(
     added_sr = f.shape[1] - before_sr
     logger.info("  [v10] +auto_support_resistance: +%d cols -> %d total", added_sr, f.shape[1])
 
+    # ---- Step 76: sector_aggregate_features (60 cols) — Wave OC-AUDIT (2026-05-21) ----
+    # GICS-sector pooled cross-sectional features. .shift(1)-safe inside module.
+    before_sa = f.shape[1]
+    try:
+        f = compute_sector_aggregate_features(f, ticker=ticker)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "  [v10] sector_aggregate_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in SECTOR_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 0.0
+    added_sa = f.shape[1] - before_sa
+    logger.info("  [v10] +sector_aggregate: +%d cols -> %d total", added_sa, f.shape[1])
+
+    # ---- Step 77: market_regime_hmm_features (7 cols) — Wave OC-AUDIT (2026-05-21) ----
+    # 5-state Gaussian HMM regime classifier on (log-VIX, xsec vol, sector corr).
+    # All inputs .shift(1) before HMM observation; outputs strictly causal.
+    before_mr = f.shape[1]
+    try:
+        f = compute_market_regime_hmm_features(f, ticker=ticker)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "  [v10] market_regime_hmm_features call failed (%s): %s - zeroing", ticker, exc
+        )
+        for col in REGIME_FEATURE_NAMES:
+            if col not in f.columns:
+                f[col] = 1.0 if col == "regime_prob_2" else (2 if col == "regime_state" else 0)
+    added_mr = f.shape[1] - before_mr
+    logger.info("  [v10] +market_regime_hmm: +%d cols -> %d total", added_mr, f.shape[1])
+
     # ---- Dedup + dropna on critical columns ----
     f = f.loc[:, ~f.columns.duplicated()]
     f = f.dropna(subset=["rsi_14", "atr_14", "ema_200", "fwd_ret_21d", "y"])
@@ -4386,6 +4506,9 @@ def _build_v10_features_impl(
         "oc2_donchian_per_ticker_selectivity_added": added_dsel,
         "py_market_profile_added": added_pymp,
         "footprint_analyzer_added": added_fp,
+        # Wave OC-AUDIT (2026-05-21) — OC #4 + #5 from live-robustness audit
+        "sector_aggregate_added": added_sa,
+        "market_regime_hmm_added": added_mr,
         "total_after_dedup_dropna": f.shape[1],
     }
     return f, mythos_fallback_rows, module_feature_counts
@@ -4466,7 +4589,12 @@ def main() -> None:
         "--use-mythos-features",
         action="store_true",
         default=False,
-        help="Append 256-dim OpenMythos embeddings to the feature matrix",
+        help=(
+            "DEPRECATED 2026-05-21 (OC audit rank #2 — Mythos dropped). When "
+            "MYTHOS_DISABLED=1 (default) this flag is a no-op; the 256-col "
+            "concat is skipped regardless. Pass MYTHOS_DISABLED=0 in env to "
+            "re-enable the transformer."
+        ),
     )
     ap.add_argument("--prob-threshold", type=float, default=0.50)
     ap.add_argument("--sweep-threshold", action="store_true")
