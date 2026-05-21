@@ -1,15 +1,15 @@
 {
-  "run_id": "26257254280",
+  "run_id": "26257265121",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T22:49:16.127669Z",
+  "timestamp": "2026-05-21T22:49:47.667991Z",
   "jobs": [
     {
-      "ticker": "PLTR",
-      "strategy": "v10_xsec",
+      "ticker": "ARE",
+      "strategy": "VWAP",
       "status": "ok",
-      "path": "backtests/PLTR/v10_xsec/result.json"
+      "path": "backtests/ARE/VWAP/result.json"
     }
   ]
 }

@@ -3,7 +3,7 @@
   "strategy": "VWAP",
   "timeframe": "1Day",
   "strategy_variant": "ML_XGB_v10",
-  "job_id": "b575ffa3",
+  "job_id": "868aae81",
   "pipeline_version": "xgb_v10",
   "features_total": 1587,
   "rows": 1034,
@@ -83,10 +83,10 @@
     "market_regime_hmm_added": 7,
     "total_after_dedup_dropna": 1594
   },
-  "n_trades": 26,
-  "win_rate": 0.34615384615384615,
-  "profit_factor": 0.6568351599880112,
-  "total_return_pct": -0.020940504821827494,
-  "max_drawdown_pct": -0.02690064070461599,
+  "n_trades": 14,
+  "win_rate": 0.5,
+  "profit_factor": 1.0694646765468443,
+  "total_return_pct": 0.002000046660108984,
+  "max_drawdown_pct": -0.016773715516648555,
   "status": "ok"
 }
