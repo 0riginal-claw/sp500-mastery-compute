@@ -1,19 +1,42 @@
 #!/usr/bin/env python3
-"""Build daily + rolling training rows for XGBoost/Mythos retrain.
+"""Build daily + rolling training rows for XGBoost retrain.
 
 Joins per-day feature snapshots (paper_trade/features/<DATE>/<TICKER>.parquet)
 with realized P&L labels (paper_trade/state/<DATE>_state.json:closed_trades).
 Writes paper_trade/training_rows/<DATE>.parquet AND all_rolling.parquet
 (rolling concat of last 30 days).
+
+2026-05-21: Mythos 256-dim transformer dropped per OC audit rank #2. Any
+legacy per-day snapshots that contain mythos_emb_* / emb_<0..255> columns are
+stripped here so the rolling concat never resurfaces them. Restoration path:
+unset MYTHOS_DROP_STRIP (or set =0) AND set MYTHOS_DISABLED=0 in env.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+
+# 2026-05-21: Mythos col cleanup. Default ON — strips emb_X / mythos_emb_X from
+# any legacy snapshot. Set MYTHOS_DROP_STRIP=0 to disable (e.g. during a
+# transitional restoration window where you want the old cols passed through).
+_MYTHOS_STRIP_RAW = os.environ.get("MYTHOS_DROP_STRIP", "1").strip().lower()
+MYTHOS_DROP_STRIP: bool = _MYTHOS_STRIP_RAW in ("1", "true", "yes", "on")
+_MYTHOS_COL_RE = re.compile(r"^(mythos_emb_\d+|emb_\d+)$")
+
+
+def _strip_mythos_cols(df):
+    """Drop any mythos_emb_* / emb_<N> cols from a DataFrame. No-op if absent."""
+    if not MYTHOS_DROP_STRIP:
+        return df, []
+    drop_cols = [c for c in df.columns if _MYTHOS_COL_RE.match(str(c))]
+    if drop_cols:
+        df = df.drop(columns=drop_cols)
+    return df, drop_cols
 
 WORK = Path(
     "/Users/orginal/Library/CloudStorage/GoogleDrive-"
@@ -159,6 +182,7 @@ def _build_day(date_str: str, pd) -> "pd.DataFrame | None":
         return None
     labels = _load_labels(date_str)
     rows = []
+    stripped_total = 0
     for fp in sorted(day_feat_dir.glob("*.parquet")):
         ticker = fp.stem.upper()
         try:
@@ -169,6 +193,11 @@ def _build_day(date_str: str, pd) -> "pd.DataFrame | None":
         # Collapse multi-row feature parquet → final row (most recent snapshot).
         if df.empty:
             continue
+        # 2026-05-21: drop any legacy Mythos cols from per-ticker snapshots
+        # before assembling the row dict. Most current snapshots have 0 such
+        # cols (verified empty); the call is a safe no-op when none present.
+        df, dropped = _strip_mythos_cols(df)
+        stripped_total += len(dropped)
         row = df.iloc[-1].to_dict()
         row["ticker"] = ticker
         row["date"] = date_str
@@ -180,6 +209,11 @@ def _build_day(date_str: str, pd) -> "pd.DataFrame | None":
         rows.append(row)
     if not rows:
         return None
+    if stripped_total > 0:
+        print(
+            f"[mythos-drop] {date_str}: stripped {stripped_total} legacy emb cols total",
+            file=sys.stderr,
+        )
     return pd.DataFrame(rows)
 
 
@@ -219,9 +253,19 @@ def main() -> int:
 
     if per_day_frames:
         roll = pd.concat(per_day_frames, ignore_index=True, sort=False)
+        # Belt-and-braces: strip Mythos cols from final rolling DF in case a
+        # legacy per-day parquet on disk slips through (sort=False preserves
+        # union of cols across days; old days may have emb_* cols even if
+        # today's _build_day stripped them).
+        roll, rolled_dropped = _strip_mythos_cols(roll)
+        if rolled_dropped:
+            print(
+                f"[mythos-drop] rolling concat stripped {len(rolled_dropped)} legacy emb cols",
+                file=sys.stderr,
+            )
         roll_path = OUT_DIR / "all_rolling.parquet"
         roll.to_parquet(roll_path, index=False)
-        print(f"[ok] days={days_processed} rolling_rows={len(roll)} → {roll_path}")
+        print(f"[ok] days={days_processed} rolling_rows={len(roll)} cols={len(roll.columns)} → {roll_path}")
     else:
         print(f"[warn] no per-day rows built in window {args.since}..{args.until}", file=sys.stderr)
 
