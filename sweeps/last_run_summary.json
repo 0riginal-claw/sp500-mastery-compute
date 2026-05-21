@@ -1,15 +1,15 @@
 {
-  "run_id": "26221693114",
+  "run_id": "26221562289",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T11:00:41.529889Z",
+  "timestamp": "2026-05-21T11:00:50.703621Z",
   "jobs": [
     {
-      "ticker": "NUE",
-      "strategy": "v10",
+      "ticker": "NTRS",
+      "strategy": "MEAN_REV",
       "status": "ok",
-      "path": "backtests/NUE/v10/result.json"
+      "path": "backtests/NTRS/MEAN_REV/result.json"
     }
   ]
 }
