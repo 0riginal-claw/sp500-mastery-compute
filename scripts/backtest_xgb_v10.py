@@ -99,11 +99,58 @@ logger = logging.getLogger(__name__)
 # Import v9 feature builder (non-destructive — v9.py is untouched)
 # ---------------------------------------------------------------------------
 
-from backtest_xgb_v9 import build_v9_features, MYTHOS_FEAT_NAMES, MYTHOS_FEATURE_DIM  # noqa: E402
-from backtest_xgb_v7 import numeric_cols  # noqa: E402
+# PATCH-A (2026-05-21 speedup-bench): lazy v9 import.
+# Top-level `from backtest_xgb_v9 import ...` triggers a 4.35s cascade
+# (v9 -> v8 -> v7 -> 80+ feature modules at module init). On cache-HIT runs
+# none of those are needed at import time. Defer the import to first call
+# of build_v9_features() so cache-HIT runs only pay ~1s of Python startup.
+# MYTHOS_FEAT_NAMES is empty when MYTHOS_DISABLED=1 (the default per OC audit
+# 2026-05-21); MYTHOS_FEATURE_DIM is a constant 256 — both inlined safely.
 import backtest_ml as bml  # noqa: E402
 import xgboost as xgb  # noqa: E402
 from feature_cache import get_cached  # noqa: E402
+
+MYTHOS_FEATURE_DIM = 256  # constant from backtest_xgb_v9 — safe to inline
+MYTHOS_FEAT_NAMES: list = []  # empty when MYTHOS_DISABLED=1 (default)
+
+# Lazy v9 chain — bound on first call inside cache-miss compute path.
+build_v9_features = None  # type: ignore[assignment]
+numeric_cols = None  # type: ignore[assignment]
+
+
+def _lazy_load_v9_chain():
+    """Materialize v9/v7 imports on demand (cache-miss path only).
+
+    Called inside _build_v10_features_impl just before build_v9_features().
+    Also refreshes MYTHOS_FEAT_NAMES from the real module in case the OC
+    audit toggle is flipped (MYTHOS_DISABLED=0) at runtime.
+    """
+    global build_v9_features, numeric_cols, MYTHOS_FEAT_NAMES, MYTHOS_FEATURE_DIM
+    if build_v9_features is not None:
+        return
+    from backtest_xgb_v9 import (  # noqa: E402
+        build_v9_features as _bv9f,
+        MYTHOS_FEAT_NAMES as _mfn,
+        MYTHOS_FEATURE_DIM as _mfd,
+    )
+    from backtest_xgb_v7 import numeric_cols as _nc  # noqa: E402
+    build_v9_features = _bv9f
+    numeric_cols = _nc
+    MYTHOS_FEAT_NAMES = _mfn
+    MYTHOS_FEATURE_DIM = _mfd
+
+
+def _numeric_cols_lite(df):
+    """Cache-HIT inline replacement for v7.numeric_cols — same logic.
+
+    Avoids triggering the lazy v9 chain when caller only needs numeric_cols
+    on a cached parquet DataFrame.
+    """
+    return [
+        c for c in df.columns
+        if c not in ("open", "high", "low", "close", "volume", "fwd_ret_21d", "y")
+        and pd.api.types.is_numeric_dtype(df[c])
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -3417,6 +3464,8 @@ def _build_v10_features_impl(
           - dict module_feature_counts with per-module feature counts.
     """
     # ---- Step 1: Full v9 stack ----
+    # PATCH-A: ensure v9 chain is materialized (no-op if already loaded).
+    _lazy_load_v9_chain()
     f, mythos_fallback_rows = build_v9_features(ticker, universe_agg, use_mythos=use_mythos)
     after_v9 = f.shape[1]
     logger.info("  [v10] after v9 stack: %d cols", after_v9)
@@ -4907,7 +4956,9 @@ def main() -> None:
         universe_agg,
         use_mythos=args.use_mythos_features,
     )
-    fc = numeric_cols(f)
+    # PATCH-A: use _numeric_cols_lite (inline copy) so cache-HIT runs do not
+    # trigger v9 lazy-import chain. Both implementations are identical.
+    fc = numeric_cols(f) if numeric_cols is not None else _numeric_cols_lite(f)
     logger.info(
         "  TOTAL features: %d; rows: %d; mythos_fallback_rows: %d",
         len(fc),
