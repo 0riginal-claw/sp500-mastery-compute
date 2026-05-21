@@ -49,6 +49,13 @@ DRIVE_ROOT = Path(
 # Cache B GOLD root (Alpaca 5yr multi-TF; 306K parquet, 502 tickers, 10 TFs).
 DEFAULT_CACHE_B_ROOT = DRIVE_ROOT / "version_3 - Gabriel" / "Gabriel_Alpaca TimeFrames"
 
+# Local-SSD mirror of Cache B (FUSE-bypass; populated by drive_fuse_bypass copy).
+# Layout mirrors DEFAULT_CACHE_B_ROOT *for each TF* (no Day/Hour/Minutes parent),
+# i.e. /Users/orginal/.zg/cache/alpaca_5yr/<TF>/<ticker>/*.parquet.
+# 2026-05-21: 1Day tier staging in progress (Drive FUSE mmap throttle prevents bulk copy);
+# loader checks local SSD first, falls back to Drive on miss.
+DEFAULT_LOCAL_SSD_ROOT = Path("/Users/orginal/.zg/cache/alpaca_5yr")
+
 # Fallback: yfinance 5yr daily cache (509 tickers).
 DEFAULT_YF5Y_ROOT = (
     DRIVE_ROOT / "AI-Tools" / "s&p500-ticker-mastery" / "cache" / "yfinance_5yr"
