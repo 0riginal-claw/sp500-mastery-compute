@@ -1,15 +1,15 @@
 {
-  "run_id": "26227172276",
+  "run_id": "26227326849",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T12:58:59.150994Z",
+  "timestamp": "2026-05-21T13:01:21.379178Z",
   "jobs": [
     {
       "ticker": "AJG",
-      "strategy": "v10",
+      "strategy": "v10_xsec",
       "status": "ok",
-      "path": "backtests/AJG/v10/result.json"
+      "path": "backtests/AJG/v10_xsec/result.json"
     }
   ]
 }
