@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "updated_at": "2026-05-20T00:00:00Z",
+  "seeds": [
+    {
+      "url": "https://seed1.zgc.run",
+      "owner": "0riginal-claw",
+      "since": "2026-05-20",
+      "notes": "primary bootnode"
+    },
+    {
+      "url": "https://seed2.zgc.run",
+      "owner": "0riginal-claw",
+      "since": "2026-05-20",
+      "notes": "secondary bootnode"
+    }
+  ],
+  "how_to_add_yours": "Open a PR editing this file. Include a working /health endpoint URL, your GH owner, and the date you started running. Bot-friendly PRs welcome; CI smoke-tests the URL before merge."
+}

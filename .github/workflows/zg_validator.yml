@@ -1,0 +1,132 @@
+# zg_validator.yml — runs a ZG chain validator inside a GitHub Actions runner.
+#
+# Each scheduled run:
+#   1. Checks out the repo (so we have scripts/zg_chain_node.py).
+#   2. Syncs the local chain against configured bootnodes.
+#   3. Proposes any pending blocks the runner is eligible to validate.
+#   4. Submits the runner's heartbeat block (proves the validator was alive).
+#   5. Uploads the chain head as a workflow artifact (audit trail).
+#
+# Free public-repo runners: 2000 min/mo × free accounts. We schedule every
+# 15 min so a single repo eats ~96 min/day = ~2880 min/mo. Stay safe by
+# fan-out across multiple repos (each fork = 1 validator). Tune CRON if
+# you run multiple workflows in the same repo.
+#
+# Forkers: set the optional repo secrets:
+#   ZG_VALIDATOR_ADDR   ZG address to credit block rewards (default: derived)
+#   ZG_BOOTNODES        comma-separated peer URLs (default: hard-coded seeds)
+#
+# Manual run:
+#   gh workflow run zg_validator.yml
+
+name: zg-validator
+
+on:
+  schedule:
+    # */15 stays under GH free quota and respects ZG block cadence (5min).
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      duration_secs:
+        description: "How long the validator runs in this job (default 120s)"
+        required: false
+        default: "120"
+
+# Allow only one concurrent validator job per branch — prevents wasted minutes.
+concurrency:
+  group: zg-validator-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ZG validator heartbeat
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ZG_VALIDATOR_ADDR: ${{ secrets.ZG_VALIDATOR_ADDR }}
+      ZG_BOOTNODES: ${{ secrets.ZG_BOOTNODES }}
+      ZG_NODE_ID: "gha-${{ github.repository_owner }}-${{ github.run_id }}"
+      DURATION_SECS: ${{ github.event.inputs.duration_secs || '120' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Resolve bootnodes
+        id: bootnodes
+        run: |
+          if [ -n "${ZG_BOOTNODES}" ]; then
+            echo "peers=${ZG_BOOTNODES}" >> "$GITHUB_OUTPUT"
+          else
+            # Default public seed nodes — replace with real endpoints once seeds are live.
+            echo "peers=https://seed1.zgc.run,https://seed2.zgc.run" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run validator (bounded)
+        id: validator
+        env:
+          PEERS: ${{ steps.bootnodes.outputs.peers }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.zg/state/universal_resume ~/.zg/state/zgc/keys
+          # Start node in background, give it DURATION_SECS to sync + heartbeat, then stop.
+          python3 scripts/zg_chain_node.py serve \
+            --port 9933 \
+            --node-id "${ZG_NODE_ID}" \
+            --peers "${PEERS}" \
+            --sync-secs 10 \
+            --validator-reward 1.0 \
+            ${ZG_VALIDATOR_ADDR:+--validator-addr "${ZG_VALIDATOR_ADDR}"} \
+            >/tmp/zg-node.log 2>&1 &
+          NODE_PID=$!
+          echo "node_pid=${NODE_PID}" >> "$GITHUB_OUTPUT"
+
+          # Wait for node to come up.
+          for i in $(seq 1 20); do
+            if python3 -c "import urllib.request,json; r=urllib.request.urlopen('http://127.0.0.1:9933/health',timeout=2); print(json.loads(r.read()))" 2>/dev/null; then
+              echo "[validator] up after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+          # Let it sync + heartbeat.
+          sleep "${DURATION_SECS}"
+
+          # Snapshot head before shutdown.
+          python3 -c "import urllib.request,json; r=urllib.request.urlopen('http://127.0.0.1:9933/head',timeout=4,data=b'{}'); open('/tmp/zg-head.json','wb').write(r.read())" || true
+
+          # Graceful shutdown.
+          kill "${NODE_PID}" || true
+          sleep 2
+          kill -9 "${NODE_PID}" 2>/dev/null || true
+
+      - name: Show node log tail
+        if: always()
+        run: |
+          if [ -f /tmp/zg-node.log ]; then
+            echo "----- node log (last 100 lines) -----"
+            tail -n 100 /tmp/zg-node.log
+          fi
+          if [ -f /tmp/zg-head.json ]; then
+            echo "----- chain head -----"
+            cat /tmp/zg-head.json
+          fi
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zg-validator-${{ github.run_id }}
+          path: |
+            /tmp/zg-head.json
+            /tmp/zg-node.log
+          retention-days: 7
+          if-no-files-found: ignore

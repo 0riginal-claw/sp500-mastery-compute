@@ -1,0 +1,82 @@
+# zg_validator_docker_publish.yml — build + push the zg-chain-node image.
+#
+# Targets:
+#   - GitHub Container Registry: ghcr.io/0riginal-claw/zg-chain-node
+#   - Docker Hub (optional): docker.io/<user>/zg-chain-node — set DOCKERHUB_USERNAME + DOCKERHUB_TOKEN secrets
+#
+# Tags:
+#   - latest (main branch)
+#   - sha-<short>
+#   - <git-tag> (when triggered by tag push)
+
+name: zg-validator-docker-publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile.zg_node"
+      - "docker-entrypoint.sh"
+      - "scripts/zg_chain_node.py"
+      - "scripts/merkle_chain.py"
+      - ".github/workflows/zg_validator_docker_publish.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Derive metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/zg-chain-node
+            ${{ secrets.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/zg-chain-node', secrets.DOCKERHUB_USERNAME) || '' }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build + push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.zg_node
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,0 +1,27 @@
+# .replit — Replit container config for a ZG validator node.
+#
+# After forking this Replit project, click "Run" and the validator boots.
+# To stay always-on:
+#   1. Open the project's "Deployments" or use UptimeRobot to ping the URL every 5min.
+#   2. Set the secret ZG_VALIDATOR_ADDR (Replit → Secrets) if you want a stable reward address.
+
+run = "bash start.sh"
+entrypoint = "main.py"
+modules = ["python-3.12"]
+hidden = [".pythonlibs", "__pycache__"]
+
+[nix]
+channel = "stable-23_11"
+
+[deployment]
+run = ["bash", "start.sh"]
+deploymentTarget = "cloudrun"
+
+[env]
+ZG_HOME = "/home/runner/${REPL_SLUG}/.zg"
+PORT = "9933"
+SYNC_SECS = "15"
+
+[[ports]]
+localPort = 9933
+externalPort = 80

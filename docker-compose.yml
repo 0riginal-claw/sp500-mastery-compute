@@ -1,0 +1,43 @@
+# docker-compose.yml — one-command ZG validator node.
+#
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/0riginal-claw/sp500-mastery-compute/main/docker-compose.yml -o docker-compose.yml
+#   docker compose up -d
+#   docker compose logs -f zg-node
+#
+# Override env via .env:
+#   echo "NODE_ID=$(hostname)" >> .env
+#   echo "PEERS=http://seed1.zgc.run:9933,http://seed2.zgc.run:9933" >> .env
+
+version: "3.8"
+
+services:
+  zg-node:
+    image: ghcr.io/0riginal-claw/zg-chain-node:latest
+    container_name: zg-node
+    restart: unless-stopped
+    ports:
+      - "9933:9933"
+    environment:
+      NODE_ID: "${NODE_ID:-zg-docker}"
+      PORT: "9933"
+      PEERS: "${PEERS:-}"
+      VALIDATOR_ADDR: "${VALIDATOR_ADDR:-}"
+      VALIDATOR_STAKE: "${VALIDATOR_STAKE:-1.0}"
+      SYNC_SECS: "${SYNC_SECS:-15}"
+    volumes:
+      - zg-state:/data
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request,json; r=urllib.request.urlopen('http://127.0.0.1:9933/health',timeout=4); print(json.loads(r.read()))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  zg-state:
+    driver: local
