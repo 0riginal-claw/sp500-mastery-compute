@@ -1,15 +1,15 @@
 {
-  "run_id": "26248812299",
+  "run_id": "26248806438",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T19:46:29.758464Z",
+  "timestamp": "2026-05-21T19:49:26.563389Z",
   "jobs": [
     {
-      "ticker": "AMZN",
-      "strategy": "MEAN_REV",
+      "ticker": "PEG",
+      "strategy": "VWAP",
       "status": "ok",
-      "path": "backtests/AMZN/MEAN_REV/result.json"
+      "path": "backtests/PEG/VWAP/result.json"
     }
   ]
 }
