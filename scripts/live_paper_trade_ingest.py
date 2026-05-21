@@ -354,12 +354,15 @@ def trigger_retrain(tickers: list[str], today: str) -> None:
     for ticker in tickers[:5]:  # Limit to 5 per session to avoid timeout
         log.info(f"Retrain: {ticker}...")
         try:
+            # 2026-05-21: --use-mythos-features removed (Mythos dropped per OC
+            # audit rank #2). MYTHOS_DISABLED=1 is the default; the flag was a
+            # no-op anyway. Re-add the flag AND `MYTHOS_DISABLED=0` env to
+            # restore Mythos training.
             result = subprocess.run(
                 [
                     sys.executable,
                     str(v10_script),
                     "--ticker", ticker,
-                    "--use-mythos-features",
                 ],
                 capture_output=True, text=True, timeout=900,
             )
@@ -581,11 +584,18 @@ def main() -> int:
             log.warning(f"[wiring] {stem} subprocess failed: {e}")
 
     # ----- 3b. Mythos embedding refresh -----
-    # Refresh the 256-dim OpenMythos embeddings for every ticker that signaled
-    # today so the live priors stay aligned with the v10_mythos pipeline. Failure
-    # here is non-fatal — ingest must still complete to record fills/P&L.
+    # 2026-05-21: Mythos transformer dropped per OC audit rank #2. The refresh
+    # is skipped when MYTHOS_DISABLED=1 (default) to avoid wasting compute on
+    # zero-fill embeddings. Re-enable with `export MYTHOS_DISABLED=0` if a
+    # future Mythos checkpoint is restored.
+    _mythos_disabled_raw = os.environ.get("MYTHOS_DISABLED", "1").strip().lower()
+    _mythos_disabled = _mythos_disabled_raw in ("1", "true", "yes", "on")
     refresh_path = SCRIPTS_DIR / "refresh_mythos_embeddings.py"
-    if refresh_path.exists() and all_signal_tickers:
+    if _mythos_disabled:
+        log.info(
+            "Mythos refresh skipped — MYTHOS_DISABLED=1 (OC audit drop 2026-05-21)."
+        )
+    elif refresh_path.exists() and all_signal_tickers:
         try:
             subprocess.run(
                 [
