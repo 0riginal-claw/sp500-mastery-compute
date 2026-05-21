@@ -110,32 +110,27 @@ _FORWARD_LOOKING_COLS = {
     "chikou",  # ichimoku_cloud uses .shift(-displacement) — leaks future close
 }
 
-# --- Performance gates (top7-followup 2026-05-20) ---
+# --- Performance gates (top7-followup 2026-05-20; leak-recover 2026-05-21) ---
 
 # Audited-bad list — these were the heavy hitters in profiling. Pre-seeded so
-# the FIRST call is fast too (otherwise the user pays the slow-discovery cost
-# once per process).
-_DEFAULT_SLOW_SET: set[str] = {
-    # rolling().apply(custom_fn) without raw=True — Python-per-row
-    "rainbow_oscillator",
-    "fractal_chaos_bands",
-    "fractal_chaos_oscillator",
-    "klingerVolumeOscillator",
-    "klinger_volume_oscillator",
-    "ehlers_filter",
-    "ehlers_decycler",
-    "ehlers_super_smoother",
-    "ehlers_instantaneous_trendline",
-    "ehlers_mama",
-    "hurst_exponent",
-    "fisher_transform",
-    "rolling_hurst",
-    # nested for-loops in compute() — known slow
-    "zigzag",
-    "pivot_points_camarilla",
-    "pivot_points_demark",
-    "auto_fibonacci",
-}
+# the FIRST call is fast too.
+#
+# 2026-05-21 leak-recover audit (ref a3ee919):
+#   Cross-checked every name against the live REGISTRY. 16 of the 17 original
+#   entries were phantom (no matching indicator name registered). They were
+#   silent no-ops that misled the audit into reporting "17 leaky indicators
+#   skipped". The phantom entries (rainbow_oscillator, fractal_chaos_*,
+#   klinger*, ehlers_*, hurst_*, rolling_hurst, zigzag, pivot_points_camarilla,
+#   pivot_points_demark, auto_fibonacci) are removed below.
+#
+#   The ACTUAL leaky indicators in the registry (ichimoku_cloud chikou col,
+#   williams_fractal, zig_zag — note underscore) were patched in-place to be
+#   leak-safe and remain ENABLED. Backups in
+#   AI-Tools/backups/leak-recover-2026-05-21/.
+#
+#   `fisher_transform` was the ONE real entry — it's leak-safe (recursive
+#   x_t = f(x_{t-1}, current bar)) and not particularly slow, so re-enable.
+_DEFAULT_SLOW_SET: set[str] = set()
 
 # Per-process cache of measured slow indicators. Persists across function
 # calls within a process (e.g., multi-ticker batches in backtest_xgb_v10).
