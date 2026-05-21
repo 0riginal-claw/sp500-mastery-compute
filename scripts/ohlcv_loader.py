@@ -142,14 +142,36 @@ class OhlcvLoader:
             return None
         dfs = []
         for p in parquets:
-            try:
-                dfs.append(pd.read_parquet(p))
-            except Exception as e:
-                logger.warning("ohlcv_loader: failed reading %s: %s", p, e)
+            df_one = self._read_parquet_with_retry(p, retries=3, delay_s=1.0)
+            if df_one is not None:
+                dfs.append(df_one)
         if not dfs:
             return None
         df = pd.concat(dfs, ignore_index=True)
         return self._normalize_cache_b(df)
+
+    @staticmethod
+    def _read_parquet_with_retry(path, retries: int = 3, delay_s: float = 1.0):
+        """Read parquet with retry on Drive FUSE 'Operation canceled' (Errno 89).
+
+        Drive FUSE intermittently throttles many sequential file reads; a short
+        backoff usually resolves it. Logs warning and returns None on final fail.
+        """
+        import time as _t
+        last_exc = None
+        for attempt in range(retries):
+            try:
+                return pd.read_parquet(path)
+            except Exception as e:
+                last_exc = e
+                # Errno 89 = Operation canceled (Drive FUSE throttle)
+                if "Operation canceled" in str(e) or "Errno 89" in str(e):
+                    _t.sleep(delay_s * (attempt + 1))
+                    continue
+                logger.warning("ohlcv_loader: failed reading %s: %s", path, e)
+                return None
+        logger.warning("ohlcv_loader: gave up after %d retries reading %s: %s", retries, path, last_exc)
+        return None
 
     @staticmethod
     def _normalize_cache_b(df: pd.DataFrame) -> pd.DataFrame:
