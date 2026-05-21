@@ -5278,7 +5278,19 @@ def main() -> None:
         else:
             persist_top_features = []
 
-        # Train on ALL labeled rows we have (no embargo subtraction).
+        # LIVE-DEPLOY REFIT ONLY -- NOT used by backtest metrics.
+        # This `persist_model` (saved as refit_model.pkl below) is built solely
+        # for live-deployment loading: trained on ALL labeled rows up through
+        # the latest available bar (no embargo subtraction) so the live signal
+        # sees the freshest data possible. Walk-forward backtest metrics
+        # (fold_summaries above) are computed exclusively from per-fold
+        # EMBARGOED models (train_end_emb = train_end - BDay(LABEL_EMBARGO_DAYS),
+        # ~21 BD by default); this all-data refit is NEVER scored against
+        # in-sample data anywhere in this script.
+        # DO NOT use refit_model.pkl to "backtest" -- it would be in-sample
+        # by construction and would inflate apparent Sharpe/PF/WR.
+        # See research/no_lookahead_audit_2026-05-21/repo_2026-05-21.md
+        # (audit Fix 2) for full rationale.
         # f["y"] was created earlier in the script; restrict to non-NaN.
         persist_train = f[f["y"].notna() & f["close"].notna()].copy()
         # Ensure every chosen feature exists in f.columns; drop any missing.
