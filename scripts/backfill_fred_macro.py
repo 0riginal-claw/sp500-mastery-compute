@@ -69,26 +69,19 @@ FRED_SERIES = {
 
 
 def fetch_series(sid: str, start: str, retries: int = 3) -> pd.DataFrame:
+    """Fetch via pandas.read_csv directly — bypasses requests TLS issue on macOS."""
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}&cosd={start}"
     last = None
+    df = None
     for attempt in range(retries):
         try:
-            r = requests.get(
-                url,
-                timeout=(30, 90),  # (connect, read)
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    "Accept": "text/csv,*/*",
-                },
-            )
-            r.raise_for_status()
+            df = pd.read_csv(url)
             break
         except Exception as e:
             last = e
             time.sleep(2 ** attempt)
-    else:
+    if df is None:
         raise last  # pragma: no cover
-    df = pd.read_csv(io.StringIO(r.text))
     # Schema: observation_date,<SID>   (or DATE,<SID> historically)
     date_col = "observation_date" if "observation_date" in df.columns else df.columns[0]
     df = df.rename(columns={date_col: "date", sid: "value"})
