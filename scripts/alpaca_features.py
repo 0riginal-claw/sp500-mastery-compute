@@ -254,8 +254,27 @@ def _earnings_features(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
     # Separate future (no Reported EPS) from past events
     reported_mask = ed["Reported EPS"].notna()
-    past_dates = ed[reported_mask].index  # UTC dates
-    future_dates = ed[~reported_mask].index  # UTC dates (known schedule)
+    past_dates_raw = ed[reported_mask].index  # UTC dates as reported in yfinance
+    future_dates_raw = ed[~reported_mask].index  # UTC dates (known schedule)
+
+    # POINT-IN-TIME GUARD (no-lookahead audit 2026-05-21, Patch 2):
+    # yfinance returns a CURRENT snapshot, not a point-in-time view -- so dates
+    # may be retroactively added/edited. To stay conservative, shift each
+    # earnings_date by +1 BDay before exposing it as a feature. Rationale:
+    # an announcement is only KNOWN to the market AFTER its release; treating
+    # earnings_date itself as "known on day-of" risks treating same-bar
+    # information that wasn't fully available at the prior bar close. The
+    # +1 BDay shift gives us a defensible "only known post-announcement"
+    # contract. (Output features are also .shift(1) at end of function for
+    # additional belt-and-suspenders alignment with sibling modules.)
+    # earnings_date shifted +1 BDay: only known post-announcement
+    _ONE_BDAY = pd.tseries.offsets.BDay(1)
+    past_dates = pd.DatetimeIndex([d + _ONE_BDAY for d in past_dates_raw])
+    future_dates = pd.DatetimeIndex([d + _ONE_BDAY for d in future_dates_raw])
+    # Map shifted-date -> raw-date so we can still look up Surprise(%) on ed.
+    _shifted_to_raw_past = {
+        (d + _ONE_BDAY): d for d in past_dates_raw
+    }
 
     # Ensure df.index is UTC-aware
     idx = df.index
@@ -278,16 +297,21 @@ def _earnings_features(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
         else:
             days_until.append(np.nan)
 
-        # Past earnings
+        # Past earnings (past_dates is the +1 BDay-shifted post-announcement view)
         past_dt_dates = sorted([d.date() for d in past_dates if d.date() <= dt_date])
         if past_dt_dates:
             last_earn = past_dt_dates[-1]
             days_since.append((dt_date - last_earn).days)
-            # Surprise for most recent earnings
-            last_idx = [d for d in past_dates if d.date() == last_earn]
-            if last_idx:
-                surp = ed.loc[last_idx[0], "Surprise(%)"]
-                surprise_vals.append(float(surp) if pd.notna(surp) else 0.0)
+            # Surprise for most recent earnings: dereference back to RAW
+            # (un-shifted) date so we can index `ed` (which is yfinance-native).
+            last_idx_shifted = [d for d in past_dates if d.date() == last_earn]
+            if last_idx_shifted:
+                _raw = _shifted_to_raw_past.get(last_idx_shifted[0])
+                if _raw is not None and _raw in ed.index:
+                    surp = ed.loc[_raw, "Surprise(%)"]
+                    surprise_vals.append(float(surp) if pd.notna(surp) else 0.0)
+                else:
+                    surprise_vals.append(0.0)
             else:
                 surprise_vals.append(0.0)
         else:
