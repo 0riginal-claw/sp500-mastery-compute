@@ -1,15 +1,15 @@
 {
-  "run_id": "26218949940",
+  "run_id": "26221693114",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-21T10:06:01.373786Z",
+  "timestamp": "2026-05-21T11:00:41.529889Z",
   "jobs": [
     {
-      "ticker": "ACN",
-      "strategy": "VWAP",
+      "ticker": "NUE",
+      "strategy": "v10",
       "status": "ok",
-      "path": "backtests/ACN/VWAP/result.json"
+      "path": "backtests/NUE/v10/result.json"
     }
   ]
 }
