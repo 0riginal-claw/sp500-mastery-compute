@@ -2,7 +2,7 @@
   "ticker": "AMZN",
   "strategy": "MEAN_REV",
   "strategy_variant": "ML_XGB_v10",
-  "job_id": "055a43c2",
+  "job_id": "0906788b",
   "pipeline_version": "xgb_v10",
   "features_total": 1379,
   "rows": 1035,
