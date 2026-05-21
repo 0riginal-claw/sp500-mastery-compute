@@ -2875,6 +2875,64 @@ def _modal_cap_signal(stderr_text: str, returncode: int) -> bool:
     return any(tok in s for tok in _MODAL_CAP_TOKENS)
 
 
+# ---------------------------------------------------------------------------
+# mac_local completion fetcher (2026-05-21)
+# ---------------------------------------------------------------------------
+def _fetch_mac_completions(
+    snapshot: List[Tuple[str, Tuple["Job", str, float]]],
+) -> Dict[str, Dict[str, Any]]:
+    """Poll Popen handles for in-flight mac_local jobs and report exited ones.
+
+    Mirrors :func:`_fetch_modal_completions`. The mac_local adapter
+    (:func:`_submit_mac_local`) launches the backtest worker as a non-blocking
+    subprocess and stashes the Popen handle in ``_mac_active_procs`` keyed by
+    job_id. When the subprocess exits, the worker has either written
+    ``result.json`` (success) OR crashed early (failure -- e.g. argparse error,
+    missing data, OOM, segfault). This helper detects that exit transition via
+    ``proc.poll()`` so the completion sweep can decrement the in-flight counter
+    in seconds rather than waiting on the 1-hour ``max_job_seconds`` watchdog.
+
+    Returns ``{job_id: {"returncode": int, "status": "completed",
+                        "conclusion": "success"|"failed"}}``
+    for jobs whose subprocess has exited. Returns ``{}`` when no mac_local jobs
+    are in flight, or when none of them have exited yet (caller falls back to
+    the result.json existence check and the max_job_seconds timeout).
+
+    Note: only jobs submitted by *this* dispatcher process appear in
+    ``_mac_active_procs``. Jobs orphaned by a previous dispatcher restart will
+    fall through to the existing result.json / timeout path.
+
+    Rationale (2026-05-21): pre-fix mac_local jobs all died at argparse with
+    "one of the arguments --output-dir --out-dir is required" within ~0.5s of
+    spawn, but the dispatcher waited 1h before timing them out, producing
+    96k+ ``completion_poll_timeout`` failures. With this fetcher wired in,
+    crashed workers are detected within one sweep tick (default ~30s) and the
+    slot is freed immediately so the dispatcher can queue the next job.
+    """
+    mac_jobs = [(jid, job) for jid, (job, c, _) in snapshot if c == "mac_local"]
+    if not mac_jobs:
+        return {}
+
+    out: Dict[str, Dict[str, Any]] = {}
+    for jid, _job in mac_jobs:
+        proc = _mac_active_procs.get(jid)
+        if proc is None:
+            # No Popen handle (orphaned from prior process) -- let result.json
+            # or timeout handle it.
+            continue
+        rc = proc.poll()
+        if rc is None:
+            # Still running.
+            continue
+        # Subprocess has exited -- terminal state.
+        out[jid] = {
+            "returncode": rc,
+            "status":     "completed",
+            "conclusion": "success" if rc == 0 else "failed",
+        }
+    return out
+
+
 def _log_modal_cap_fallback(job_id: str, stderr_tail: str) -> None:
     """Append a JSONL row to logs/cloud_dispatch/modal_cap_fallback.jsonl
     so the operator can see when Modal capped and the dispatcher rerouted."""
@@ -2924,6 +2982,11 @@ def _sweep_completions(
     # Pre-fetch Popen-exit snapshot for all in-flight Modal jobs (one pass).
     # Indexed by job_id; only present for subprocesses that have exited.
     modal_exits_by_jobid = _fetch_modal_completions(snapshot)
+
+    # Pre-fetch Popen-exit snapshot for all in-flight mac_local jobs (2026-05-21).
+    # Mirror of modal_exits_by_jobid -- detects exited mac_local subprocesses
+    # within one sweep tick rather than waiting on max_job_seconds (1h).
+    mac_exits_by_jobid = _fetch_mac_completions(snapshot)
 
     for job_id, (job, cloud, submitted_at_epoch) in snapshot:
         age_sec = time.time() - submitted_at_epoch
@@ -3006,6 +3069,44 @@ def _sweep_completions(
                 "register_complete (modal Popen): job_id=%s rc=%s "
                 "conclusion=%s age=%.1fs result=%s",
                 job_id, modal_state.get("returncode"), conclusion, age_sec, rp_str,
+            )
+            completed_ids.append(job_id)
+            continue
+
+        # mac_local cloud jobs: check Popen exit state (2026-05-21).
+        # Same pattern as modal/gh_actions above. Detects worker crashes
+        # (argparse error, OOM, segfault) within one sweep tick instead of
+        # waiting on the 1-hour max_job_seconds watchdog -- prior to this,
+        # 96k+ mac_local jobs accumulated as completion_poll_timeout failures.
+        mac_state = mac_exits_by_jobid.get(job_id) if cloud == "mac_local" else None
+        if mac_state:
+            conclusion = mac_state.get("conclusion") or "unknown"
+            terminal = (conclusion == "success")
+            job.status = "completed" if terminal else "failed"
+            job.completed_at = _now_iso()
+            # Best-effort: capture result_path if the worker wrote the file.
+            rp_str: Optional[str] = None
+            try:
+                if result_path.exists():
+                    job.result_path = result_path
+                    rp_str = str(result_path)
+            except Exception:
+                pass
+            _write_status_event(
+                job, "complete" if terminal else "failed", cloud=cloud,
+                result_path=rp_str,
+                extra={"mac_returncode": mac_state.get("returncode"),
+                       "mac_conclusion": conclusion,
+                       "source": "mac_local_popen_poll"},
+            )
+            tracker.load()
+            tracker.register_complete(cloud)
+            # Drop the Popen handle so the dict doesn't grow unboundedly.
+            _mac_active_procs.pop(job_id, None)
+            log.info(
+                "register_complete (mac_local Popen): job_id=%s rc=%s "
+                "conclusion=%s age=%.1fs result=%s",
+                job_id, mac_state.get("returncode"), conclusion, age_sec, rp_str,
             )
             completed_ids.append(job_id)
             continue
