@@ -54,3 +54,86 @@ its own data (e.g. from a bucket or yfinance) is the next step.
 
 This repo is private. No `.env`, secrets, tokens, credentials, or local
 state files are committed (see `.gitignore`).
+
+---
+
+## Run a ZG Chain Node
+
+This repo also hosts the **ZG Chain validator** — a tiny Proof-of-Stake daemon
+(~600 lines of stdlib-only Python) that anchors AI-agent state to an on-chain
+Merkle log. Validators earn **1 ZGC per accepted block** (~288 blocks/day).
+Early validators (first 10 nodes) get a 5x reward multiplier; nodes 11-50 get
+2x. Full reward schedule + design notes in
+[`docs/RUN_A_NODE.md`](docs/RUN_A_NODE.md).
+
+Pick one of the four boot paths below — they all boot the same daemon
+([`scripts/zg_chain_node.py`](scripts/zg_chain_node.py)).
+
+### Way 1: one-line curl (60 seconds)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/0riginal-claw/sp500-mastery-compute/main/scripts/zg_chain_join.sh \
+  | bash -s -- \
+      --bootnode https://seed1.zgc.run \
+      --node-id "$(hostname)" \
+      --stake 1.0
+```
+
+Requirements: Python 3.8+, outbound HTTPS. No port-forwarding needed.
+
+### Way 2: Docker (30 seconds)
+
+```bash
+docker run -d --name zg-node \
+  -e NODE_ID="$(hostname)" \
+  -e PEERS="https://seed1.zgc.run,https://seed2.zgc.run" \
+  -p 9933:9933 \
+  -v zg-state:/data \
+  ghcr.io/0riginal-claw/zg-chain-node:latest
+```
+
+Or via compose:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/0riginal-claw/sp500-mastery-compute/main/docker-compose.yml -o docker-compose.yml
+docker compose up -d
+```
+
+### Way 3: GitHub Actions (free, zero maintenance)
+
+Fork this repo OR drop
+[`.github/workflows/zg_validator.yml`](.github/workflows/zg_validator.yml)
+into any of **your** public repos. Every public repo on GitHub gets 2000
+free runner minutes/month — enough for one validator on a 15-min cron with
+margin to spare.
+
+Set repo secrets:
+
+| Secret | Purpose |
+|---|---|
+| `ZG_VALIDATOR_ADDR` (optional) | ZG address to credit block rewards (default: auto-derived) |
+| `ZG_BOOTNODES` (optional) | Comma-separated peer URLs (default: public seeds) |
+
+Then **Actions → zg-validator → Run workflow** for the first manual smoke,
+or wait for the next cron tick.
+
+### Way 4: Replit or Glitch (browser-only)
+
+Fork the template at [`templates/replit/`](templates/replit/) or
+[`templates/glitch/`](templates/glitch/) and click Run.
+
+### Verify
+
+```bash
+curl -sX POST http://localhost:9933/health | jq .
+curl -sX POST http://localhost:9933/head   | jq .
+```
+
+### Auto-discovery
+
+New nodes find peers via (1) the `--bootnode` flag, (2) the seed list
+[`state/seed_peers.json`](state/seed_peers.json) in this repo, (3) gossip
+from any reachable peer's `/peers` endpoint. Want your seed listed publicly?
+Open a PR adding your `/health`-responsive URL to `state/seed_peers.json`.
+
+Full operator guide: [`docs/RUN_A_NODE.md`](docs/RUN_A_NODE.md).
