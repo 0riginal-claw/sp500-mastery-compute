@@ -2,7 +2,7 @@
   "ticker": "APA",
   "strategy": "v10",
   "strategy_variant": "ML_XGB_v10",
-  "job_id": "ec20f6a4",
+  "job_id": "df5472e8",
   "pipeline_version": "xgb_v10",
   "features_total": 1379,
   "rows": 1034,
@@ -76,8 +76,8 @@
   },
   "n_trades": 48,
   "win_rate": 0.4375,
-  "profit_factor": 1.1152475646374906,
-  "total_return_pct": 0.010699956152423992,
-  "max_drawdown_pct": -0.02834615298688516,
+  "profit_factor": 1.115247524999293,
+  "total_return_pct": 0.010699951682115398,
+  "max_drawdown_pct": -0.02834615584980608,
   "status": "ok"
 }
