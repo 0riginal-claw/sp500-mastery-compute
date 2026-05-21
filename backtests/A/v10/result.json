@@ -2,7 +2,7 @@
   "ticker": "A",
   "strategy": "v10",
   "strategy_variant": "ML_XGB_v10",
-  "job_id": "dbbad2e5",
+  "job_id": "49167e2e",
   "pipeline_version": "xgb_v10",
   "features_total": 1379,
   "rows": 1034,
@@ -76,8 +76,8 @@
   },
   "n_trades": 38,
   "win_rate": 0.3684210526315789,
-  "profit_factor": 0.7643620215966719,
-  "total_return_pct": -0.017097907707708276,
-  "max_drawdown_pct": -0.025993662576432333,
+  "profit_factor": 0.764361981110042,
+  "total_return_pct": -0.01709791272438418,
+  "max_drawdown_pct": -0.025993668809681163,
   "status": "ok"
 }
