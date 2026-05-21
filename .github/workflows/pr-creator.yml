@@ -1,5 +1,7 @@
 name: pr-creator
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       head_branch:
@@ -30,7 +32,7 @@ jobs:
         run: |
           gh pr create \
             --repo 0riginal-claw/sp500-mastery-compute \
-            --base "${{ github.event.inputs.base_branch }}" \
+            --base "${{ github.event.inputs.base_branch || 'main' }}" \
             --head "${{ github.event.inputs.head_branch }}" \
-            --title "${{ github.event.inputs.title }}" \
-            --body "${{ github.event.inputs.body }}"
+            --title "${{ github.event.inputs.title || format('chore: auto PR from {0}', github.event.ref) }}" \
+            --body "${{ github.event.inputs.body || 'Auto-generated PR from push-triggered workflow' }}"
