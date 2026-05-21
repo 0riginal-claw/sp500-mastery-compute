@@ -38,42 +38,19 @@ EDGAR_FILINGS_ROOT = Path(
     "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/"
     "My Drive/Ph0tis/Edgar/data/filings"
 )
-EDGAR_DB_LOCAL = "/tmp/edgar_cache_loader.db"
+# NOTE: 2026-05-21 — switched to read-only URI direct over Drive (NO /tmp copy).
+# Prior implementation copied the 29 MB DB via sqlite3.backup() which deadlocked
+# on Drive-FUSE. Read-only URI avoids any write to the source AND skips the
+# copy entirely; FUSE handles the random-access reads without lock contention.
 
 
 class EdgarCache:
-    """Read-only cache loader. Pull SQLite once per process, then query in-mem."""
-
-    _local_db_ready: bool = False
-
-    @classmethod
-    def _ensure_local_db(cls) -> bool:
-        if cls._local_db_ready and os.path.exists(EDGAR_DB_LOCAL):
-            return True
-        if not os.path.exists(EDGAR_DB_DRIVE):
-            LOG.warning("[edgar_cache] source DB missing: %s", EDGAR_DB_DRIVE)
-            return False
-        # Local copy via SQLite online backup (WAL-safe)
-        try:
-            src = sqlite3.connect(
-                f"file:{EDGAR_DB_DRIVE}?mode=ro", uri=True, timeout=30.0
-            )
-            dst = sqlite3.connect(EDGAR_DB_LOCAL)
-            with dst:
-                src.backup(dst)
-            src.close()
-            dst.close()
-            cls._local_db_ready = True
-            return True
-        except Exception as e:
-            LOG.warning("[edgar_cache] backup failed (%s); using Drive read-only", e)
-            cls._local_db_ready = False
-            return os.path.exists(EDGAR_DB_DRIVE)
+    """Read-only cache loader. Opens SQLite over Drive in read-only URI mode."""
 
     @classmethod
     def _connect(cls):
-        if cls._ensure_local_db() and os.path.exists(EDGAR_DB_LOCAL):
-            return sqlite3.connect(EDGAR_DB_LOCAL, timeout=10.0)
+        if not os.path.exists(EDGAR_DB_DRIVE):
+            raise FileNotFoundError(f"edgar.db missing at {EDGAR_DB_DRIVE}")
         return sqlite3.connect(
             f"file:{EDGAR_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
         )
