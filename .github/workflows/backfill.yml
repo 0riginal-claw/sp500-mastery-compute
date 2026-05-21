@@ -1,0 +1,93 @@
+# .github/workflows/backfill.yml
+# 5-year S&P 500 multi-source backfill workflow.
+# Public repo -> unlimited GH Actions CPU.
+#
+# Sources: yfinance daily OHLCV (5yr), FRED 30 macro series, GDELT news mentions.
+# Outputs: cache/ tree uploaded as workflow artifact.
+
+name: SP500 5yr Backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: "Comma-separated sources (yfinance,fred,gdelt,govtrades)"
+        default: "yfinance,fred,gdelt"
+        required: false
+      smoke:
+        description: "Smoke test only (5 tickers)"
+        default: "false"
+        required: false
+  schedule:
+    - cron: "0 4 * * 1"
+
+jobs:
+  backfill-yfinance:
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.sources, 'yfinance') || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install yfinance pandas pyarrow requests
+      - name: Run yfinance backfill
+        run: |
+          if [ "${{ github.event.inputs.smoke }}" = "true" ]; then
+            python scripts/backfill_yfinance_5yr.py --smoke
+          else
+            python scripts/backfill_yfinance_5yr.py
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yfinance_5yr
+          path: cache/yfinance_5yr/
+          retention-days: 30
+
+  backfill-fred:
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.sources, 'fred') || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas pyarrow requests
+      - run: python scripts/backfill_fred_macro.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fred_macro
+          path: cache/fred_macro/
+          retention-days: 30
+
+  backfill-gdelt:
+    runs-on: ubuntu-latest
+    if: contains(github.event.inputs.sources, 'gdelt') || github.event_name == 'schedule'
+    strategy:
+      fail-fast: false
+      matrix:
+        chunk: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pandas pyarrow requests
+      - name: GDELT chunk ${{ matrix.chunk }}
+        run: |
+          CHUNK=$(python -c "
+          p = open('sp500_tickers.txt').read().splitlines()
+          tickers = [l.strip() for l in p if l.strip()]
+          chunk = ${{ matrix.chunk }}
+          n = 10
+          per = (len(tickers) + n - 1) // n
+          start = chunk * per
+          end = min(start + per, len(tickers))
+          print(','.join(tickers[start:end]))
+          ")
+          python scripts/backfill_news_gdelt.py --tickers "$CHUNK"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gdelt_news_chunk_${{ matrix.chunk }}
+          path: cache/gdelt_news/
+          retention-days: 30
