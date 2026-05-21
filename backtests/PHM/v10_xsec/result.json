@@ -2,7 +2,7 @@
   "ticker": "PHM",
   "strategy": "v10_xsec",
   "strategy_variant": "ML_XGB_v10",
-  "job_id": "c7918d2c",
+  "job_id": "fca684a6",
   "pipeline_version": "xgb_v10",
   "features_total": 1379,
   "rows": 1034,
@@ -76,8 +76,8 @@
   },
   "n_trades": 94,
   "win_rate": 0.39361702127659576,
-  "profit_factor": 1.0078602570501405,
-  "total_return_pct": 0.001319384766127822,
-  "max_drawdown_pct": -0.038332171842728684,
+  "profit_factor": 1.0078602456374923,
+  "total_return_pct": 0.0013193828470774405,
+  "max_drawdown_pct": -0.038332177934828036,
   "status": "ok"
 }
