@@ -3,6 +3,11 @@
 PATCHED 2026-05-21: wires `mastery_priors_loader` + `feature_cache_loader` so
 priors-bias and already-mastered skips reduce wall-clock cost when sweeping.
 
+PATCHED 2026-05-21 (DSR+PBO): adds `--gate-check` post-sweep promotion gate
+using Deflated Sharpe Ratio + Probability of Backtest Overfitting (Bailey &
+López de Prado 2014). Filters ~22k expected false positives at 274k+ JobSpec
+scale (Bailey 2014: 8.4% of pure-noise strategies clear Sharpe>1.0 by chance).
+
 Priors-bias modes (--use-priors):
   - skip_mastered: drop tickers whose state/mastery.json shows PF >= 1.2
                    AND sharpe >= 0.8 (configurable thresholds).
@@ -10,6 +15,10 @@ Priors-bias modes (--use-priors):
               PRIOR_STOP_ATR / PRIOR_TARGET_ATR / PRIOR_SIGNAL env vars so
               backtest_xgb_v10.py (or any sweep) can bias its hyperparam
               search proximal to the known-good point.
+
+Gate-check mode (--gate-check):
+  After sweep results are in, run DSR+PBO promotion gate over state/*/
+  mastery.json. Promotes / demotes in cache/mastered_dsr.parquet.
 
 The original A/B-router behavior is preserved as the default (no --use-priors).
 """
@@ -82,9 +91,24 @@ def priors_bias_env(ticker: str, mp) -> tuple[dict[str, str], bool, str]:
     return env, False, (f"v3_status={prior.v3_status}" if prior.has_prior else "no prior")
 
 
+def run_gate_check(tickers: list[str] | None) -> int:
+    """Apply DSR+PBO promotion gate to state/<ticker>/mastery.json files.
+
+    Delegates to `regate_existing_mastery.main` for the heavy lifting so
+    there's one canonical implementation. Returns exit code.
+    """
+    # Build argv equivalent to: regate_existing_mastery.py [tickers...]
+    import subprocess
+    cmd = [sys.executable, str(SCRIPT_DIR / 'regate_existing_mastery.py'), '--print-table']
+    if tickers:
+        cmd += tickers
+    logger.info("Gate-check: %s", " ".join(cmd))
+    return subprocess.call(cmd)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description='Per-ticker A/B router for XGB strategy dispatch')
-    g = ap.add_mutually_exclusive_group(required=True)
+    g = ap.add_mutually_exclusive_group(required=False)
     g.add_argument('--tickers', type=str, help='Comma-separated tickers')
     g.add_argument('--tickers-from-csv', type=str, help='CSV file with ticker column')
     ap.add_argument('--strategy', type=str, default='ML_XGB_v10')
@@ -98,7 +122,24 @@ def main() -> None:
     ap.add_argument('--prior-sharpe-thresh', type=float, default=0.8)
     ap.add_argument('--show-feature-coverage', action='store_true',
                     help='Print feature-cache coverage report and exit')
+    # 2026-05-21 DSR+PBO gate-check mode
+    ap.add_argument('--gate-check', action='store_true',
+                    help='Run DSR+PBO promotion gate on state/*/mastery.json '
+                         '(post-sweep). Writes cache/mastered_dsr.parquet.')
     args = ap.parse_args()
+
+    # --gate-check short-circuits the dispatcher (it's the promotion path)
+    if args.gate_check:
+        tk = None
+        if args.tickers:
+            tk = [t.strip().upper() for t in args.tickers.split(',') if t.strip()]
+        elif args.tickers_from_csv:
+            tk = pd.read_csv(args.tickers_from_csv)['ticker'].astype(str).str.upper().tolist()
+        sys.exit(run_gate_check(tk))
+
+    # Original A/B-router path requires --tickers or --tickers-from-csv
+    if not (args.tickers or args.tickers_from_csv):
+        ap.error('one of --tickers, --tickers-from-csv, or --gate-check is required')
 
     if args.tickers:
         tickers = [t.strip().upper() for t in args.tickers.split(',') if t.strip()]
