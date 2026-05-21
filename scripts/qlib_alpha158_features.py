@@ -5,13 +5,38 @@ Source: microsoft/qlib (MIT License, https://github.com/microsoft/qlib)
 Origin: qlib/contrib/data/loader.py  class Alpha158DL.get_feature_config()
 Ported: native pandas/numpy — no qlib import required.
 
-All features are .shift(1)-safe (they operate on past data only, no future leak).
+SHIFT CONVENTION (aligned 2026-05-21, no-lookahead audit Patch 3)
+-----------------------------------------------------------------
+This module APPLIES a final .shift(1) to all alpha158_* output columns
+before returning, matching the sibling-module convention used by
+add_jesse_features_features, alpaca_features, news_sentiment_features,
+and worldquant_alpha101_features. As a result:
+
+    at bar t, alpha158_*[t] = value computed from OHLCV through bar t-1.
+
+Rationale: prior versions of this module returned values computed
+through bar t itself (current-bar EOD), while siblings already pre-
+shifted. Mixing both conventions in the same feature matrix risked
+an off-by-one in pipelines that assumed uniform pre-shift. The fix
+unifies on "shifted_1" -- the strictly more conservative choice.
+
+If you need the unshifted view for a special-case caller, use the
+internal _compute_unshifted helper directly (NOT exported by default).
+
+All features are .shift(1)-safe (they operate on past data only,
+no future leak). LOOKAHEAD_STRATEGY = "shifted_1".
 Input df must have lowercase columns: open, high, low, close, volume.
 VWAP is optional; if missing it falls back to (high+low+close)/3.
 
 Approximate feature count: 158 (9 kbar + price/rolling groups).
 Default windows: [5, 10, 20, 30, 60]
 """
+
+# Module-level pipeline contract -- consumed by feature-matrix builders to
+# decide whether to apply an additional .shift(1) at the pipeline layer.
+# DO NOT apply a second .shift(1) externally -- this module is already shifted.
+LOOKAHEAD_STRATEGY = "shifted_1"
+ALREADY_SHIFTED = True
 
 import numpy as np
 import pandas as pd
