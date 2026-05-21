@@ -3520,7 +3520,46 @@ def dispatch_pass(
     are busy but aggregate usage is below the threshold, the dispatcher SLEEPS
     for ``wait_sleep_s`` per retry up to ``max_retries`` rather than falling
     to mac. Operators can disable via ``cloud_first=False``.
+
+    Circuit-breaker + kill-switch (2026-05-21 emergency fix):
+    - DISPATCHER_PAUSED=1 env var: exit immediately, log paused state.
+    - sweeps/dispatch_blacklist.json: skip (ticker,strategy) pairs listed with
+      reason=circuit_open until expires_utc passes (15-min TTL default).
+    - Per-ticker circuit-breaker: if (ticker,strategy) has >=3 consecutive
+      failures in last 5 min from dispatched.jsonl, skip with reason=circuit_open.
     """
+    # ---------- Kill-switch: DISPATCHER_PAUSED=1 ----------
+    if os.environ.get("DISPATCHER_PAUSED", "0") == "1":
+        log.warning("DISPATCHER_PAUSED=1 — dispatch_pass exiting (kill-switch active)")
+        return 0
+
+    # ---------- Load blacklist (15-min TTL) ----------
+    _blacklist_set: set = set()
+    try:
+        import json as _j
+        from pathlib import Path as _P
+        _bl_path = _P(QUEUE_FILE).parent / "dispatch_blacklist.json"
+        if _bl_path.exists():
+            with open(_bl_path) as _bf:
+                _bl = _j.load(_bf)
+            _exp = _bl.get("expires_utc", "")
+            from datetime import datetime as _dt, timezone as _tz
+            try:
+                _exp_dt = _dt.fromisoformat(_exp.replace("Z", "+00:00"))
+                if _dt.now(_tz.utc) < _exp_dt:
+                    for _p in _bl.get("pairs", []):
+                        _blacklist_set.add((_p.get("ticker"), _p.get("strategy")))
+                    if _blacklist_set:
+                        log.warning(
+                            "Circuit-breaker blacklist active: %d (ticker,strategy) "
+                            "pairs blocked until %s",
+                            len(_blacklist_set), _exp,
+                        )
+            except Exception as _e:
+                log.debug("Blacklist TTL parse failed: %s", _e)
+    except Exception as _e:
+        log.debug("Blacklist load failed (non-fatal): %s", _e)
+
     jobs = load_pending_jobs(QUEUE_FILE)
     if not jobs:
         log.info("Queue empty — nothing to dispatch.")
@@ -3528,9 +3567,22 @@ def dispatch_pass(
 
     n_submitted = 0
     n_blocked   = 0
+    n_circuit_open = 0
     submitted_log: List[Dict] = []
 
     for job in jobs:
+        # ---------- Circuit-breaker check ----------
+        _key = (getattr(job, "ticker", None), getattr(job, "strategy", None))
+        if _key in _blacklist_set:
+            n_circuit_open += 1
+            if not dry_run:
+                try:
+                    _write_status_event(job, "circuit_open", cloud="-",
+                                        extra={"reason": "blacklist_15min_ttl"})
+                except Exception:
+                    pass
+            continue
+
         cloud = _pick_cloud_with_wait(
             tracker, job,
             cloud_first=cloud_first,
@@ -3923,6 +3975,11 @@ def daemon_loop(
     _last_drift_check: float = 0.0  # epoch of last drift-correction pass
 
     while True:
+        # Honor DISPATCHER_PAUSED kill-switch at loop level (2026-05-21).
+        if os.environ.get("DISPATCHER_PAUSED", "0") == "1":
+            log.warning("DISPATCHER_PAUSED=1 — daemon_loop sleeping %ds (paused)", POLL_INTERVAL)
+            time.sleep(POLL_INTERVAL)
+            continue
         try:
             tracker.load()   # reload in case cloud_usage.json was hand-edited
             dispatch_pass(
