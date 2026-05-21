@@ -253,17 +253,36 @@ def run_once():
     return summary
 
 
+def _write_heartbeat(status: str = "running") -> None:
+    """Atomic heartbeat write (six-fail-fix F7 — 2026-05-20)."""
+    try:
+        import tempfile
+        hb_dir = AI_ROOT / "state" / "sync_compute_repo"
+        hb_dir.mkdir(parents=True, exist_ok=True)
+        hb = hb_dir / "heartbeat.json"
+        payload = json.dumps({"ts": int(time.time()), "pid": os.getpid(), "status": status})
+        with tempfile.NamedTemporaryFile(dir=str(hb_dir), delete=False, mode="w") as tmp:
+            tmp.write(payload)
+            tmp_path = tmp.name
+        os.replace(tmp_path, hb)
+    except Exception:
+        pass
+
+
 def main():
     log.info("sync_compute_repo starting - owner=%s repo=%s branch=%s dry_run=%s interval=%ds",
              OWNER, REPO, BRANCH, DRY_RUN, INTERVAL)
+    _write_heartbeat("start")
     if INTERVAL <= 0:
         run_once()
+        _write_heartbeat("done")
         return 0
     while True:
         try:
             run_once()
         except Exception as e:
             log.exception("Unhandled error in sync pass: %s", e)
+        _write_heartbeat("loop")
         time.sleep(INTERVAL)
 
 
