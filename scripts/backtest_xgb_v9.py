@@ -94,6 +94,7 @@ try:
     from mythos_features import (  # noqa: E402
         compute_mythos_embedding,
         get_feature_names as mythos_feature_names,
+        MYTHOS_DISABLED,
     )
     MYTHOS_AVAILABLE = True
 except Exception as _e:
@@ -101,15 +102,19 @@ except Exception as _e:
         "[v9] mythos_features not importable: %s — will use zero-embedding fallback", _e
     )
     MYTHOS_AVAILABLE = False
+    # Default-disabled when module missing — matches the 2026-05-21 OC-audit-drop posture.
+    MYTHOS_DISABLED = True  # type: ignore[assignment]
 
     def compute_mythos_embedding(ticker: str, end_date: str) -> np.ndarray:  # type: ignore[misc]
         """Stub fallback when mythos_features.py cannot be imported."""
-        return np.zeros(256, dtype=np.float32)
+        return np.zeros(0, dtype=np.float32)
 
     def mythos_feature_names() -> list[str]:  # type: ignore[misc]
-        return [f"mythos_emb_{i}" for i in range(256)]
+        return []
 
 
+# Static cardinality kept for legacy run_meta.json metadata; ACTIVE count is
+# len(MYTHOS_FEAT_NAMES) which is 0 when MYTHOS_DISABLED=1 (default 2026-05-21).
 MYTHOS_FEATURE_DIM = 256
 MYTHOS_FEAT_NAMES: list[str] = mythos_feature_names()
 
@@ -204,7 +209,11 @@ def build_v9_features(
 
     fallback_rows = 0
 
-    if use_mythos:
+    # 2026-05-21 (OC audit rank #2): when MYTHOS_DISABLED (default), the
+    # 256-col concat is SKIPPED regardless of the use_mythos flag. The flag is
+    # preserved so legacy callers (CLI --use-mythos-features, retrain dispatch)
+    # don't break; they simply become no-ops while MYTHOS_DISABLED=1.
+    if use_mythos and not MYTHOS_DISABLED:
         logger.info("  [v9] computing Mythos embeddings for %d rows ...", len(f))
         checkpoint_path = os.environ.get(
             "MYTHOS_CHECKPOINT_PATH",
@@ -234,6 +243,11 @@ def build_v9_features(
             fallback_rows,
             len(f),
         )
+    elif use_mythos and MYTHOS_DISABLED:
+        logger.info(
+            "  [v9] use_mythos=True but MYTHOS_DISABLED=1 (OC audit 2026-05-21 drop) — "
+            "skipping 256-col concat; 0 cols added."
+        )
 
     # Deduplicate columns (safety guard; Mythos names are unique by design)
     f = f.loc[:, ~f.columns.duplicated()]
@@ -256,7 +270,11 @@ def main() -> None:
         "--use-mythos-features",
         action="store_true",
         default=False,
-        help="Append 256-dim OpenMythos embeddings to the feature matrix",
+        help=(
+            "DEPRECATED 2026-05-21 (OC audit rank #2 — Mythos dropped). When "
+            "MYTHOS_DISABLED=1 (default) this flag is a no-op; the 256-col "
+            "concat is skipped. Pass MYTHOS_DISABLED=0 in env to re-enable."
+        ),
     )
     ap.add_argument("--prob-threshold", type=float, default=0.50)
     ap.add_argument("--sweep-threshold", action="store_true")
