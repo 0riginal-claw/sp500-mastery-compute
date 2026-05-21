@@ -34,41 +34,20 @@ GOVTRADES_DB_DRIVE = (
     "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/"
     "My Drive/Ph0tis/Gov-Trades/data/govtrades.db"
 )
-GOVTRADES_DB_LOCAL = "/tmp/govtrades_cache_loader.db"
+# NOTE: 2026-05-21 — switched to read-only URI direct over Drive (NO /tmp copy).
+# Prior implementation copied the 39 MB DB via sqlite3.backup() which deadlocked
+# on Drive-FUSE. Read-only URI avoids any write to the source AND skips the
+# copy entirely; FUSE handles the random-access reads without lock contention.
 
 
 class GovTradesCache:
-    _local_db_ready: bool = False
     # per-ticker DataFrames keyed by (ticker, kind)
     _df_cache: dict = {}
 
     @classmethod
-    def _ensure_local_db(cls) -> bool:
-        if cls._local_db_ready and os.path.exists(GOVTRADES_DB_LOCAL):
-            return True
-        if not os.path.exists(GOVTRADES_DB_DRIVE):
-            LOG.warning("[govtrades_cache] source DB missing: %s", GOVTRADES_DB_DRIVE)
-            return False
-        try:
-            src = sqlite3.connect(
-                f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=30.0
-            )
-            dst = sqlite3.connect(GOVTRADES_DB_LOCAL)
-            with dst:
-                src.backup(dst)
-            src.close()
-            dst.close()
-            cls._local_db_ready = True
-            return True
-        except Exception as e:
-            LOG.warning("[govtrades_cache] backup failed (%s); will try Drive direct", e)
-            cls._local_db_ready = False
-            return os.path.exists(GOVTRADES_DB_DRIVE)
-
-    @classmethod
     def _connect(cls):
-        if cls._ensure_local_db() and os.path.exists(GOVTRADES_DB_LOCAL):
-            return sqlite3.connect(GOVTRADES_DB_LOCAL, timeout=10.0)
+        if not os.path.exists(GOVTRADES_DB_DRIVE):
+            raise FileNotFoundError(f"govtrades.db missing at {GOVTRADES_DB_DRIVE}")
         return sqlite3.connect(
             f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
         )
