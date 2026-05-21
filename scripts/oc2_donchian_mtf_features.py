@@ -152,23 +152,25 @@ def add_oc2_donchian_mtf_features(
     atr = _atr14(h, l, c).shift(1)
     atr_sma20 = atr.rolling(20, min_periods=5).mean()
 
-    breakout = c > upper
-    df["mtf_breakout_signal"] = breakout.shift(1).astype(int)
+    breakout = (c > upper).fillna(False).astype(bool)
+    df["mtf_breakout_signal"] = breakout.shift(1).fillna(False).astype(int)
 
     # HTF trend proxies from 5Min bar series (per ThreeTFConfluenceBreakout)
     ema63 = _ema(c, 63).shift(1)
     sma600 = c.rolling(600, min_periods=100).mean().shift(1)
-    df["mtf_ema63_above"] = (c > ema63).astype(int)
-    df["mtf_sma600_above"] = (c > sma600).astype(int)
-    df["mtf_three_tf_aligned"] = (breakout.shift(1) & (c > ema63) & (c > sma600)).astype(int)
+    df["mtf_ema63_above"] = (c > ema63).fillna(False).astype(int)
+    df["mtf_sma600_above"] = (c > sma600).fillna(False).astype(int)
+    df["mtf_three_tf_aligned"] = (
+        breakout.shift(1).fillna(False) & (c > ema63).fillna(False) & (c > sma600).fillna(False)
+    ).astype(int)
 
     # Volume surge (IR4)
     vol_sma20 = v.rolling(20, min_periods=5).mean().shift(1)
-    vol_surge = (v.shift(1) > vol_mult * vol_sma20)
+    vol_surge = (v.shift(1) > vol_mult * vol_sma20).fillna(False).astype(bool)
     df["mtf_vol_surge_flag"] = vol_surge.astype(int)
 
     # ATR expansion
-    atr_expanding = (atr > atr_sma20)
+    atr_expanding = (atr > atr_sma20).fillna(False).astype(bool)
     df["mtf_atr_expanding"] = atr_expanding.astype(int)
 
     # No-lunch filter (bars 24-54 on 5Min = 11:30-13:30 ET)
@@ -178,25 +180,25 @@ def add_oc2_donchian_mtf_features(
 
     # Stacked 4-filter (IR1): breakout + vol + ATR + no-lunch
     df["mtf_stacked_four_filter"] = (
-        breakout.shift(1) & vol_surge & atr_expanding & no_lunch
+        breakout.shift(1).fillna(False) & vol_surge & atr_expanding & no_lunch
     ).astype(int)
 
     # ADX
     adx = _adx(h, l, c, 14).shift(1)
     df["mtf_adx14"] = adx
-    df["mtf_adx_gt25"] = (adx > adx_threshold_strong).astype(int)
-    df["mtf_adx_gt20"] = (adx > adx_threshold_base).astype(int)
+    df["mtf_adx_gt25"] = (adx > adx_threshold_strong).fillna(False).astype(int)
+    df["mtf_adx_gt20"] = (adx > adx_threshold_base).fillna(False).astype(int)
 
     # CMF
     cmf = _cmf(h, l, c, v, cmf_period).shift(1)
     df["mtf_cmf21"] = cmf
-    df["mtf_cmf_positive"] = (cmf > 0).astype(int)
+    df["mtf_cmf_positive"] = (cmf > 0).fillna(False).astype(int)
 
     # MDD composite (IR8): ADX > 20 AND CMF > 0 AND vol > SMA
     df["mtf_mdd_composite"] = (
-        breakout.shift(1)
-        & (adx > adx_threshold_base)
-        & (cmf > 0)
+        breakout.shift(1).fillna(False)
+        & (adx > adx_threshold_base).fillna(False)
+        & (cmf > 0).fillna(False)
         & vol_surge
     ).astype(int)
 
@@ -205,8 +207,8 @@ def add_oc2_donchian_mtf_features(
         vol_surge.astype(int)
         + atr_expanding.astype(int)
         + no_lunch.astype(int)
-        + (adx > adx_threshold_base).astype(int)
-        + (cmf > 0).astype(int)
+        + (adx > adx_threshold_base).fillna(False).astype(int)
+        + (cmf > 0).fillna(False).astype(int)
     )
 
     return df
