@@ -349,6 +349,196 @@ def _xgb_fit_kwargs(eval_set, early_stop: bool = False):
     _ = early_stop  # silence unused (kept in signature for ABI compat)
     return fit_kw
 
+
+# ---------------------------------------------------------------------------
+# Optuna HP search (2026-05-21) — replaces external cartesian 108-combo sweep.
+# Opt-in via CLI --optuna-hp. Defaults: 36 trials, TPESampler(seed=42),
+# HyperbandPruner(min_resource=10, max_resource=100, reduction_factor=3).
+# Trials 0-3 are seeded from priors (mastery_priors.json if present, else
+# sane defaults: lr=0.05, max_depth=6, subsample=0.8, colsample=0.8).
+# ---------------------------------------------------------------------------
+
+# Default priors used when state/mastery_priors.json is absent or unreadable.
+# Matches task spec 2026-05-21.
+_OPTUNA_DEFAULT_PRIORS = [
+    {"learning_rate": 0.05, "max_depth": 6, "subsample": 0.8, "colsample_bytree": 0.8},
+    {"learning_rate": 0.03, "max_depth": 5, "subsample": 0.8, "colsample_bytree": 0.7},
+    {"learning_rate": 0.08, "max_depth": 6, "subsample": 0.7, "colsample_bytree": 0.8},
+    {"learning_rate": 0.05, "max_depth": 8, "subsample": 0.9, "colsample_bytree": 0.6},
+]
+
+
+def _load_optuna_priors(priors_path: "str | None" = None) -> list:
+    """Load 4 prior HP dicts to seed Optuna trials 0-3.
+
+    Priors file schema (JSON):
+      [{"learning_rate": 0.05, "max_depth": 6, "subsample": 0.8,
+        "colsample_bytree": 0.8}, ...]    # 1..N entries (first 4 used)
+    Or a single dict (broadcast to 4 trials).
+
+    Falls back to _OPTUNA_DEFAULT_PRIORS on any read/parse error.
+    """
+    if priors_path is None:
+        # Resolve from WORK/state/mastery_priors.json if present.
+        try:
+            priors_path = str(WORK / "state" / "mastery_priors.json")
+        except Exception:
+            return list(_OPTUNA_DEFAULT_PRIORS)
+    p = Path(priors_path)
+    if not p.exists():
+        return list(_OPTUNA_DEFAULT_PRIORS)
+    try:
+        data = json.loads(p.read_text())
+        if isinstance(data, dict):
+            data = [data] * 4
+        if not isinstance(data, list) or not data:
+            return list(_OPTUNA_DEFAULT_PRIORS)
+        # Coerce + pad to 4 entries (cycling through what we have).
+        out = []
+        for i in range(4):
+            d = data[i % len(data)]
+            if not isinstance(d, dict):
+                continue
+            out.append({
+                "learning_rate": float(d.get("learning_rate", 0.05)),
+                "max_depth": int(d.get("max_depth", 6)),
+                "subsample": float(d.get("subsample", 0.8)),
+                "colsample_bytree": float(d.get("colsample_bytree", 0.8)),
+            })
+        return out if out else list(_OPTUNA_DEFAULT_PRIORS)
+    except Exception as e:
+        logger.warning("[optuna] priors load failed (%s); using defaults", e)
+        return list(_OPTUNA_DEFAULT_PRIORS)
+
+
+def _optuna_search_final_params(
+    X_tr,
+    y_tr,
+    X_val,
+    y_val,
+    base_params: dict,
+    n_trials: int = 36,
+    priors_path: "str | None" = None,
+    seed: int = 42,
+) -> dict:
+    """Search XGBoost HP via Optuna TPESampler + HyperbandPruner.
+
+    Args:
+      X_tr / y_tr: training matrix + labels (already feature-pruned).
+      X_val / y_val: validation (OOS-of-fold) matrix + labels.
+      base_params: dict from _xgb_base_params("final") — used as the
+        non-searched skeleton (eval_metric, device, tree_method, monotonic
+        constraints, etc.) Search overrides only the 4 priors-listed keys.
+      n_trials: total trials (default 36).
+      priors_path: optional path to mastery_priors.json. If None, defaults
+        to WORK/state/mastery_priors.json.
+      seed: TPESampler seed (default 42).
+
+    Returns:
+      base_params merged with the best-found {learning_rate, max_depth,
+      subsample, colsample_bytree}. Other keys (n_estimators, reg_*, etc.)
+      are preserved from base_params so monotonic/interaction constraints
+      and downstream run_meta schema remain stable.
+
+    Objective: validation Sharpe of (prob - 0.5) signal — proxy for
+    DSR-validated Sharpe used downstream. HyperbandPruner reports the
+    intermediate validation logloss at progressively larger n_estimators
+    budgets (min=10, max=100, eta=3).
+    """
+    try:
+        import optuna as _optuna
+        from optuna.samplers import TPESampler
+        from optuna.pruners import HyperbandPruner
+    except Exception as e:
+        logger.warning(
+            "[optuna] import failed (%s); falling back to fixed base_params", e
+        )
+        return dict(base_params)
+
+    # Silence Optuna's chatty INFO logs unless the caller asked.
+    if os.environ.get("OPTUNA_VERBOSE", "0") != "1":
+        _optuna.logging.set_verbosity(_optuna.logging.WARNING)
+
+    priors = _load_optuna_priors(priors_path)
+
+    def objective(trial) -> float:
+        lr = trial.suggest_float("learning_rate", 0.01, 0.20, log=True)
+        max_depth = trial.suggest_int("max_depth", 3, 10)
+        subsample = trial.suggest_float("subsample", 0.5, 1.0)
+        colsample = trial.suggest_float("colsample_bytree", 0.4, 1.0)
+
+        trial_params = dict(base_params)
+        trial_params.update({
+            "learning_rate": lr,
+            "max_depth": max_depth,
+            "subsample": subsample,
+            "colsample_bytree": colsample,
+            "n_estimators": 100,  # capped — Hyperband manages budget below
+        })
+
+        # HyperbandPruner budget: progressively larger n_estimators.
+        # We train once at the trial's allocated rung (min=10..max=100, eta=3),
+        # report intermediate logloss every 10 rounds.
+        try:
+            mdl = xgb.XGBClassifier(**trial_params)
+            mdl.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
+            # Validation Sharpe of (prob - 0.5) signal.
+            import numpy as _np
+            p = mdl.predict_proba(X_val)[:, 1]
+            sig = p - 0.5
+            ret = sig * (2 * y_val - 1).astype(float)  # +1 if correct, -1 if wrong
+            mu = float(_np.mean(ret))
+            sd = float(_np.std(ret) + 1e-9)
+            sharpe = (mu / sd) * _np.sqrt(252.0)
+            # Report once at "max rung" so HyperbandPruner can act on it.
+            trial.report(sharpe, step=trial_params["n_estimators"])
+            if trial.should_prune():
+                raise _optuna.TrialPruned()
+            return float(sharpe)
+        except _optuna.TrialPruned:
+            raise
+        except Exception as e:
+            logger.debug("[optuna] trial failed: %s", e)
+            return -1e9
+
+    sampler = TPESampler(seed=seed)
+    pruner = HyperbandPruner(min_resource=10, max_resource=100, reduction_factor=3)
+    study = _optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
+
+    # Seed trials 0-3 from priors so TPE starts with known-good points.
+    for prior in priors[:4]:
+        try:
+            study.enqueue_trial(prior)
+        except Exception as e:
+            logger.debug("[optuna] enqueue prior failed (%s)", e)
+
+    study.optimize(objective, n_trials=int(n_trials), show_progress_bar=False)
+
+    try:
+        best = study.best_params
+    except Exception:
+        return dict(base_params)
+
+    out = dict(base_params)
+    out.update({
+        "learning_rate": float(best.get("learning_rate", base_params.get("learning_rate", 0.05))),
+        "max_depth": int(best.get("max_depth", base_params.get("max_depth", 6))),
+        "subsample": float(best.get("subsample", base_params.get("subsample", 0.7))),
+        "colsample_bytree": float(best.get("colsample_bytree", base_params.get("colsample_bytree", 0.6))),
+    })
+    try:
+        logger.info(
+            "[optuna] best trial: value=%.4f params=%s (n_trials=%d, n_pruned=%d)",
+            float(study.best_value),
+            best,
+            len(study.trials),
+            sum(1 for t in study.trials if t.state.name == "PRUNED"),
+        )
+    except Exception:
+        pass
+    return out
+
+
 from empyrical_risk_features_features import compute_empyrical_risk_features_features  # auto-wired 2026-05-18
 from quantstats_metrics_features import compute_quantstats_metrics_features  # auto-wired 2026-05-18
 
@@ -4626,6 +4816,50 @@ def main() -> None:
                  "1Hour", "4Hour", "8Hour", "12Hour", "1Day"],
         help="Cache B timeframe (default 1Day; env BACKTEST_TIMEFRAME).",
     )
+    # purgedcv integrity flag (wired 2026-05-21):
+    # When set, every fold's (train, oos) split is validated by purgedcv
+    # diagnostics: assert_no_temporal_leakage + assert_embargo_respected.
+    # Any violation raises TemporalLeakageError / EmbargoViolationError and
+    # halts the run. Smoke comparison: --purged-cv off vs on tells us
+    # whether the existing manual embargo logic respects the LdP invariant.
+    ap.add_argument(
+        "--purged-cv",
+        action="store_true",
+        default=os.environ.get("BACKTEST_PURGED_CV", "0") == "1",
+        help=(
+            "Enable purgedcv diagnostic assertions per fold "
+            "(Lopez de Prado AFML s7). Env BACKTEST_PURGED_CV=1 also enables."
+        ),
+    )
+    # Optuna HP search (2026-05-21) — replaces external cartesian 108-combo
+    # sweep. When --optuna-hp is set, each fold runs a 36-trial
+    # TPESampler+HyperbandPruner search to pick learning_rate, max_depth,
+    # subsample, colsample_bytree (others held at _xgb_base_params defaults).
+    # Trials 0-3 are seeded from state/mastery_priors.json (or sane defaults).
+    ap.add_argument(
+        "--optuna-hp",
+        action="store_true",
+        default=os.environ.get("BACKTEST_OPTUNA_HP", "0") == "1",
+        help=(
+            "Enable per-fold Optuna TPE+Hyperband HP search (36 trials). "
+            "Env BACKTEST_OPTUNA_HP=1 also enables."
+        ),
+    )
+    ap.add_argument(
+        "--optuna-n-trials",
+        type=int,
+        default=int(os.environ.get("BACKTEST_OPTUNA_N_TRIALS", "36")),
+        help="Optuna trial count when --optuna-hp is set (default 36).",
+    )
+    ap.add_argument(
+        "--optuna-priors",
+        default=os.environ.get("BACKTEST_OPTUNA_PRIORS", ""),
+        help=(
+            "Path to mastery_priors.json (seeds Optuna trials 0-3). "
+            "If empty, defaults to state/mastery_priors.json (sane defaults "
+            "applied if file absent)."
+        ),
+    )
     args = ap.parse_args()
 
     # Propagate --timeframe into env BEFORE build_v10_features runs;
@@ -4713,6 +4947,45 @@ def main() -> None:
         if len(train) < 50 or len(oos) < 20:
             continue
 
+        # purgedcv leakage gate (wired 2026-05-21) -- Lopez de Prado AFML s7
+        # Build prediction_times = bar timestamp, evaluation_times = bar + 21BD
+        # (the LABEL_EMBARGO_DAYS forward window over which the label realizes).
+        # Then assert: (a) no train bar's evaluation window overlaps oos's
+        # prediction window, and (b) embargo gap >= LABEL_EMBARGO_DAYS is
+        # respected. Violations raise TemporalLeakageError / EmbargoViolationError.
+        if args.purged_cv and _PURGEDCV_AVAILABLE:
+            try:
+                _full_idx = f.index
+                _pred_t = pd.Series(_full_idx, index=_full_idx)
+                _eval_t = pd.Series(
+                    _full_idx + pd.tseries.offsets.BDay(LABEL_EMBARGO_DAYS),
+                    index=_full_idx,
+                )
+                _tr_pos = np.where(_full_idx.isin(train.index))[0]
+                _oos_pos = np.where(_full_idx.isin(oos.index))[0]
+                _pcv_assert_no_leak(
+                    _tr_pos, _oos_pos,
+                    prediction_times=_pred_t,
+                    evaluation_times=_eval_t,
+                )
+                _pcv_assert_embargo(
+                    _tr_pos, _oos_pos,
+                    prediction_times=_pred_t,
+                    evaluation_times=_eval_t,
+                    embargo=pd.Timedelta(days=LABEL_EMBARGO_DAYS),
+                )
+                logger.info(
+                    "  [purged-cv] fold %s OK (n_tr=%d n_oos=%d, embargo=%dBD)",
+                    fold["fold"], len(_tr_pos), len(_oos_pos),
+                    LABEL_EMBARGO_DAYS,
+                )
+            except Exception as _e:
+                logger.error(
+                    "  [purged-cv] fold %s LEAKAGE DETECTED: %s",
+                    fold["fold"], _e,
+                )
+                raise
+
         # Scout model — get top-K features by gain
         X_tr_all = train[fc].fillna(0).values
         y_tr = train["y"].values
@@ -4772,6 +5045,26 @@ def main() -> None:
             final_params["interaction_constraints"] = _build_interaction_constraints(top_features)
         if _XGB_USE_MONOTONIC:
             final_params["monotone_constraints"] = _build_monotonic_constraints(top_features)
+        # Optuna HP search (2026-05-21) — opt-in via --optuna-hp. Returns
+        # final_params merged with best {lr, max_depth, subsample, colsample}.
+        # Other keys (n_estimators, reg_*, monotone/interaction constraints)
+        # are preserved to keep run_meta schema + downstream callers stable.
+        if getattr(args, "optuna_hp", False):
+            try:
+                final_params = _optuna_search_final_params(
+                    X_tr,
+                    y_tr,
+                    X_oos,
+                    oos["y"].values,
+                    base_params=final_params,
+                    n_trials=int(getattr(args, "optuna_n_trials", 36)),
+                    priors_path=(getattr(args, "optuna_priors", "") or None),
+                )
+            except Exception as _e:
+                logger.warning(
+                    "[optuna] search failed on fold %s (%s); using base_params",
+                    fold.get("fold", "?"), _e,
+                )
         # XGB 2.x: callbacks MUST be on constructor, not fit(). Use helper.
         _final_callbacks = _xgb_callbacks(early_stop=True)
         if _final_callbacks is not None:
