@@ -33,7 +33,8 @@ GOVTRADES_DB_DRIVE = (
     "GoogleDrive-zachgladstone@gmail.com/My Drive/"
     "Ph0tis/Gov-Trades/data/govtrades.db"
 )
-GOVTRADES_DB_LOCAL = "/tmp/govtrades_contracts_features.db"
+# 2026-05-21: NO /tmp copy — read-only URI direct over Drive.
+GOVTRADES_DB_LOCAL = GOVTRADES_DB_DRIVE
 
 FEATURE_NAMES: list[str] = [
     "gt_contracts_ttm_usd",
