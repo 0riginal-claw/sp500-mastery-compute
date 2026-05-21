@@ -1,0 +1,84 @@
+{
+  "class": "openclaw_main",
+  "ts": "2026-05-21T00:17:35.234095+00:00",
+  "session_id": "d2489079",
+  "files": {
+    "workspace/IDENTITY.md": {
+      "size": 696,
+      "sha256": "d93cd095ac3b8d8135110230bc6f09738fb8029ca6f270001a928a1c1614bffb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace/IDENTITY.md"
+    },
+    "workspace/HEARTBEAT.md": {
+      "size": 226,
+      "sha256": "5a840ad5adc7bb6140b955bfb7a9fa2f47365e1cb7087ac9197831fbfef79888",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace/HEARTBEAT.md"
+    },
+    "workspace/BOOTSTRAP.md": {
+      "size": 1531,
+      "sha256": "72be44b65f8d7b7331548398826e4be70544fbcc6e86dfc1f12684e0f796d4f4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace/BOOTSTRAP.md"
+    },
+    "workspace/USER.md": {
+      "size": 537,
+      "sha256": "e418ca9a680553b3ad8f54aecb0d403330810bb77826ab5251cc1dc13368fe16",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace/USER.md"
+    },
+    "workspace/SOUL.md": {
+      "size": 1806,
+      "sha256": "daab0d62045d0a00ea0f968f4463ea09fd06c71f59066f686b0e9b361f929b43",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace/SOUL.md"
+    },
+    "workspace/AGENTS.md": {
+      "size": 7835,
+      "sha256": "240d299fe05a0984b916ed386328e0b7e6307bcd7fb9d8ed710defc0057e97c0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace/AGENTS.md"
+    },
+    "workspace/TOOLS.md": {
+      "size": 920,
+      "sha256": "15cdfe57fcfa6d83888e215176f40b415ff2b9a51afe96b4d4134f2f5a8cfe68",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace/TOOLS.md"
+    },
+    "workspace/.openclaw/workspace-state.json": {
+      "size": 70,
+      "sha256": "559a1ccea72d3b2ec406fb325803ea7ed8cf5f17d276cdf4850fd6e1494e29bb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace/.openclaw/workspace-state.json"
+    },
+    "completions/openclaw.fish": {
+      "size": 236314,
+      "sha256": "9365c6ed051937870952bc2ad5663a9287cac92ada02ef7f4bc2d8326a1992af",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/completions/openclaw.fish"
+    },
+    "completions/openclaw.ps1": {
+      "size": 131738,
+      "sha256": "9b826f1d07352648e717e885b6ffc4eb74982ea3f944bdc022df373036f4ec42",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/completions/openclaw.ps1"
+    },
+    "completions/openclaw.zsh": {
+      "size": 166917,
+      "sha256": "3b6fdc9789bc5b52d12f939db9bc4ec0509a54d0c64880ad0d7d440d8ea58ace",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/completions/openclaw.zsh"
+    },
+    "completions/openclaw.bash": {
+      "size": 12110,
+      "sha256": "8796ab91279b8472c03d3603ea47e2494aba43356ff96c6daa14b72cb6cefb6f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/completions/openclaw.bash"
+    },
+    "logs/config-audit.jsonl": {
+      "size": 8424,
+      "sha256": "0bc3dda198561dc05c22dd863517e3846956f5ab2a0137f659ef61146f38c8de",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/logs/config-audit.jsonl"
+    },
+    "logs/config-health.json": {
+      "size": 660,
+      "sha256": "7ee66d512533ccca44be160feede59d49054a16801dc73dcfeddc8ce77a7470f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/logs/config-health.json"
+    }
+  },
+  "skipped_too_large": 0,
+  "errors": 0,
+  "sources_seen": [
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/workspace",
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/completions",
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/logs"
+  ]
+}

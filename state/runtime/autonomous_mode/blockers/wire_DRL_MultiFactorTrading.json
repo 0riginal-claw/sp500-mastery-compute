@@ -1,0 +1,13 @@
+{
+  "id": "wire_DRL_MultiFactorTrading",
+  "ts": "2026-05-21T01:54:40Z",
+  "action": "wire_dormant_repo",
+  "target": "repos-claude-clones/DRL-MultiFactorTrading",
+  "priority": 5,
+  "status": "pending",
+  "steps": [
+    "1. Read repo structure",
+    "2. Create oc2 agent.md",
+    "3. Add 10-point guardrail"
+  ]
+}

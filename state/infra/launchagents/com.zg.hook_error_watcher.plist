@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.zg.hook_error_watcher</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/orginal/.zg/bin/hook_error_watcher.py</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOOK_ERR_HOME</key><string>/Users/orginal</string>
+    <key>HOOK_ERR_CYCLE_SEC</key><string>10</string>
+    <key>PYTHONUNBUFFERED</key><string>1</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>StandardOutPath</key><string>/Users/orginal/.zg/logs/hook_error_watcher.stdout.log</string>
+  <key>StandardErrorPath</key><string>/Users/orginal/.zg/logs/hook_error_watcher.stderr.log</string>
+  <key>WorkingDirectory</key><string>/Users/orginal</string>
+</dict>
+</plist>

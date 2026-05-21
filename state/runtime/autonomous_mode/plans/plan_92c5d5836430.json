@@ -1,0 +1,49 @@
+{
+  "plan_id": "92c5d5836430",
+  "cycle_id": "b18e6bde",
+  "ts": "2026-05-20T07:57:28.332478+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Document 10-Q event strategy as formal mastery spec: entry=long on 10-Q filing date, exit=5 trading days later at close, sizing=fixed or volatility-normalized, expected metrics from OOS 2024-2025",
+      "target": "research/notes/20260520_wave3_10q_strategy.md",
+      "estimated_min": 10,
+      "depends_on": [],
+      "success_criteria": "Document includes entry rule, exit rule, expected WR/PF/Sharpe from OOS, per-ticker breakouts, and integration path into scripts/mastery_pipeline.py",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Run 10-Q drift by sector: map all 493 tickers to GICS sectors, compute mean 5d return and WR per sector, identify top-3 and bottom-3 sectors",
+      "target": "EDGAR DB + static sector mapping",
+      "estimated_min": 15,
+      "depends_on": [],
+      "success_criteria": "CSV with per-sector 10-Q drift metrics; identifies which sectors drive the +2.03% sample result",
+      "priority": 9
+    },
+    {
+      "step_id": "s3",
+      "action": "Fix remaining shell daemon exit 126: add venv Python to PATH in plist EnvironmentVariables, unload/load, verify exit code changes from 126",
+      "target": "/Users/orginal/Library/LaunchAgents/com.zg.{mem0_auto_capture,selective_context_prune}.plist",
+      "estimated_min": 10,
+      "depends_on": [],
+      "success_criteria": "Both shell daemons show exit code different from 126 after reloard; ideally exit 0",
+      "priority": 7
+    },
+    {
+      "step_id": "s4",
+      "action": "Write session capstone to research/notes/20260520_comprehensive.md with all findings: failed approaches, 10-Q signal discovery, XGBoost dead end, daemon recovery status, EDGAR/govtrades database profile",
+      "target": "research/notes/20260520_comprehensive.md",
+      "estimated_min": 15,
+      "depends_on": [],
+      "success_criteria": "Document captures every test result, every decision, infrastructure state, and recommended next steps for Wave 3",
+      "priority": 7
+    }
+  ],
+  "goals_addressed": [
+    "10-Q EDGAR event strategy passes walk-forward: Sharpe=1.14, PF=1.57, WR=56.9% on OOS 2024-2025 \u2014 passes all acceptance thresholds",
+    "5,485 total trades across 493 tickers with 4 years of data \u2014 robust sample size",
+    "Strategy gets STRONGER out-of-sample (Train Sharpe=0.80 \u2192 Test Sharpe=1.14) \u2014 no overfitting"
+  ]
+}

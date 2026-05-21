@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>com.zg.selective_context_prune</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/orginal/.zg/bin/selective_context_prune.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/orginal/.zg/state/selective_context_prune.stderr.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/orginal/.zg/state/selective_context_prune.stdout.log</string>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+	<key>WatchPaths</key>
+	<array>
+		<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools</string>
+</dict>
+</plist>

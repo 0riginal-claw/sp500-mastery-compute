@@ -1,0 +1,36 @@
+{
+  "_schema_note": "Canonical list of required PreToolUse hook entries. SessionStart bootstrap (hook-bootstrap.sh) verifies each command path is present in $CLAUDE_CONFIG_DIR/settings.json -> hooks.PreToolUse[*].hooks[*].command. If ANY missing, bootstrap logs to logs/hook_bootstrap.log and attempts auto-repair by appending the missing entry. Auto-repair is opt-in: set HOOK_BOOTSTRAP_AUTOREPAIR=1 to enable, default is observe-only.",
+  "_version": "2026-05-19",
+  "required_hooks": [
+    {
+      "id": "sensitive-path-block",
+      "matcher": "Read|Write|Edit|NotebookEdit|Bash",
+      "command_substr": "sensitive-path-block/sensitive-path-block.sh"
+    },
+    {
+      "id": "cloud-routing-block",
+      "matcher": "Bash",
+      "command_substr": "cloud-routing-block/check.sh"
+    },
+    {
+      "id": "openclaw-routing-block",
+      "matcher": "^(Task|Agent|mcp__plugin_fallback-agent_fallback__Task)$",
+      "command_substr": "openclaw-routing-block/check.sh"
+    },
+    {
+      "id": "model-reason-block",
+      "matcher": "^(Task|Agent|mcp__plugin_fallback-agent_fallback__Task)$",
+      "command_substr": "model-reason-block/check.sh"
+    },
+    {
+      "id": "spawn-validator",
+      "matcher": "^(Task|Agent|mcp__plugin_fallback-agent_fallback__Task)$",
+      "command_substr": "spawn-validator/validator.sh"
+    },
+    {
+      "id": "recursion-fanout-tracker",
+      "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|Task|Agent|mcp__plugin_fallback-agent_fallback__Task",
+      "command_substr": "recursion-fanout-tracker/tracker.sh"
+    }
+  ]
+}

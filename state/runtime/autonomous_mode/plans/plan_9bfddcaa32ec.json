@@ -1,0 +1,40 @@
+{
+  "plan_id": "9bfddcaa32ec",
+  "cycle_id": "6b81e64d",
+  "ts": "2026-05-20T07:19:29.651518+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Rebuild 3 crashdaemon launchd plists \u2014 openclaw_session_watcher, mem0_auto_capture, paper_trade_startup \u2014 with ProgramArguments, WorkingDirectory, WatchPaths (Google Drive), KeepAlive, StandardOutPath, StandardErrorPath",
+      "target": "~/Library/LaunchAgents/com.zg.{openclaw_session_watcher,mem0_auto_capture,paper_trade_startup}.plist",
+      "estimated_min": 20,
+      "depends_on": [],
+      "success_criteria": "3 plist files created; plutil -lint passes for each; launchctl bootstrap succeeds; all 3 show PID > 0",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Run yahoo_self_provision.py --dry-run directly to verify the None guard fix works without a daemon",
+      "target": "scripts/yahoo_self_provision.py",
+      "estimated_min": 3,
+      "depends_on": [],
+      "success_criteria": "python3 scripts/yahoo_self_provision.py --help exits 0 without NoneType error (daemon refresh not needed for dry-run verification)",
+      "priority": 8
+    },
+    {
+      "step_id": "s3",
+      "action": "Kill all 10 in-flight helpers (stale from previous cycles), then poll overseer once to get clean fleet baseline",
+      "target": "in-flight helper PIDs + overseer poll",
+      "estimated_min": 2,
+      "depends_on": [],
+      "success_criteria": "0 in-flight helpers; overseer shows clean state with remaining 4 crashed daemons",
+      "priority": 7
+    }
+  ],
+  "goals_addressed": [
+    "Stop the infinite analysis loop \u2014 deliver actual status and escalate the blocker",
+    "Create daemon_recovery.sh as a reusable recovery tool",
+    "Identify the real root cause (missing plists, not missing binaries)"
+  ]
+}

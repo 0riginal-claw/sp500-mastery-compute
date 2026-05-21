@@ -1,0 +1,28 @@
+# origin: autonomous_daemon
+# user_session_yielding: enabled (do not run if last_user_prompt < 60s)
+# autonomous_mode spawn
+# model_reason: sonnet - task_type unclassified (default routing)
+# gabriel_task_type: uncategorized
+# scope_estimate_min: 1
+# decomposition_plan: single-helper slice
+# autosolve_skip: spawned via autonomous_mode_daemon safety/budget-gated flow
+
+Workspace inherits standing authorization. Safety boundaries apply.
+Pre-approved: routine read/write/script/install/log/backup inside My Drive.
+
+## Task
+Kill this Claude process immediately — load 29 (cap=12), sustained cap breach for 30+ min, same VM compressor trajectory that caused kernel panic
+
+## Why
+plan step s1 addressing blockers
+
+## Brief
+Target: process:claude
+Success criteria: Mac load drops below 8 within 2 min. All 10 artifacts, ~92% recovery, 4 guardrail audits preserved on disk.
+Depends on: []
+
+## Expected lift
+Mac load drops below 8 within 2 min. All 10 artifacts, ~92% recovery, 4 guardrail audits preserved on disk.
+
+## Proof of work
+Return: commands run, paths accessed, files changed, backups, sub-agents, final status.

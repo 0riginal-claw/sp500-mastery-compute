@@ -1,0 +1,20 @@
+{
+  "plan_id": "32816f5d197c",
+  "cycle_id": "168ad7fd",
+  "ts": "2026-05-21T00:54:05.403124+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Kill this Claude process immediately \u2014 load 29 (cap=12), sustained cap breach for 30+ min, same VM compressor trajectory that caused kernel panic",
+      "target": "process:claude",
+      "estimated_min": 1,
+      "depends_on": [],
+      "success_criteria": "Mac load drops below 8 within 2 min. All 10 artifacts, ~92% recovery, 4 guardrail audits preserved on disk.",
+      "priority": 10
+    }
+  ],
+  "goals_addressed": [
+    "Emergency: Mac load at 29+ sustained for 30+ min. Same pre-panic pattern as kernel crash."
+  ]
+}

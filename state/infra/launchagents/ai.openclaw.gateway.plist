@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>ai.openclaw.gateway</string>
+    
+    <key>Comment</key>
+    <string>OpenClaw Gateway (v2026.5.7)</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>1</integer>
+    <key>Umask</key>
+    <integer>63</integer>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/service-env/ai.openclaw.gateway-env-wrapper.sh</string>
+      <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/service-env/ai.openclaw.gateway.env</string>
+      <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/OpenClaw/tools/node-v22.22.0/bin/node</string>
+      <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/OpenClaw/tools/node-v22.22.0/lib/node_modules/openclaw/dist/index.js</string>
+      <string>gateway</string>
+      <string>--port</string>
+      <string>18789</string>
+    </array>
+    
+    <key>WorkingDirectory</key>
+    <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw</string>
+    <key>StandardOutPath</key>
+    <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/logs/gateway.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/logs/gateway.err.log</string>
+  </dict>
+</plist>

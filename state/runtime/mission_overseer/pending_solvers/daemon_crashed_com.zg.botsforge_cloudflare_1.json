@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-05-21T00:22:52Z",
+  "issue": {
+    "kind": "CRASHED",
+    "key": "daemon_crashed_com.zg.botsforge_cloudflare_1",
+    "label": "com.zg.botsforge_cloudflare",
+    "status": 1,
+    "summary": "daemon com.zg.botsforge_cloudflare exit_status=1, PID=-"
+  },
+  "instruction": "Next Claude session reading dashboard/MISSION_PROGRESS.md should spawn 3 \u00a78 solvers (INTERNET/GITHUB/REPO-LOCAL) for this issue if not yet resolved."
+}

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/orginal</string>
+		<key>PATH</key>
+		<string>/Users/orginal/.venvs/sp500-mastery/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>ExitTimeOut</key>
+	<integer>20</integer>
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>Label</key>
+	<string>com.zg.agent_watchdog</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/orginal/.venvs/sp500-mastery/bin/python</string>
+		<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/scripts/agent_watchdog_daemon.py</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/logs/agent_watchdog_launchd_stderr.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/logs/agent_watchdog_launchd_stdout.log</string>
+	<key>StartInterval</key>
+	<integer>120</integer>
+	<key>ThrottleInterval</key>
+	<integer>60</integer>
+</dict>
+</plist>

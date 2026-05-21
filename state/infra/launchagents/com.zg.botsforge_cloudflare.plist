@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.zg.botsforge_cloudflare</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/orginal/.venvs/sp500-mastery/bin/python3</string>
+        <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/repos-claude-clones/BotsForge-CloudFlare/app.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/repos-claude-clones/BotsForge-CloudFlare</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>API_KEY</key>
+        <string>be0c83cc-8268-406e-9a49-54500478600b</string>
+        <key>PORT</key>
+        <string>5033</string>
+        <key>LOG_LEVEL</key>
+        <string>INFO</string>
+        <key>max_workers</key>
+        <string>1</string>
+        <key>AUTO_CLOUD_DISPATCH</key>
+        <string>0</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/logs/botsforge/launchd.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/logs/botsforge/launchd.stderr.log</string>
+
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+</dict>
+</plist>

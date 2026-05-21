@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>AUTO_CLOUD_DISPATCH</key>
+		<string>0</string>
+		<key>HOME</key>
+		<string>/Users/orginal</string>
+		<key>PATH</key>
+		<string>/Users/orginal/.venvs/sp500-mastery/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>PYTHONUNBUFFERED</key>
+		<string>1</string>
+	</dict>
+	<key>ExitTimeOut</key>
+	<integer>20</integer>
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>Label</key>
+	<string>com.zg.memory_auto_save</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/orginal/.venvs/sp500-mastery/bin/python</string>
+		<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&amp;p500-ticker-mastery/scripts/memory_auto_save_daemon.py</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&amp;p500-ticker-mastery/logs/memory_auto_save.stderr.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&amp;p500-ticker-mastery/logs/memory_auto_save.stdout.log</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>23</integer>
+		<key>Minute</key>
+		<integer>55</integer>
+	</dict>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&amp;p500-ticker-mastery</string>
+</dict>
+</plist>

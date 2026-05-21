@@ -1,0 +1,364 @@
+{
+  "botsforge_cloudflare": {
+    "score": 1,
+    "parts": {
+      "plist": "Y",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "-",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "mem0_auto_capture": {
+    "score": 1,
+    "parts": {
+      "plist": "Y",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "-",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "openclaw_completion_tracker": {
+    "score": 1,
+    "parts": {
+      "plist": "Y",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "-",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "openclaw_session_watcher": {
+    "score": 1,
+    "parts": {
+      "plist": "Y",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "-",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "selective_context_prune": {
+    "score": 1,
+    "parts": {
+      "plist": "Y",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "-",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "stale_memory_audit": {
+    "score": 1,
+    "parts": {
+      "plist": "Y",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "-",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "gabriel_direction": {
+    "score": 2,
+    "parts": {
+      "plist": "-",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "autonomous_mode": {
+    "score": 3,
+    "parts": {
+      "plist": "-",
+      "state": "Y",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "-",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "gabriel": {
+    "score": 3,
+    "parts": {
+      "plist": "-",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "Y",
+      "stop_hook": "-",
+      "settings": "Y",
+      "doc": "-",
+      "backup": "Y"
+    }
+  },
+  "autonomous_daemon": {
+    "score": 4,
+    "parts": {
+      "plist": "-",
+      "state": "-",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "Y",
+      "doc": "-",
+      "backup": "Y"
+    }
+  },
+  "tcc": {
+    "score": 4,
+    "parts": {
+      "plist": "-",
+      "state": "-",
+      "fresh_hook": "-",
+      "boot_hook": "-",
+      "act_hook": "-",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "-",
+      "backup": "Y"
+    }
+  },
+  "tcc_autoallow": {
+    "score": 4,
+    "parts": {
+      "plist": "-",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "-",
+      "settings": "Y",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "gabriel_self": {
+    "score": 5,
+    "parts": {
+      "plist": "-",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "-",
+      "sa_hook": "-",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "-",
+      "backup": "-"
+    }
+  },
+  "autonomous": {
+    "score": 7,
+    "parts": {
+      "plist": "-",
+      "state": "-",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "-",
+      "backup": "Y"
+    }
+  },
+  "agent_watchdog": {
+    "score": 10,
+    "parts": {
+      "plist": "Y",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "memory_auto_save": {
+    "score": 10,
+    "parts": {
+      "plist": "Y",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "mission_overseer": {
+    "score": 10,
+    "parts": {
+      "plist": "Y",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "paper_trade_startup": {
+    "score": 10,
+    "parts": {
+      "plist": "Y",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "sync_compute_repo": {
+    "score": 10,
+    "parts": {
+      "plist": "Y",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "sync_hooks_local": {
+    "score": 10,
+    "parts": {
+      "plist": "Y",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "session_resume_checkpointer": {
+    "score": 10,
+    "parts": {
+      "plist": "Y",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "universal_resume_guardrail": {
+    "score": 10,
+    "parts": {
+      "plist": "Y",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    }
+  },
+  "perm_propagate": {
+    "score": 10,
+    "parts": {
+      "plist": "N/A",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    },
+    "note": "enforcement integrated into autosolve-require + spawn-validator hooks; wrapper makes state observable"
+  },
+  "tcc_admin_canceler": {
+    "score": 10,
+    "parts": {
+      "plist": "N/A",
+      "state": "Y",
+      "fresh_hook": "Y",
+      "boot_hook": "Y",
+      "act_hook": "Y",
+      "sa_hook": "Y",
+      "stop_hook": "Y",
+      "settings": "Y",
+      "doc": "Y",
+      "backup": "Y"
+    },
+    "note": "patch lives in tcc-dialog-detect/scan.applescript; wrapper observes patch presence"
+  }
+}
