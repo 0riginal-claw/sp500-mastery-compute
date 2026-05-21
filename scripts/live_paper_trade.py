@@ -1250,6 +1250,54 @@ def _load_ws_fills(today: str) -> dict[str, dict]:
 _LIFECYCLE_EVENTS = {"canceled", "rejected", "expired", "done_for_day"}
 
 
+def _load_ws_fills_by_symbol(today: str) -> dict[str, dict]:
+    """Aggregate SELL fills by symbol -> {avg_sell_px, sell_qty}.
+
+    Fix A (2026-05-21): the existing _load_ws_fills() dedups by order_id, but
+    closed_trades[].order_id is the BUY order_id (from cmd_open), while the
+    fills JSONL contains SELL order_ids (from cmd_flatten). They never match,
+    so reconcile_ws_fills() reported `reconciled=0, still_pending=N` for every
+    LIVE_PAPER day. This helper aggregates SELL fills by symbol so the
+    reconciler can fall back to ticker-match when order_id-match fails.
+    """
+    path = FILLS_DIR / f"{today}.jsonl"
+    if not path.exists():
+        return {}
+    agg: dict[str, dict] = {}
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                side = str(rec.get("side") or "")
+                if "SELL" not in side.upper():
+                    continue
+                sym = rec.get("symbol") or ""
+                if not sym:
+                    continue
+                try:
+                    q = float(rec.get("qty") or 0.0)
+                    p = float(rec.get("filled_avg_price") or 0.0)
+                except (TypeError, ValueError):
+                    continue
+                if q <= 0 or p <= 0:
+                    continue
+                slot = agg.setdefault(sym, {"sell_qty": 0.0, "proceeds": 0.0})
+                slot["sell_qty"] += q
+                slot["proceeds"] += q * p
+    except Exception as e:
+        log.warning(f"_load_ws_fills_by_symbol: read failed for {path}: {e}")
+        return {}
+    for sym, slot in agg.items():
+        slot["avg_sell_px"] = slot["proceeds"] / slot["sell_qty"] if slot["sell_qty"] > 0 else 0.0
+    return agg
+
+
 def _load_ws_lifecycle_events(today: str) -> list[dict]:
     """Scan today's fills JSONL for non-fill terminal events.
 
@@ -1324,7 +1372,10 @@ def reconcile_ws_fills(today: str | None = None) -> dict[str, Any]:
 
     reconciled = 0
     still_pending = 0
-    if not fills_by_oid:
+    # Fix A (2026-05-21): also aggregate SELL fills by symbol so we can match
+    # by ticker when order_id match fails (BUY/SELL order_ids do not coincide).
+    sells_by_symbol = _load_ws_fills_by_symbol(today_str)
+    if not fills_by_oid and not sells_by_symbol:
         log.warning(
             f"[reconcile] No WS fills found at "
             f"{FILLS_DIR / (today_str + '.jsonl')} — exit_price unchanged"
@@ -1335,23 +1386,32 @@ def reconcile_ws_fills(today: str | None = None) -> dict[str, Any]:
         still_pending = sum(
             1 for ct in state["closed_trades"] if ct.get("pending_ws_fill")
         )
-    for ct in (state["closed_trades"] if fills_by_oid else []):
+    iter_trades = state["closed_trades"] if (fills_by_oid or sells_by_symbol) else []
+    for ct in iter_trades:
         if not ct.get("pending_ws_fill"):
             continue
         oid = ct.get("order_id") or ""
         fill = fills_by_oid.get(oid)
-        if not fill:
-            still_pending += 1
-            continue
-        # Parse fill record
-        try:
-            exit_price = float(fill.get("filled_avg_price") or 0.0)
-        except (TypeError, ValueError):
-            exit_price = 0.0
-        try:
-            exit_qty = float(fill.get("qty") or 0.0)
-        except (TypeError, ValueError):
-            exit_qty = 0.0
+        reconcile_src = "ws_fills"
+        # Primary path: order_id match.
+        if fill:
+            try:
+                exit_price = float(fill.get("filled_avg_price") or 0.0)
+            except (TypeError, ValueError):
+                exit_price = 0.0
+            try:
+                exit_qty = float(fill.get("qty") or 0.0)
+            except (TypeError, ValueError):
+                exit_qty = 0.0
+        else:
+            # Fallback (Fix A 2026-05-21): match by ticker via aggregated SELL fills.
+            sym_agg = sells_by_symbol.get(ct.get("ticker") or "")
+            if not sym_agg:
+                still_pending += 1
+                continue
+            exit_price = float(sym_agg.get("avg_sell_px") or 0.0)
+            exit_qty = float(sym_agg.get("sell_qty") or 0.0)
+            reconcile_src = "ws_fills_by_symbol"
         if exit_price <= 0.0:
             still_pending += 1
             continue
@@ -1359,7 +1419,7 @@ def reconcile_ws_fills(today: str | None = None) -> dict[str, Any]:
         ct["exit_price"] = exit_price
         ct["exit_qty"] = exit_qty
         ct["pending_ws_fill"] = False
-        ct["reconciled_from"] = "ws_fills"
+        ct["reconciled_from"] = reconcile_src
         ct["reconciled_at"] = datetime.now(timezone.utc).isoformat()
 
         # Compute pnl if entry_price + qty are present.
