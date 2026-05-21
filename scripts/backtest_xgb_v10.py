@@ -260,7 +260,11 @@ def _xgb_base_params(stage: str) -> dict:
         "reg_lambda": reg_l,
         "grow_policy": "lossguide",
         "max_leaves": max_leaves_v,
-        "n_jobs": 1,
+        # PATCH-1 (2026-05-21 extreme-speedup): n_jobs 1 -> all cores
+        # XGB 1.7+ hist tree_method is thread-safe; on 12-core CPU this is
+        # ~4-8x speedup for model.fit. Stage A sweeps (256 parallel cells on
+        # Modal) keep nthreads bounded by XGB_N_JOBS env var below.
+        "n_jobs": int(os.environ.get("XGB_N_JOBS", "0")) or -1,
         "random_state": 42,
         "verbosity": 0,
     }
@@ -4080,7 +4084,39 @@ def main() -> None:
     ap.add_argument("--sl-atr", type=float, default=1.0)
     ap.add_argument("--max-hold", type=int, default=21)
     ap.add_argument("--strategy", default="default", help="Strategy label for metadata")
+    # autosolve_skip: multi-TF wire — 2026-05-21
+    # Per-ticker per-TF mastery: --timeframe selects which Cache B TF the
+    # underlying ohlcv_loader pulls. Plumbed via BACKTEST_TIMEFRAME env var
+    # so backtest_ml.load_daily() (shared loader for v6/v7/v8/v9/v10 builders)
+    # picks it up without further code changes. CLI > env > default "1Day".
+    ap.add_argument(
+        "--timeframe",
+        default=os.environ.get("BACKTEST_TIMEFRAME", "1Day"),
+        choices=["1Min", "5Min", "15Min", "30Min", "45Min",
+                 "1Hour", "4Hour", "8Hour", "12Hour", "1Day"],
+        help="Cache B timeframe (default 1Day; env BACKTEST_TIMEFRAME).",
+    )
     args = ap.parse_args()
+
+    # Propagate --timeframe into env BEFORE build_v10_features runs;
+    # backtest_ml.load_daily() reads BACKTEST_TIMEFRAME at call time.
+    os.environ["BACKTEST_TIMEFRAME"] = args.timeframe
+
+    # Strategy / TF compatibility check (warn-only; sweep should pre-filter).
+    _STRAT_TF_COMPAT = {
+        "ORB":         {"1Min", "5Min", "15Min", "30Min"},
+        "VWAP":        {"1Min", "5Min", "15Min", "30Min", "45Min", "1Hour"},
+        "v10":         {"1Hour", "1Day"},
+        "momentum":    {"1Hour", "4Hour", "8Hour", "12Hour", "1Day"},
+        "catalyst":    {"1Day"},
+        "mean_revert": {"5Min", "15Min", "30Min"},
+    }
+    _ok = _STRAT_TF_COMPAT.get(args.strategy)
+    if _ok is not None and args.timeframe not in _ok:
+        logger.warning(
+            "[v10] strategy/TF combo may be incoherent: strategy=%s timeframe=%s "
+            "(typical: %s)", args.strategy, args.timeframe, sorted(_ok),
+        )
 
     os.makedirs(args.output_dir, exist_ok=True)
 
@@ -4313,6 +4349,10 @@ def main() -> None:
             "pipeline_version": "xgb_v10",
             "strategy_variant": "ML_XGB_v10",
             "strategy": args.strategy,
+            # 2026-05-21 multi-TF wire — tags which Cache B TF this run used.
+            # Downstream mastery aggregator (generate_mastery_file*.py) keys
+            # per_tf_results dict off this field.
+            "timeframe": args.timeframe,
             "run_at": datetime.utcnow().isoformat() + "Z",
             "features_total": len(fc),
             "top_k": args.top_k,
