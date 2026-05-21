@@ -43,6 +43,28 @@ def _cache_key(ticker: str, start: str, end: str, feature_set: str, version: str
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
+# TIER-S SPEEDUP (2026-05-21): code-mtime cache invalidation
+# When backtest_xgb_v10.py is patched, cached feature parquets may go stale
+# (new features computed differently). Track the source-file mtime in the
+# sidecar JSON and invalidate cache entries older than the source.
+def _code_mtime_signature(script_paths: Optional[list[str]] = None) -> str:
+    """Return a short hash of (mtime, size) for the listed feature-compute scripts.
+    Falls back to "static" when paths missing / unreadable."""
+    import os as _os
+    if not script_paths:
+        # Default: backtest_xgb_v10.py is the main feature-compute script
+        _here = Path(__file__).resolve().parent
+        script_paths = [str(_here / "backtest_xgb_v10.py")]
+    parts = []
+    for p in script_paths:
+        try:
+            st = _os.stat(p)
+            parts.append(f"{Path(p).name}:{int(st.st_mtime)}:{st.st_size}")
+        except OSError:
+            parts.append(f"{Path(p).name}:missing")
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()[:12]
+
+
 def _resolve_cache_dir(cache_dir: Optional[str]) -> Path:
     p = Path(cache_dir) if cache_dir else _DEFAULT_CACHE_DIR
     p.mkdir(parents=True, exist_ok=True)
@@ -112,11 +134,33 @@ def get_cached(
     pq = _parquet_path(ticker, feature_set, key, cdir)
     basename = pq.name
 
+    # TIER-S SPEEDUP (2026-05-21): code-mtime check — if backtest_xgb_v10.py
+    # has been modified since the sidecar was written, treat as STALE so
+    # code-change bug-fixes propagate without manual invalidate(). Opt out
+    # with env FEATURE_CACHE_CODE_INVALIDATE=0.
+    import os as _os
+    _code_check_enabled = _os.environ.get("FEATURE_CACHE_CODE_INVALIDATE", "1") != "0"
+    _current_sig = _code_mtime_signature() if _code_check_enabled else None
+
     # --- HIT check ---
     if pq.exists():
         age_h = _age_hours(pq)
         age_d = age_h / 24.0
-        if age_d <= ttl_days:
+        # Code-mtime gate (added 2026-05-21)
+        _code_stale = False
+        if _code_check_enabled:
+            try:
+                sc_meta = json.loads(_sidecar_path(pq).read_text())
+                sc_sig = sc_meta.get("code_sig")
+                if sc_sig and sc_sig != _current_sig:
+                    _code_stale = True
+                    logger.info(
+                        "[feature_cache] CODE-STALE %s sidecar_sig=%s current=%s",
+                        basename, sc_sig, _current_sig,
+                    )
+            except Exception:  # noqa: BLE001 — missing/unreadable sidecar = fall through
+                pass
+        if age_d <= ttl_days and not _code_stale:
             try:
                 # PATCH-2 (2026-05-21 extreme-speedup): pyarrow multi-thread read.
                 # pd.read_parquet defaults to use_threads=True via pyarrow but the
@@ -162,6 +206,9 @@ def get_cached(
         "created_at": datetime.utcnow().isoformat(),
         "n_rows": len(df),
         "n_cols": len(df.columns),
+        # TIER-S SPEEDUP (2026-05-21): record source-code signature so HIT
+        # path can invalidate on code change. Read by HIT-check above.
+        "code_sig": _current_sig,
     }
     _write_sidecar(_sidecar_path(pq), meta)
 
