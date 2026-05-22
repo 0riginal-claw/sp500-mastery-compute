@@ -1,15 +1,15 @@
 {
-  "run_id": "26291620106",
+  "run_id": "26291606509",
   "completed": 0,
   "failed": 1,
   "total": 1,
-  "timestamp": "2026-05-22T13:56:08.026006Z",
+  "timestamp": "2026-05-22T13:56:34.000587Z",
   "jobs": [
     {
-      "ticker": "TDG",
-      "strategy": "ORB__30Min",
+      "ticker": "ADP",
+      "strategy": "MEAN_REV",
       "status": "ok",
-      "path": "backtests/TDG/ORB__30Min/result.json"
+      "path": "backtests/ADP/MEAN_REV/result.json"
     }
   ]
 }

@@ -6,7 +6,7 @@
   "job_id": "65304076",
   "pipeline_version": "xgb_v10",
   "features_total": 1587,
-  "rows": 1034,
+  "rows": 1035,
   "module_feature_counts": {
     "v9_base": 652,
     "closeable_gap_added": 18,
@@ -86,8 +86,8 @@
   },
   "n_trades": 51,
   "win_rate": 0.27450980392156865,
-  "profit_factor": 0.5453781117864256,
-  "total_return_pct": -0.03199935367492037,
-  "max_drawdown_pct": -0.04092473948599416,
+  "profit_factor": 0.545378021584391,
+  "total_return_pct": -0.031999366414662535,
+  "max_drawdown_pct": -0.04092475045447397,
   "status": "ok"
 }
