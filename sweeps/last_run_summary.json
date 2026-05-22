@@ -1,15 +1,15 @@
 {
-  "run_id": "26283221805",
+  "run_id": "26283224677",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T10:49:14.012788Z",
+  "timestamp": "2026-05-22T10:50:34.952859Z",
   "jobs": [
     {
-      "ticker": "EXPD",
-      "strategy": "v10",
+      "ticker": "BEN",
+      "strategy": "ORB__5Min",
       "status": "ok",
-      "path": "backtests/EXPD/v10/result.json"
+      "path": "backtests/BEN/ORB__5Min/result.json"
     }
   ]
 }
