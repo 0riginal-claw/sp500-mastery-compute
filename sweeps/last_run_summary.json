@@ -1,15 +1,15 @@
 {
-  "run_id": "26288646289",
+  "run_id": "26288650516",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T12:57:55.690315Z",
+  "timestamp": "2026-05-22T12:57:00.776221Z",
   "jobs": [
     {
-      "ticker": "SWKS",
-      "strategy": "ORB__5Min",
+      "ticker": "BRO",
+      "strategy": "ORB__30Min",
       "status": "ok",
-      "path": "backtests/SWKS/ORB__5Min/result.json"
+      "path": "backtests/BRO/ORB__30Min/result.json"
     }
   ]
 }
