@@ -1,15 +1,15 @@
 {
-  "run_id": "26285956130",
+  "run_id": "26285953960",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T11:55:11.315322Z",
+  "timestamp": "2026-05-22T11:55:36.135945Z",
   "jobs": [
     {
-      "ticker": "NTRS",
-      "strategy": "VWAP",
+      "ticker": "EXE",
+      "strategy": "ORB",
       "status": "ok",
-      "path": "backtests/NTRS/VWAP/result.json"
+      "path": "backtests/EXE/ORB/result.json"
     }
   ]
 }
