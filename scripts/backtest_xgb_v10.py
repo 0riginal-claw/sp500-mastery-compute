@@ -5131,6 +5131,28 @@ def main() -> None:
     if sdf is not None:
         sdf.to_csv(f"{args.output_dir}/threshold_sweep.csv", index=False)
 
+    # 2026-05-22 sharpe-wire (af6ff6f7 root cause #2): compute annualized Sharpe
+    # from per-trade returns and inject into metrics. Trades.csv has `pnl_pct`
+    # column (decimal per-trade return). Annualize assuming ~252 trading-day
+    # year; for sub-daily TFs we keep the same factor — Sharpe magnitude is
+    # comparable to legacy gate (mastery_priors_loader.master_sharpe >= 0.8).
+    # Empty / single-trade edge: Sharpe = 0.0 (cannot estimate std).
+    try:
+        if trades is not None and len(trades) >= 2 and "pnl_pct" in trades.columns:
+            _ret = trades["pnl_pct"].dropna().astype(float).values
+            if len(_ret) >= 2 and float(np.std(_ret)) > 0.0:
+                metrics["sharpe"] = float(
+                    np.mean(_ret) / np.std(_ret) * np.sqrt(252.0)
+                )
+            else:
+                metrics["sharpe"] = 0.0
+        else:
+            metrics["sharpe"] = 0.0
+    except Exception as _sharpe_exc:  # pylint: disable=broad-except
+        logger.warning("  Sharpe computation failed: %s", _sharpe_exc)
+        metrics["sharpe"] = 0.0
+    logger.info("  Sharpe (annualized) = %.4f", metrics.get("sharpe", 0.0))
+
     # ---- Serialization helper ----
     def to_py(obj):
         if isinstance(obj, dict):
