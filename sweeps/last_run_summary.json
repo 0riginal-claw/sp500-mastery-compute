@@ -1,15 +1,15 @@
 {
-  "run_id": "26274945849",
+  "run_id": "26277757746",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T08:46:11.701587Z",
+  "timestamp": "2026-05-22T08:46:47.745250Z",
   "jobs": [
     {
-      "ticker": "ACN",
+      "ticker": "ETR",
       "strategy": "ORB",
       "status": "ok",
-      "path": "backtests/ACN/ORB/result.json"
+      "path": "backtests/ETR/ORB/result.json"
     }
   ]
 }
