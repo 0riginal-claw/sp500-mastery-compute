@@ -246,6 +246,87 @@ def _assert_market_window(
             "Proceeding anyway — verify this is intentional."
         )
 
+
+# ── NYSE market-day guard (weekday + holiday) ────────────────────────────────
+# Hardcoded NYSE 2026 holiday calendar (full closes only — does not enumerate
+# early-close days, since those still HAVE a market session).
+# Source: https://www.nyse.com/markets/hours-calendars (verified 2026-05-22).
+# Update yearly. If pandas_market_calendars becomes available it takes priority.
+_NYSE_HOLIDAYS_2026 = {
+    "2026-01-01",  # New Year's Day
+    "2026-01-19",  # MLK Jr. Day
+    "2026-02-16",  # Presidents Day
+    "2026-04-03",  # Good Friday
+    "2026-05-25",  # Memorial Day
+    "2026-06-19",  # Juneteenth
+    "2026-07-03",  # Independence Day observed (Sat Jul 4 → market closed Fri)
+    "2026-09-07",  # Labor Day
+    "2026-11-26",  # Thanksgiving Day
+    "2026-12-25",  # Christmas Day
+}
+_NYSE_HOLIDAYS_2027 = {
+    "2027-01-01",  # New Year's Day
+    "2027-01-18",  # MLK Jr. Day
+    "2027-02-15",  # Presidents Day
+    "2027-03-26",  # Good Friday
+    "2027-05-31",  # Memorial Day
+    "2027-06-18",  # Juneteenth observed (Sat Jun 19 → market closed Fri)
+    "2027-07-05",  # Independence Day observed (Sun Jul 4 → market closed Mon)
+    "2027-09-06",  # Labor Day
+    "2027-11-25",  # Thanksgiving Day
+    "2027-12-24",  # Christmas Day observed (Sat Dec 25 → market closed Fri)
+}
+_NYSE_HOLIDAYS_HARDCODED = _NYSE_HOLIDAYS_2026 | _NYSE_HOLIDAYS_2027
+
+
+def is_market_day(dt: "datetime | None" = None) -> bool:
+    """True if NYSE is open today (regular session, full or partial).
+
+    Returns False on Sat/Sun and on hardcoded NYSE full-close holidays.
+    Prefers pandas_market_calendars if installed; falls back to the
+    _NYSE_HOLIDAYS_HARDCODED set above.
+
+    Note: early-close days (day-after-Thanksgiving, Christmas Eve in some
+    years, July 3 some years) are STILL trading days and return True.
+    """
+    dt = dt or _et_now()
+    # Saturday=5, Sunday=6
+    if dt.weekday() >= 5:
+        return False
+    # Try pandas_market_calendars (authoritative)
+    try:
+        import pandas_market_calendars as mcal  # type: ignore
+        nyse = mcal.get_calendar("NYSE")
+        schedule = nyse.schedule(start_date=dt.date(), end_date=dt.date())
+        return len(schedule) > 0
+    except ImportError:
+        pass
+    except Exception as e:
+        log.warning("pandas_market_calendars lookup failed (%s) — falling back to hardcoded list", e)
+    # Fallback: hardcoded holiday list
+    return dt.strftime("%Y-%m-%d") not in _NYSE_HOLIDAYS_HARDCODED
+
+
+def _market_day_guard(subcommand: str) -> bool:
+    """Common early-exit guard for paper-trade subcommands.
+
+    Returns True if the caller should proceed (market is open today),
+    False if the caller should early-exit with exit code 0.
+    Logs a clear INFO message in both cases.
+    """
+    if is_market_day():
+        return True
+    now = _et_now()
+    log.info(
+        "[MARKET-CLOSED] %s skipped: %s (%s) is not a NYSE trading day "
+        "(weekend or holiday). Exiting cleanly.",
+        subcommand,
+        now.strftime("%Y-%m-%d"),
+        now.strftime("%A"),
+    )
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Credential detection
 # ---------------------------------------------------------------------------
@@ -999,6 +1080,9 @@ def cmd_open_trades(args) -> int:
     today = getattr(args, "date", None) or date.today().isoformat()
     dry_run = bool(getattr(args, "dry_run", False))
     log.info(f"=== OPEN-TRADES {today} | mode={MODE} | dry_run={dry_run} ===")
+    # Market-day guard: skip on weekends + NYSE holidays (dry-run still proceeds for smoke tests).
+    if not dry_run and not _market_day_guard("open-trades"):
+        return 0
     _assert_market_window("open-trades", 9, 28, 9, 45)
 
     state = load_state(today)
@@ -1498,6 +1582,9 @@ def cmd_flatten(args) -> int:
     today = getattr(args, "date", None) or date.today().isoformat()
     dry_run = bool(getattr(args, "dry_run", False))
     log.info(f"=== FLATTEN {today} | mode={MODE} | dry_run={dry_run} ===")
+    # Market-day guard: skip on weekends + NYSE holidays (dry-run still proceeds for smoke tests).
+    if not dry_run and not _market_day_guard("flatten"):
+        return 0
     _assert_market_window("flatten", 15, 50, 16, 0)
 
     state = load_state(today)
@@ -2042,6 +2129,13 @@ def _current_price_for(ticker: str) -> float | None:
     return _sim_get_latest_price(ticker)
 
 
+def _cmd_manage_stops_market_day_guard(dry_run: bool) -> bool:
+    """Helper for cmd_manage_stops: returns True if caller should proceed."""
+    if dry_run:
+        return True
+    return _market_day_guard("manage-stops")
+
+
 def cmd_manage_stops(args) -> int:
     """Every 15min 10:00-15:45 ET — close positions hitting SL/TP thresholds.
 
@@ -2063,6 +2157,11 @@ def cmd_manage_stops(args) -> int:
         f"=== MANAGE-STOPS {today} | mode={MODE} | dry_run={dry_run} | "
         f"SL={STOP_LOSS_PCT:.2%} TP={TAKE_PROFIT_PCT:.2%} ==="
     )
+    # Market-day guard: skip on weekends + NYSE holidays. manage-stops fires
+    # 7 days/week per its plist (no Weekday filter), so this guard is the
+    # primary defense against weekend execution.
+    if not _cmd_manage_stops_market_day_guard(dry_run):
+        return 0
     _assert_market_window("manage-stops", 10, 0, 15, 45)
 
     # ── DRY-RUN: synthetic positions exercise both branches ────────────────
