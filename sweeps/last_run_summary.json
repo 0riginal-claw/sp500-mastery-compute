@@ -1,15 +1,15 @@
 {
-  "run_id": "26277759770",
+  "run_id": "26277755818",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T08:46:52.342443Z",
+  "timestamp": "2026-05-22T08:46:53.535475Z",
   "jobs": [
     {
       "ticker": "ETR",
-      "strategy": "VWAP",
+      "strategy": "v10",
       "status": "ok",
-      "path": "backtests/ETR/VWAP/result.json"
+      "path": "backtests/ETR/v10/result.json"
     }
   ]
 }
