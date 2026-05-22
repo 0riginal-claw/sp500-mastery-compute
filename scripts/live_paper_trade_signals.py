@@ -751,6 +751,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Merges INTO existing today.json instead of overwriting."
         ),
     )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Bypass the market-day guard (run signal generation even on "
+            "weekends / NYSE holidays). Default: skip on non-trading days."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -777,6 +785,33 @@ def main(argv: list[str] | None = None) -> int:
 
     today = date.today().isoformat()
     log.info(f"=== SIGNAL GENERATION {today} ===")
+
+    # Market-day guard (defense-in-depth): skip on weekends + NYSE holidays.
+    # Signal gen is a 10-15 min compute over 359 tickers — wasted on closed days.
+    # --force flag bypasses the guard (for manual testing or stale-data refresh).
+    if not getattr(args, "force", False):
+        try:
+            # Import the canonical helper from live_paper_trade (sibling script).
+            from pathlib import Path
+            import sys as _sys
+            _scripts_dir = Path(__file__).parent
+            if str(_scripts_dir) not in _sys.path:
+                _sys.path.insert(0, str(_scripts_dir))
+            from live_paper_trade import is_market_day  # type: ignore
+            from datetime import datetime as _dt
+            import pytz as _pytz
+            _now = _dt.now(_pytz.timezone("America/New_York"))
+            if not is_market_day(_now):
+                log.info(
+                    "[MARKET-CLOSED] signal-gen skipped: %s (%s) is not a NYSE "
+                    "trading day (weekend or holiday). Use --force to bypass.",
+                    _now.strftime("%Y-%m-%d"),
+                    _now.strftime("%A"),
+                )
+                return 0
+        except Exception as e:
+            log.warning("Market-day guard import failed (%s) — proceeding without guard", e)
+
     if refresh_set is not None:
         log.info(
             f"[REFRESH-MODE] limiting to {len(refresh_set)} ticker(s): "
