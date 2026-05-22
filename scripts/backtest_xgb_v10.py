@@ -420,6 +420,7 @@ def _optuna_search_final_params(
     n_trials: int = 36,
     priors_path: "str | None" = None,
     seed: int = 42,
+    study_name: "str | None" = None,
 ) -> dict:
     """Search XGBoost HP via Optuna TPESampler + HyperbandPruner.
 
@@ -461,11 +462,93 @@ def _optuna_search_final_params(
 
     priors = _load_optuna_priors(priors_path)
 
+    # Tier-3 (2026-05-21): param-hash trial cache + subsampling fidelity.
+    # Feature-flagged via HPO_FIDELITY_CACHE=1. When OFF, the cache is a
+    # no-op (lookups return None) and the fidelity allocator emits a
+    # gold-only budget, so behaviour is identical to pre-tier-3.
+    _hpo_cache = None
+    try:
+        from hpo_trial_cache import (  # type: ignore
+            cache_lookup as _hpc_lookup,
+            cache_store as _hpc_store,
+            cache_flush as _hpc_flush,
+            cache_stats as _hpc_stats,
+            allocate_fidelity_budget as _hpc_alloc,
+            subsample_indices as _hpc_subsample,
+            HPO_FIDELITY_CACHE_ENABLED as _HPC_ON,
+        )
+        _hpo_cache = True
+    except Exception as _e:
+        _hpo_cache = False
+        _HPC_ON = False
+        _hpc_lookup = lambda *a, **kw: None  # type: ignore
+        _hpc_store = lambda *a, **kw: None  # type: ignore
+        _hpc_flush = lambda *a, **kw: 0  # type: ignore
+        _hpc_stats = lambda *a, **kw: {}  # type: ignore
+        _hpc_alloc = lambda n, **kw: {"bronze": 0, "silver": 0, "gold": int(n)}  # type: ignore
+        _hpc_subsample = None  # type: ignore
+
+    # Study-name keys the cache namespace. Falls back to "default" when caller
+    # didn't pass one. Recommend caller pass ticker+timeframe+fold.
+    _study_name = study_name or os.environ.get("HPO_STUDY_NAME", "default")
+    # Cycle through fidelities so even a single Optuna study exercises the
+    # multi-fidelity ladder. When the cache is disabled this collapses to gold.
+    if _HPC_ON:
+        _fid_ladder = ["bronze"] * 4 + ["silver"] * 2 + ["gold"] * 1
+    else:
+        _fid_ladder = ["gold"]
+
+    # Pre-build subsampled views once per fidelity (sample is deterministic
+    # by (n_rows, fidelity, seed=42) per hpo_trial_cache.subsample_indices).
+    _views: dict[str, tuple] = {}
+    if _HPC_ON and _hpc_subsample is not None:
+        try:
+            n_tr = int(getattr(X_tr, "shape", (len(X_tr),))[0])
+            for _fid in ("bronze", "silver", "gold"):
+                idx = _hpc_subsample(n_tr, _fid, seed=seed)
+                try:
+                    _Xs = X_tr.iloc[idx] if hasattr(X_tr, "iloc") else X_tr[idx]
+                except Exception:
+                    _Xs = X_tr
+                try:
+                    _ys = y_tr.iloc[idx] if hasattr(y_tr, "iloc") else y_tr[idx]
+                except Exception:
+                    _ys = y_tr
+                _views[_fid] = (_Xs, _ys)
+        except Exception as _e:  # pragma: no cover -- defensive
+            logger.debug("[optuna/hpo_cache] subsample setup failed: %s", _e)
+            _views = {}
+
+    def _fidelity_for_trial(t_idx: int) -> str:
+        if not _HPC_ON:
+            return "gold"
+        return _fid_ladder[t_idx % len(_fid_ladder)]
+
     def objective(trial) -> float:
         lr = trial.suggest_float("learning_rate", 0.01, 0.20, log=True)
         max_depth = trial.suggest_int("max_depth", 3, 10)
         subsample = trial.suggest_float("subsample", 0.5, 1.0)
         colsample = trial.suggest_float("colsample_bytree", 0.4, 1.0)
+
+        # Pick fidelity for this trial (multi-rung ladder).
+        fid = _fidelity_for_trial(trial.number)
+        trial.set_user_attr("hpc_fidelity", fid)
+
+        # Cache lookup (no-op when flag OFF).
+        cached = _hpc_lookup(
+            _study_name,
+            fid,
+            {
+                "learning_rate": lr,
+                "max_depth": max_depth,
+                "subsample": subsample,
+                "colsample_bytree": colsample,
+            },
+        )
+        if cached is not None:
+            trial.set_user_attr("hpc_cache_hit", True)
+            return float(cached)
+        trial.set_user_attr("hpc_cache_hit", False)
 
         trial_params = dict(base_params)
         trial_params.update({
@@ -476,12 +559,15 @@ def _optuna_search_final_params(
             "n_estimators": 100,  # capped — Hyperband manages budget below
         })
 
+        # Pick the (X, y) view for this fidelity (already pre-subsampled).
+        _X_use, _y_use = _views.get(fid, (X_tr, y_tr))
+
         # HyperbandPruner budget: progressively larger n_estimators.
         # We train once at the trial's allocated rung (min=10..max=100, eta=3),
         # report intermediate logloss every 10 rounds.
         try:
             mdl = xgb.XGBClassifier(**trial_params)
-            mdl.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
+            mdl.fit(_X_use, _y_use, eval_set=[(X_val, y_val)], verbose=False)
             # Validation Sharpe of (prob - 0.5) signal.
             import numpy as _np
             p = mdl.predict_proba(X_val)[:, 1]
@@ -494,6 +580,22 @@ def _optuna_search_final_params(
             trial.report(sharpe, step=trial_params["n_estimators"])
             if trial.should_prune():
                 raise _optuna.TrialPruned()
+            # Persist (no-op when flag OFF).
+            try:
+                _hpc_store(
+                    _study_name,
+                    fid,
+                    {
+                        "learning_rate": lr,
+                        "max_depth": max_depth,
+                        "subsample": subsample,
+                        "colsample_bytree": colsample,
+                    },
+                    float(sharpe),
+                    meta={"n_estimators": trial_params["n_estimators"]},
+                )
+            except Exception:
+                pass
             return float(sharpe)
         except _optuna.TrialPruned:
             raise
@@ -536,6 +638,21 @@ def _optuna_search_final_params(
         )
     except Exception:
         pass
+    # Tier-3: flush cache + log stats (no-op when flag OFF).
+    if _hpo_cache and _HPC_ON:
+        try:
+            n_written = _hpc_flush(_study_name)
+            st = _hpc_stats(_study_name)
+            logger.info(
+                "[optuna/hpo_cache] flushed=%d hits=%d misses=%d hit_rate=%.2f%% study=%s",
+                int(n_written),
+                int(st.get("hits", 0)),
+                int(st.get("misses", 0)),
+                100.0 * float(st.get("hit_rate", 0.0)),
+                _study_name,
+            )
+        except Exception as _e:
+            logger.debug("[optuna/hpo_cache] flush/stats failed: %s", _e)
     return out
 
 
@@ -5069,6 +5186,11 @@ def main() -> None:
         # are preserved to keep run_meta schema + downstream callers stable.
         if getattr(args, "optuna_hp", False):
             try:
+                _study_name = "{}-{}-fold{}".format(
+                    str(getattr(args, "ticker", "TICKER")),
+                    str(getattr(args, "timeframe", "TF")),
+                    str(fold.get("fold", "0")),
+                )
                 final_params = _optuna_search_final_params(
                     X_tr,
                     y_tr,
@@ -5077,6 +5199,7 @@ def main() -> None:
                     base_params=final_params,
                     n_trials=int(getattr(args, "optuna_n_trials", 36)),
                     priors_path=(getattr(args, "optuna_priors", "") or None),
+                    study_name=_study_name,
                 )
             except Exception as _e:
                 logger.warning(
