@@ -1,15 +1,15 @@
 {
-  "run_id": "26264748420",
+  "run_id": "26264747298",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T02:28:02.516629Z",
+  "timestamp": "2026-05-22T02:28:34.424794Z",
   "jobs": [
     {
       "ticker": "ES",
-      "strategy": "ORB",
+      "strategy": "v10_xsec",
       "status": "ok",
-      "path": "backtests/ES/ORB/result.json"
+      "path": "backtests/ES/v10_xsec/result.json"
     }
   ]
 }
