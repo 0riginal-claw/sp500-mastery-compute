@@ -1,15 +1,15 @@
 {
-  "run_id": "26277754837",
+  "run_id": "26277756788",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T08:50:16.361405Z",
+  "timestamp": "2026-05-22T08:50:55.496600Z",
   "jobs": [
     {
-      "ticker": "ETN",
-      "strategy": "MEAN_REV",
+      "ticker": "ACN",
+      "strategy": "VWAP",
       "status": "ok",
-      "path": "backtests/ETN/MEAN_REV/result.json"
+      "path": "backtests/ACN/VWAP/result.json"
     }
   ]
 }
