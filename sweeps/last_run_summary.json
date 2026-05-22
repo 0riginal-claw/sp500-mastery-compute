@@ -1,15 +1,15 @@
 {
-  "run_id": "26288645288",
+  "run_id": "26288658966",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T12:51:46.961646Z",
+  "timestamp": "2026-05-22T12:53:06.109291Z",
   "jobs": [
     {
-      "ticker": "WAT",
+      "ticker": "CVX",
       "strategy": "ORB__5Min",
       "status": "ok",
-      "path": "backtests/WAT/ORB__5Min/result.json"
+      "path": "backtests/CVX/ORB__5Min/result.json"
     }
   ]
 }
