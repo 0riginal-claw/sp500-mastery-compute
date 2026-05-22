@@ -1115,9 +1115,165 @@ def cmd_open_trades(args) -> int:
     )
     sized = compute_position_sizes(signals, current_exposure)
 
-    if not sized:
+    # ----- Quick-win C: sell-weakest-to-fund-strongest swap engine -----
+    # (2026-05-22) When exposure is saturated and fresh signals are firing that
+    # have NO room to enter, rescore held positions vs the new firing batch and
+    # propose up to N flips per cycle (challenger margin > weakest + 0.10 prob).
+    # Activation: env POSITION_MANAGER_ENABLED=1 (default OFF for A/B safety).
+    # Honors a warmup-grace window after cold restart so we don't sell-storm.
+    swap_proposals_executed: list[dict] = []
+    if os.environ.get("POSITION_MANAGER_ENABLED", "0") == "1":
+        firing_now = [s for s in signals if isinstance(s, dict) and s.get("signal") == 1]
+        available_headroom = max(0.0, MAX_TOTAL_EXPOSURE - current_exposure)
+        # Trigger swaps only when: (a) firing signals exist, (b) no headroom for
+        # them all, (c) we have positions to sell. compute_position_sizes
+        # returned `sized` with the available headroom split; if some firing
+        # signals were dropped (sized < firing_now), there's swap opportunity.
+        sized_tickers = {s.get("ticker") for s in sized}
+        firing_dropped = [s for s in firing_now if s.get("ticker") not in sized_tickers]
+        if firing_dropped and state.get("positions"):
+            try:
+                from position_manager import PositionManager  # type: ignore[import-not-found]
+                mgr = PositionManager()
+                if mgr.in_warmup(state):
+                    log.info(
+                        "[SWAP] in warmup window (last_restart_at fresh < %ds) — "
+                        "skipping swap engine this cycle", mgr.warmup_s,
+                    )
+                else:
+                    holdings_scored = mgr.rescore_holdings(state, signals)
+                    # Lazy risk-engine instantiation for swap-IN gating (independent
+                    # of the per-order loop's risk_engine below — both will read
+                    # the same state).
+                    _swap_re = None
+                    try:
+                        from risk_engine import RiskEngine as _RE  # type: ignore
+                        _swap_re = _RE(
+                            equity=LIVE_BUDGET_USD,
+                            positions=state.get("positions", {}),
+                        )
+                    except Exception:
+                        _swap_re = None
+                    proposals = mgr.find_swaps(holdings_scored, firing_dropped, _swap_re)
+                    if proposals:
+                        log.info(
+                            "[SWAP] proposing %d flip(s) — max_per_cycle=%d",
+                            len(proposals), mgr.max_swaps_per_cycle,
+                        )
+                    for prop in proposals[: mgr.max_swaps_per_cycle]:
+                        log.info(
+                            "[SWAP] %s (eff=%.3f) ⇨ %s (in=%.3f, lift=%.3f) | %s",
+                            prop.out_ticker, prop.out_score,
+                            prop.in_ticker, prop.in_score, prop.expected_lift,
+                            prop.reason,
+                        )
+                        if dry_run:
+                            log.info(
+                                "[DRY-RUN][SWAP] would route_flip(out=%s qty=%s "
+                                "in=%s notional=$%.2f strength=%s prob=%s)",
+                                prop.out_ticker, prop.out_qty,
+                                prop.in_ticker, prop.out_notional,
+                                prop.in_signal_strength, prop.in_signal_prob,
+                            )
+                            swap_proposals_executed.append({
+                                "out_ticker": prop.out_ticker,
+                                "in_ticker": prop.in_ticker,
+                                "expected_lift": prop.expected_lift,
+                                "reason": prop.reason,
+                                "executed": False,
+                                "dry_run": True,
+                            })
+                            continue
+                        # LIVE_PAPER / SIMULATED: execute via router.route_flip.
+                        try:
+                            from limit_order_router import route_flip  # type: ignore
+                            flip_res = route_flip(
+                                out_ticker=prop.out_ticker,
+                                out_qty=prop.out_qty,
+                                in_ticker=prop.in_ticker,
+                                in_notional=prop.out_notional,
+                                in_signal_strength=prop.in_signal_strength,
+                                in_signal_prob=prop.in_signal_prob,
+                                get_quote_fn=_alpaca_get_quote,
+                                place_limit_fn=_alpaca_place_limit_order,
+                                cancel_fn=_alpaca_cancel_order,
+                                get_order_fn=_alpaca_get_order,
+                                place_market_fn=_place_market_order_alpaca,
+                            )
+                        except Exception as _flip_err:
+                            log.error("[SWAP] route_flip failed: %s", _flip_err)
+                            flip_res = {"status": "error", "error": str(_flip_err)}
+                        if flip_res.get("status") == "complete":
+                            # Update state: remove OUT, add IN. Tag reasons for audit.
+                            outgoing = state["positions"].pop(prop.out_ticker, {})
+                            outgoing["closed_reason"] = "swap_out"
+                            outgoing["closed_at"] = datetime.now(timezone.utc).isoformat()
+                            outgoing["flip_id"] = flip_res.get("flip_id")
+                            state.setdefault("closed_today", []).append(
+                                {prop.out_ticker: outgoing}
+                            )
+                            in_fill = (flip_res.get("in") or {})
+                            state["positions"][prop.in_ticker] = {
+                                "qty": in_fill.get("qty") or 0,
+                                "entry_price": in_fill.get("fill_price"),
+                                "order_id": in_fill.get("order_id", ""),
+                                "client_order_id": in_fill.get("client_order_id", ""),
+                                "notional": (
+                                    in_fill.get("notional") or prop.out_notional
+                                ),
+                                "signal_prob": prop.in_signal_prob,
+                                "threshold": prop.in_signal.get("threshold"),
+                                "opened_at": datetime.now(timezone.utc).isoformat(),
+                                "entered_reason": "swap_in",
+                                "flip_id": flip_res.get("flip_id"),
+                                "pipeline": prop.in_signal.get("pipeline"),
+                                "model_run_dir": prop.in_signal.get("model_run_dir"),
+                                "feature_hash": prop.in_signal.get("feature_hash"),
+                                "features_used": prop.in_signal.get("features_used"),
+                            }
+                            swap_proposals_executed.append({
+                                "out_ticker": prop.out_ticker,
+                                "in_ticker": prop.in_ticker,
+                                "expected_lift": prop.expected_lift,
+                                "reason": prop.reason,
+                                "flip_id": flip_res.get("flip_id"),
+                                "executed": True,
+                            })
+                        else:
+                            log.warning(
+                                "[SWAP] flip not complete (status=%s) — "
+                                "state NOT mutated", flip_res.get("status"),
+                            )
+                            swap_proposals_executed.append({
+                                "out_ticker": prop.out_ticker,
+                                "in_ticker": prop.in_ticker,
+                                "status": flip_res.get("status"),
+                                "executed": False,
+                            })
+                    if swap_proposals_executed and not dry_run:
+                        # Recompute exposure + re-size remaining firing signals.
+                        # IN-tickers from swaps are now held; remove them from
+                        # `sized` so the normal-entry loop doesn't double-buy.
+                        in_tickers_swapped = {
+                            x["in_ticker"] for x in swap_proposals_executed
+                            if x.get("executed")
+                        }
+                        sized = [s for s in sized if s.get("ticker") not in in_tickers_swapped]
+                        current_exposure = sum(
+                            p.get("notional", 0) for p in state["positions"].values()
+                        )
+            except Exception as _swap_err:
+                log.warning("[SWAP] engine raised, skipped: %s", _swap_err)
+    # ----- end Quick-win C swap engine -----
+
+    if not sized and not swap_proposals_executed:
         log.info("No positions to open (all filtered by guardrails).")
         return 0
+    if not sized:
+        log.info(
+            "Sized list empty after swaps; %d swap(s) executed this cycle.",
+            len(swap_proposals_executed),
+        )
 
     # Wiring: pre-open quotes snapshot for all about-to-be-traded tickers.
     # Captures NBBO + last trade context just before order submission so the
