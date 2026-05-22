@@ -16,17 +16,33 @@ Mode detection:
                  wrapper's public manager surface.
 
 Risk guardrails:
-    MAX_POSITION_NOTIONAL    $500 per ticker
-    MAX_TOTAL_EXPOSURE       $25,000 across all open positions
-    DAILY_LOSS_SOFT_HALT     -$1,500 → block NEW entries, exit-only mode
-    DAILY_LOSS_HARD_HALT     -$2,500 → flat all positions, halt for day
+    MAX_POSITION_NOTIONAL    $400 per ticker  (20% of $2k synthetic budget)
+    MAX_TOTAL_EXPOSURE       $2,000 across all open positions
+                              (synthetic budget — Alpaca paper account equity
+                               ~$95k is IGNORED for sizing; used for reporting only)
+    DAILY_LOSS_SOFT_HALT     -$120 → block NEW entries, exit-only mode
+                              (~6% of $2k budget; tracks original 6% setting)
+    DAILY_LOSS_HARD_HALT     -$200 → flat all positions, halt for day
+                              (~10% of $2k budget)
     BATCH_OPEN_STAGGER_S     1.0     → between submit_order calls at 09:30 open
     ORDER_TYPE               MARKET only, regular-hours only
     NO SHORTS / NO OPTIONS / NO LEVERAGE / NO OVERNIGHT HOLDS
 
+    Cap rationale (2026-05-22): user requested live paper-trade balance
+    restricted to $2,000 starting July 2026 (sized for transition to real money).
+    Alpaca paper account equity inflates PnL ~47×; capping at $2k via synthetic
+    budget makes paper PnL representative of live $2k account.
+
+    Env overrides (read at startup):
+      LIVE_BUDGET_USD              — total budget (default 2000)
+      LIVE_MAX_POSITION_USD        — per-ticker cap (default 400, 20% of budget)
+      LIVE_DAILY_LOSS_SOFT_USD     — soft halt (default -120, 6% of budget)
+      LIVE_DAILY_LOSS_HARD_USD     — hard halt (default -200, 10% of budget)
+
     Thresholds source: paper_trade/alpaca_risk_config.yaml (SAFE-SUBSET applied
-    2026-05-18 per reports/alpaca_risk_sizing_2026-05-18.md). Half-Kelly/ATR
-    sizing + limit-order migration are DEFERRED pending backtest validation.
+    2026-05-18 per reports/alpaca_risk_sizing_2026-05-18.md, re-capped 2026-05-22
+    per cap-2k-july-2026-05-22). Half-Kelly/ATR sizing + limit-order migration
+    are DEFERRED pending backtest validation.
 
 Usage:
     python live_paper_trade.py startup
@@ -144,16 +160,36 @@ logging.basicConfig(
 log = logging.getLogger("paper_trade")
 
 # ---------------------------------------------------------------------------
-# Risk constants
+# Risk constants — synthetic $2k budget cap (2026-05-22)
 # ---------------------------------------------------------------------------
-MAX_POSITION_NOTIONAL = 500.0    # $ per ticker
-MAX_TOTAL_EXPOSURE = 25_000.0    # $ total across all open positions
+# User mandate: live paper-trade balance restricted to $2,000 starting July
+# 2026 (transition to real money). Alpaca paper account equity (~$95k) is now
+# IGNORED for sizing; we use a synthetic budget. All caps below scale to this
+# budget. Defaults honoured by env vars so an ops change ($1k / $5k / etc.)
+# does not need a code edit.
+#
+# Defaults (calibrated to $2k):
+#   total budget               $2,000           (LIVE_BUDGET_USD)
+#   per-ticker max             $400  (20%)      (LIVE_MAX_POSITION_USD)
+#   daily soft halt             -$120 (6%)      (LIVE_DAILY_LOSS_SOFT_USD)
+#   daily hard halt             -$200 (10%)     (LIVE_DAILY_LOSS_HARD_USD)
+#
+# Halt thresholds were previously -$1,500 / -$2,500 (1.6% / 2.6% of $95k).
+# At $2k budget the equivalent %-of-budget figures are -$32 / -$53, but those
+# are absurdly tight for any single-ticker move; we lift to 6%/10% which is
+# consistent with the per-ticker DD bands in risk_engine.py.
+LIVE_BUDGET_USD = float(os.environ.get("LIVE_BUDGET_USD", "2000"))
+MAX_POSITION_NOTIONAL = float(
+    os.environ.get("LIVE_MAX_POSITION_USD", str(LIVE_BUDGET_USD * 0.20))
+)
+MAX_TOTAL_EXPOSURE = LIVE_BUDGET_USD
 
-# Two-tier daily-loss halt (2026-05-18, alpaca_risk_config.yaml SAFE subset).
-# Replaces single MAX_DAILY_LOSS = -$1,000 which was too tight (1.06% of cash;
-# trips on a routine -0.3% intraday session).
-DAILY_LOSS_SOFT_HALT = -1_500.0  # $ → block NEW entries, allow exits/manage existing
-DAILY_LOSS_HARD_HALT = -2_500.0  # $ → flat all positions, halt for day
+DAILY_LOSS_SOFT_HALT = -abs(float(
+    os.environ.get("LIVE_DAILY_LOSS_SOFT_USD", str(LIVE_BUDGET_USD * 0.06))
+))  # $ → block NEW entries, allow exits/manage existing
+DAILY_LOSS_HARD_HALT = -abs(float(
+    os.environ.get("LIVE_DAILY_LOSS_HARD_USD", str(LIVE_BUDGET_USD * 0.10))
+))  # $ → flat all positions, halt for day
 # Back-compat alias (deprecated; refers to HARD threshold).
 MAX_DAILY_LOSS = DAILY_LOSS_HARD_HALT
 
@@ -1042,14 +1078,23 @@ def cmd_open_trades(args) -> int:
     # checks for later candidates. -----
     try:
         from risk_engine import RiskEngine  # type: ignore[import-not-found]
-        _equity_for_risk = float(
-            state.get("equity") or state.get("portfolio_value") or 100_000.0
+        # SYNTHETIC BUDGET (2026-05-22): use LIVE_BUDGET_USD, NOT Alpaca account
+        # equity. Alpaca paper account equity (~$95k) would inflate Kelly cap
+        # (5% × $95k = $4,750 vs intended 5% × $2k = $100) and concentration
+        # cap (5% × $95k = $4,750 vs $100). Real-equity is still tracked in
+        # state['equity'] for reporting / drawdown timeline.
+        _equity_for_risk = LIVE_BUDGET_USD
+        _alpaca_equity_for_report = float(
+            state.get("equity") or state.get("portfolio_value") or 0.0
         )
         risk_engine = RiskEngine(
             equity=_equity_for_risk,
             positions=state.get("positions", {}),
         )
-        log.info(f"[RISK] engine initialized equity=${_equity_for_risk:.0f}")
+        log.info(
+            f"[RISK] engine initialized synthetic_budget=${_equity_for_risk:.0f} "
+            f"(alpaca_equity=${_alpaca_equity_for_report:.0f}, ignored for sizing)"
+        )
     except Exception as _re_err:
         log.warning(f"[RISK] engine init failed — gates DISABLED: {_re_err}")
         risk_engine = None
