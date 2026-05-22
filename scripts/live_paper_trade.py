@@ -982,6 +982,12 @@ def cmd_startup(args) -> int:
     today = getattr(args, "date", None) or date.today().isoformat()
     dry_run = bool(getattr(args, "dry_run", False))
     log.info(f"=== STARTUP {today} | mode={MODE} | dry_run={dry_run} ===")
+    # Market-day guard: skip on weekends + NYSE holidays. cmd_startup fires
+    # via RunAtLoad (every login) AND on Drive WatchPaths events — both can
+    # trigger on weekends. Signal generation is expensive (10-15 min compute
+    # over 359 tickers), so a stale-day skip saves real CPU. dry-run preserved.
+    if not dry_run and not _market_day_guard("startup"):
+        return 0
 
     if dry_run:
         log.info(
