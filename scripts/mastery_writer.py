@@ -140,6 +140,17 @@ def update_mastery_per_tf(
     history_entry: dict | None = None,
     master_pf: float = DEFAULT_MASTER_PF,
     master_sharpe: float = DEFAULT_MASTER_SHARPE,
+    # NEW 2026-05-21 (additive): bootstrap CI + exec-aware net metrics.
+    sharpe_ci_low: float | None = None,
+    sharpe_ci_high: float | None = None,
+    pf_ci_low: float | None = None,
+    pf_ci_high: float | None = None,
+    dd_ci_low: float | None = None,
+    dd_ci_high: float | None = None,
+    sharpe_net: float | None = None,
+    pf_net: float | None = None,
+    dd_net: float | None = None,
+    exec_cost_bps: float | None = None,
 ) -> dict:
     """Merge one (strategy, TF) result into state/<TICKER>/mastery.json.
 
@@ -222,11 +233,41 @@ def update_mastery_per_tf(
     if history_entry is not None:
         m.setdefault("history", []).append(history_entry)
 
-    # Promotion gate: mastered iff PF >= master_pf AND sharpe >= master_sharpe.
-    m["mastered"] = (
+    # NEW 2026-05-21 (additive): persist bootstrap CI + net metrics when this
+    # run produced a new global best. Old readers ignore these fields.
+    _is_new_global_best = (pf, sharpe) > (g_pf, g_sharpe)
+    if _is_new_global_best:
+        if sharpe_ci_low is not None:
+            m["sharpe_ci_low"] = float(sharpe_ci_low)
+        if sharpe_ci_high is not None:
+            m["sharpe_ci_high"] = float(sharpe_ci_high)
+        if pf_ci_low is not None:
+            m["pf_ci_low"] = float(pf_ci_low)
+        if pf_ci_high is not None:
+            m["pf_ci_high"] = float(pf_ci_high)
+        if dd_ci_low is not None:
+            m["dd_ci_low"] = float(dd_ci_low)
+        if dd_ci_high is not None:
+            m["dd_ci_high"] = float(dd_ci_high)
+        if sharpe_net is not None:
+            m["sharpe_net"] = float(sharpe_net)
+        if pf_net is not None:
+            m["pf_net"] = float(pf_net)
+        if dd_net is not None:
+            m["dd_net"] = float(dd_net)
+        if exec_cost_bps is not None:
+            m["exec_cost_bps"] = float(exec_cost_bps)
+
+    # Promotion gate (tightened 2026-05-21): mastered iff
+    #   PF >= master_pf AND sharpe >= master_sharpe
+    #   AND sharpe_ci_low > 0  (when CI present — additive guard).
+    _legacy_pass = (
         float(m.get("best_pf", 0.0)) >= master_pf
         and float(m.get("best_sharpe", 0.0)) >= master_sharpe
     )
+    _ci_low = m.get("sharpe_ci_low")
+    _ci_guard_pass = True if _ci_low is None else (float(_ci_low) > 0.0)
+    m["mastered"] = _legacy_pass and _ci_guard_pass
     m["last_updated"] = _now_utc_iso()
     m["ticker"] = ticker  # ensure consistent even if file was renamed
 
