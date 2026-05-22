@@ -2005,6 +2005,206 @@ def cmd_ingest(args) -> int:
 
 
 # ---------------------------------------------------------------------------
+# SUBCOMMAND: manage-stops (every 15min between 10:00-15:45 ET)
+# ---------------------------------------------------------------------------
+# Quick-win A (per audit ac0f5aca, 2026-05-22): intraday stop-loss + take-profit.
+# Window 10:00-15:45 ET; fires every 15min via launchd plist
+# `com.zg.paper_trade_manage_stops`. Reads current Alpaca positions, computes
+# unrealized_pl_pct vs the avg entry price, and submits SELL via the existing
+# smart-order router when thresholds are crossed. Prevents the 10% hard-halt
+# ($200 loss in $2k budget) by capping per-position drawdown at -3% and
+# locking in winners at +5%.
+#
+# Thresholds (env-overridable so a careful operator can tune without code edit):
+#   STOP_LOSS_PCT     default -0.03  (close on -3% unrealized)
+#   TAKE_PROFIT_PCT   default  0.05  (close on +5% unrealized)
+#
+# Zero risk_engine changes — this lives entirely inside live_paper_trade.py.
+# State extensions (forward-compat, additive): per-position
+# `current_price`, `unrealized_pnl_pct`, `peak_pnl_pct_today`, `last_rescored_at`
+# are written ONLY when manage-stops fires; old readers ignore them.
+# ---------------------------------------------------------------------------
+STOP_LOSS_PCT = float(os.environ.get("STOP_LOSS_PCT", "-0.03"))
+TAKE_PROFIT_PCT = float(os.environ.get("TAKE_PROFIT_PCT", "0.05"))
+
+
+def _current_price_for(ticker: str) -> float | None:
+    """Best-effort latest price. Prefers Alpaca SIP; falls back to yfinance.
+
+    Used by cmd_manage_stops to compute unrealized P&L pct against the
+    position's avg entry price. Returns None on any failure — caller must
+    handle missing price (skip evaluation, don't close on stale data).
+    """
+    if MODE == "LIVE_PAPER":
+        p = _alpaca_get_latest_price(ticker)
+        if p is not None:
+            return p
+    return _sim_get_latest_price(ticker)
+
+
+def cmd_manage_stops(args) -> int:
+    """Every 15min 10:00-15:45 ET — close positions hitting SL/TP thresholds.
+
+    Reads current positions (from Alpaca in LIVE_PAPER, from state in SIM),
+    computes unrealized P&L % vs avg entry price, and submits SELL via
+    `_place_smart_order_alpaca` for any position where:
+        unrealized_pnl_pct <= STOP_LOSS_PCT   → close, reason=stop_loss
+        unrealized_pnl_pct >= TAKE_PROFIT_PCT → close, reason=take_profit
+
+    No-ops cleanly outside the 10:00-15:45 ET window (warning only —
+    matches existing _assert_market_window semantics).
+
+    --dry-run: simulate a position at -3.5% drawdown to verify SL fires, and
+    +6% gain to verify TP fires. No live API calls. No state mutation.
+    """
+    today = getattr(args, "date", None) or date.today().isoformat()
+    dry_run = bool(getattr(args, "dry_run", False))
+    log.info(
+        f"=== MANAGE-STOPS {today} | mode={MODE} | dry_run={dry_run} | "
+        f"SL={STOP_LOSS_PCT:.2%} TP={TAKE_PROFIT_PCT:.2%} ==="
+    )
+    _assert_market_window("manage-stops", 10, 0, 15, 45)
+
+    # ── DRY-RUN: synthetic positions exercise both branches ────────────────
+    if dry_run:
+        log.info("[DRY-RUN] simulating two positions to verify SL/TP triggers")
+        synthetic = [
+            ("SL_TEST", 100.0, 96.5),   # -3.5% → should trigger stop_loss
+            ("TP_TEST", 100.0, 106.0),  # +6.0% → should trigger take_profit
+            ("HOLD_TEST", 100.0, 101.0),  # +1.0% → should hold
+        ]
+        triggers = []
+        for tkr, entry, current in synthetic:
+            pnl_pct = (current - entry) / entry
+            if pnl_pct <= STOP_LOSS_PCT:
+                reason = "stop_loss"
+            elif pnl_pct >= TAKE_PROFIT_PCT:
+                reason = "take_profit"
+            else:
+                reason = None
+            log.info(
+                f"[DRY-RUN] {tkr}: entry=${entry:.2f} cur=${current:.2f} "
+                f"pnl_pct={pnl_pct:+.2%} → {reason or 'HOLD'}"
+            )
+            if reason:
+                triggers.append((tkr, reason))
+        log.info(f"[DRY-RUN] would close {len(triggers)} positions: {triggers}")
+        if len(triggers) != 2 or set(r for _, r in triggers) != {"stop_loss", "take_profit"}:
+            log.error("[DRY-RUN] sanity check FAILED — expected exactly one SL + one TP")
+            return 1
+        log.info("[DRY-RUN] sanity check PASSED")
+        return 0
+
+    state = load_state(today)
+    if not state.get("positions"):
+        log.info("No open positions — nothing to manage.")
+        return 0
+
+    # Pull live positions (LIVE_PAPER) so avg_entry_price + qty are authoritative.
+    live_positions: dict[str, dict] = {}
+    if MODE == "LIVE_PAPER":
+        live_positions = _get_alpaca_positions()
+
+    closed_count = 0
+    for ticker, pos in list(state["positions"].items()):
+        # Resolve avg entry price: prefer Alpaca's value (handles partial fills),
+        # fall back to state-recorded entry_price.
+        live = live_positions.get(ticker)
+        entry_price = (live.get("avg_entry_price") if live else None) or pos.get("entry_price")
+        qty = (live.get("qty") if live else None) or pos.get("qty", 0)
+        if not entry_price or not qty:
+            log.warning(f"[{ticker}] missing entry_price/qty — skipping")
+            continue
+
+        current = _current_price_for(ticker)
+        if current is None:
+            log.warning(f"[{ticker}] could not fetch current price — skipping")
+            continue
+
+        pnl_pct = (current - entry_price) / entry_price
+        # Stamp state with rescore metadata (additive, forward-compat).
+        pos["current_price"] = current
+        pos["unrealized_pnl_pct"] = pnl_pct
+        prev_peak = pos.get("peak_pnl_pct_today", pnl_pct)
+        pos["peak_pnl_pct_today"] = max(prev_peak, pnl_pct)
+        pos["last_rescored_at"] = datetime.now(timezone.utc).isoformat()
+
+        if pnl_pct <= STOP_LOSS_PCT:
+            reason = "stop_loss"
+        elif pnl_pct >= TAKE_PROFIT_PCT:
+            reason = "take_profit"
+        else:
+            log.info(
+                f"[{ticker}] entry=${entry_price:.2f} cur=${current:.2f} "
+                f"pnl_pct={pnl_pct:+.2%} → HOLD"
+            )
+            continue
+
+        log.info(
+            f"[{ticker}] entry=${entry_price:.2f} cur=${current:.2f} "
+            f"pnl_pct={pnl_pct:+.2%} → CLOSE ({reason})"
+        )
+
+        # Submit close order. LIVE_PAPER routes through smart-limit/market router.
+        # SIMULATED: synthetic fill at current price.
+        if MODE == "LIVE_PAPER":
+            try:
+                order_result = _place_smart_order_alpaca(
+                    ticker, qty=int(qty), side="sell",
+                    signal_strength=None, prob=None,
+                )
+                exit_price = order_result.get("filled_avg_price") or current
+                pending_ws = order_result.get("filled_avg_price") is None
+            except Exception as e:
+                log.error(f"[{ticker}] close order failed: {e} — leaving position open")
+                continue
+        else:
+            order_result = {"order_id": f"SIM-STOP-{ticker}-{today}"}
+            exit_price = current
+            pending_ws = False
+            log.info(f"[SIM] SELL {qty} {ticker} @ ${current:.2f} (reason={reason})")
+
+        pnl = (exit_price - entry_price) * qty
+        if MODE == "SIMULATED":
+            state["realized_pnl"] = state.get("realized_pnl", 0.0) + pnl
+
+        state["closed_trades"].append({
+            "ticker": ticker,
+            "qty": qty,
+            "entry_price": entry_price,
+            "exit_price": exit_price if not pending_ws else None,
+            "pnl": pnl if not pending_ws else None,
+            "order_id": order_result.get("order_id", ""),
+            "client_order_id": order_result.get("client_order_id", ""),
+            "closed_at": datetime.now(timezone.utc).isoformat(),
+            "closed_reason": reason,
+            "mode": MODE,
+            "pending_ws_fill": pending_ws,
+            # Carry model-version stamp through (audit gap #9).
+            "pipeline": pos.get("pipeline"),
+            "model_run_dir": pos.get("model_run_dir"),
+            "feature_hash": pos.get("feature_hash"),
+            "features_used": pos.get("features_used"),
+            "signal_prob": pos.get("signal_prob"),
+            "threshold": pos.get("threshold"),
+        })
+        state["positions"].pop(ticker, None)
+        closed_count += 1
+
+    # LIVE_PAPER: refresh realized P&L from Alpaca even when nothing closed —
+    # gives the next halt-check call a fresh equity baseline.
+    if MODE == "LIVE_PAPER":
+        _refresh_realized_pnl_from_alpaca(state)
+
+    save_state(state)
+    log.info(
+        f"manage-stops complete: closed {closed_count} position(s), "
+        f"{len(state.get('positions', {}))} still open"
+    )
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 SUBCOMMANDS = {
@@ -2012,6 +2212,7 @@ SUBCOMMANDS = {
     "open-trades": cmd_open_trades,
     "flatten": cmd_flatten,
     "ingest": cmd_ingest,
+    "manage-stops": cmd_manage_stops,
 }
 
 
