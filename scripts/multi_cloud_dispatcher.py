@@ -1939,6 +1939,21 @@ def _submit_mac_local(job: Job, dry_run: bool = False,
         log.info("mac_local extra_env applied (%d keys): %s",
                  len(job.extra_env), list(job.extra_env.keys()))
 
+    # Self-defeating-reroute guard (added 2026-05-21).
+    # auto_cloud_dispatcher (installed via sitecustomize.py at venv startup)
+    # monkey-patches subprocess.Popen and reroutes any python invocation
+    # whose script matches _HEAVY_PATTERNS back to cloud_dispatch. That
+    # turns this very Popen call (which IS the mac_local fallback) into a
+    # second cloud enqueue — cloud is already saturated, job fails, pid=-1,
+    # 0B log file. Observed: 40-49% of mac_local jobs landing pid=-1 prior
+    # to fix. Mitigation: set ZG_FROM_DISPATCHER=1 in PARENT env before the
+    # Popen call so auto_cloud_dispatcher._should_route() returns False, then
+    # remove it after the call to avoid leaking the bypass to unrelated code.
+    # We do NOT propagate the guard to the worker env — worker has no need
+    # to spawn heavy children, and if it ever does we'd want them rerouted.
+    worker_env.pop("ZG_FROM_DISPATCHER", None)
+    _prev_guard = os.environ.get("ZG_FROM_DISPATCHER")
+    os.environ["ZG_FROM_DISPATCHER"] = "1"
     try:
         with open(log_path, "wb") as lf:
             proc = subprocess.Popen(
@@ -1953,6 +1968,11 @@ def _submit_mac_local(job: Job, dry_run: bool = False,
     except Exception as exc:
         log.error("mac_local spawn failed for %s: %s", job, exc)
         raise
+    finally:
+        if _prev_guard is None:
+            os.environ.pop("ZG_FROM_DISPATCHER", None)
+        else:
+            os.environ["ZG_FROM_DISPATCHER"] = _prev_guard
 
     return {
         "job_id":       job.job_id,
