@@ -397,4 +397,164 @@ def _execute_market_fallback(  # noqa: PLR0913
     }
 
 
-__all__ = ["route_order", "_classify_strength", "_compute_limit_price"]
+# ─────────────────────────────────────────────────────────────────────────────
+# route_flip — opportunity-cost swap (sell OUT, then buy IN as a pair)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def route_flip(  # noqa: PLR0913
+    out_ticker: str,
+    out_qty: float,
+    in_ticker: str,
+    in_qty: int | None = None,
+    in_notional: float | None = None,
+    in_signal_strength: Any = None,
+    in_signal_prob: float | None = None,
+    *,
+    get_quote_fn: Callable[[str], dict[str, float] | None],
+    place_limit_fn: Callable[..., dict[str, Any]],
+    cancel_fn: Callable[[str], None],
+    get_order_fn: Callable[[str], dict[str, Any]],
+    place_market_fn: Callable[..., dict[str, Any]],
+    tif_seconds: int = DEFAULT_TIF_SECONDS,
+    fills_log_path: Path | None = None,
+    flip_id: str | None = None,
+    now_fn: Callable[[], float] = time.monotonic,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    """Execute a paired SELL-OUT then BUY-IN flip.
+
+    Strategy:
+      1. SELL out_ticker — marketable limit (cross spread) because we want the
+         exit assured; capital is needed for the IN side. Polls under TIF, then
+         escalates to market.
+      2. BUY in_ticker — marketable limit if signal_strength HIGH (prob ≥ 0.85),
+         else passive limit at mid. Same TIF + market escalation.
+      3. Both halves get a shared `flip_id` (client-order-id prefix `pt_flip_<id>_`)
+         so audit can join out↔in unambiguously.
+
+    Returns a dict:
+      {
+        "flip_id": str,
+        "out": {<route_order result for the SELL>},
+        "in":  {<route_order result for the BUY> | None if SELL failed},
+        "status": "complete" | "in_failed" | "out_failed",
+      }
+
+    Paper-trade safety: every order flows through the injected `place_*_fn`
+    callables — caller decides whether they hit a real broker or a mock.
+    """
+    if flip_id is None:
+        import uuid as _uuid
+        flip_id = _uuid.uuid4().hex[:8]
+    coid_prefix = f"pt_flip_{flip_id}"
+
+    # ─── leg 1: SELL the OUT side. Force HIGH strength so we cross the spread.
+    def _coid_aware_place_limit(**kwargs):
+        # Attach a deterministic client_order_id so audit can stitch the pair.
+        coid = f"{coid_prefix}_out_{kwargs.get('side','sell')[:1]}"
+        kwargs.setdefault("client_order_id", coid)
+        return place_limit_fn(**kwargs)
+
+    def _coid_aware_place_market_out(*args, **kwargs):
+        coid = f"{coid_prefix}_out_m"
+        kwargs.setdefault("client_order_id", coid)
+        return place_market_fn(*args, **kwargs)
+
+    try:
+        out_result = route_order(
+            ticker=out_ticker,
+            side="sell",
+            qty=int(out_qty) if out_qty is not None and float(out_qty) > 0 else None,
+            notional=None,
+            signal_strength="HIGH",   # exit assured-fill posture
+            prob=None,
+            get_quote_fn=get_quote_fn,
+            place_limit_fn=_coid_aware_place_limit,
+            cancel_fn=cancel_fn,
+            get_order_fn=get_order_fn,
+            place_market_fn=_coid_aware_place_market_out,
+            tif_seconds=tif_seconds,
+            fills_log_path=fills_log_path,
+            now_fn=now_fn,
+            sleep_fn=sleep_fn,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.error("route_flip: SELL leg raised for %s: %s", out_ticker, e)
+        return {
+            "flip_id": flip_id,
+            "out": {"status": "error", "error": str(e), "ticker": out_ticker},
+            "in": None,
+            "status": "out_failed",
+        }
+
+    out_status = str(out_result.get("status", "")).lower()
+    if not (out_status.startswith("filled") or out_status.startswith("escalated_market")):
+        log.warning(
+            "route_flip: SELL %s did not fill (status=%s) — aborting IN leg",
+            out_ticker, out_status,
+        )
+        return {
+            "flip_id": flip_id,
+            "out": out_result,
+            "in": None,
+            "status": "out_failed",
+        }
+
+    # ─── leg 2: BUY the IN side. Pass signal_strength → router picks aggression.
+    def _coid_aware_place_limit_in(**kwargs):
+        coid = f"{coid_prefix}_in_{kwargs.get('side','buy')[:1]}"
+        kwargs.setdefault("client_order_id", coid)
+        return place_limit_fn(**kwargs)
+
+    def _coid_aware_place_market_in(*args, **kwargs):
+        coid = f"{coid_prefix}_in_m"
+        kwargs.setdefault("client_order_id", coid)
+        return place_market_fn(*args, **kwargs)
+
+    try:
+        in_result = route_order(
+            ticker=in_ticker,
+            side="buy",
+            qty=in_qty,
+            notional=in_notional,
+            signal_strength=in_signal_strength,
+            prob=in_signal_prob,
+            get_quote_fn=get_quote_fn,
+            place_limit_fn=_coid_aware_place_limit_in,
+            cancel_fn=cancel_fn,
+            get_order_fn=get_order_fn,
+            place_market_fn=_coid_aware_place_market_in,
+            tif_seconds=tif_seconds,
+            fills_log_path=fills_log_path,
+            now_fn=now_fn,
+            sleep_fn=sleep_fn,
+        )
+    except Exception as e:  # noqa: BLE001
+        log.error("route_flip: BUY leg raised for %s: %s", in_ticker, e)
+        return {
+            "flip_id": flip_id,
+            "out": out_result,
+            "in": {"status": "error", "error": str(e), "ticker": in_ticker},
+            "status": "in_failed",
+        }
+
+    in_status = str(in_result.get("status", "")).lower()
+    overall = "complete" if (
+        (out_status.startswith("filled") or out_status.startswith("escalated_market"))
+        and (in_status.startswith("filled") or in_status.startswith("escalated_market"))
+    ) else "in_failed"
+
+    return {
+        "flip_id": flip_id,
+        "out": out_result,
+        "in": in_result,
+        "status": overall,
+    }
+
+
+__all__ = [
+    "route_order",
+    "route_flip",
+    "_classify_strength",
+    "_compute_limit_price",
+]
