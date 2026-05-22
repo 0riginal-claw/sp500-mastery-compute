@@ -3673,12 +3673,77 @@ def dispatch_pass(
                     job, cloud,
                 )
                 if not dry_run:
-                    _write_status_event(job, "failed", cloud=cloud)
+                    _write_status_event(
+                        job, "failed", cloud=cloud,
+                        extra={"reason": "auth_failure_all_fallbacks_exhausted"},
+                    )
+                n_blocked += 1
+        except MacCapExceeded as exc:
+            # Mac safety cap exceeded (added 2026-05-21 — Slice 2).
+            # Previously this was caught by the generic Exception handler and
+            # logged as a generic "failed", indistinguishable from real spawn
+            # failures. Now we treat it as DEFERRAL not failure: try to enqueue
+            # on the next cloud with capacity; if none, write status="deferred"
+            # so the job stays in the queue for retry rather than being marked
+            # permanently failed.
+            log.info(
+                "Mac safety cap exceeded for %s (%s) — attempting cloud fallback "
+                "before deferring.", job, exc,
+            )
+            remaining = [
+                c for c in tracker.enabled_clouds()
+                if c != "mac_local" and c != cloud
+                and tracker.headroom_pct(c) >= 0
+            ]
+            rerouted = False
+            for fallback_cloud in remaining:
+                try:
+                    receipt = submit_job(job, fallback_cloud, tracker,
+                                        dry_run=dry_run)
+                    job.cloud        = fallback_cloud
+                    job.submitted_at = receipt["submitted_at"]
+                    job.status       = "submitted"
+                    if not dry_run:
+                        _write_status_event(
+                            job, "submitted", cloud=fallback_cloud,
+                            extra={**receipt,
+                                   "reason": "mac_saturated_rerouted_to_cloud"},
+                        )
+                        _register_inflight(job, fallback_cloud)
+                    submitted_log.append(receipt)
+                    n_submitted += 1
+                    rerouted = True
+                    break
+                except (AuthFailureError, MacCapExceeded):
+                    continue
+                except Exception as inner_exc:
+                    log.warning(
+                        "Cloud fallback %s for %s also failed: %s",
+                        fallback_cloud, job, inner_exc,
+                    )
+                    continue
+            if not rerouted:
+                if not dry_run:
+                    _write_status_event(
+                        job, "deferred", cloud="mac_local",
+                        extra={"reason": "mac_safety_cap",
+                               "detail": str(exc),
+                               "ttl_sec": 30},
+                    )
                 n_blocked += 1
         except Exception as exc:
             log.error("Failed to submit %s to %s: %s", job, cloud, exc)
             if not dry_run:
-                _write_status_event(job, "failed", cloud=cloud)
+                # Differentiate spawn vs worker fail (Slice 1 — added 2026-05-21).
+                # Generic exceptions from submit_job → reason="spawn_failed".
+                # Worker rc!=0 is logged separately in the completion-poll path
+                # with mac_returncode/mac_conclusion, so this branch is now
+                # unambiguous.
+                _write_status_event(
+                    job, "failed", cloud=cloud,
+                    extra={"reason": "spawn_failed",
+                           "detail": f"{type(exc).__name__}: {exc}"},
+                )
 
     log.info("Dispatch pass done: submitted=%d blocked=%d", n_submitted, n_blocked)
 
