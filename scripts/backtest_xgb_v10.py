@@ -660,230 +660,68 @@ from empyrical_risk_features_features import compute_empyrical_risk_features_fea
 from quantstats_metrics_features import compute_quantstats_metrics_features  # auto-wired 2026-05-18
 
 # --- auto-wired dir-glob loaders (lazy-import safe) ---
-try:
-    from oc1_alpaca_timeframes_root_features import compute_oc1_alpaca_timeframes_root_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_alpaca_timeframes_root_features = None  # type: ignore[assignment]
-try:
-    from ph0tis2_alpaca_timeframes_root_features import compute_ph0tis2_alpaca_timeframes_root_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis2_alpaca_timeframes_root_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_alpaca_timeframes_root_features import compute_ph0tis_alpaca_timeframes_root_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_alpaca_timeframes_root_features = None  # type: ignore[assignment]
-try:
-    from save_dir_features import compute_save_dir_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_save_dir_features = None  # type: ignore[assignment]
-try:
-    from claudes_test_data_features import compute_claudes_test_data_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_claudes_test_data_features = None  # type: ignore[assignment]
-try:
-    from ai_external_qlib_features import compute_ai_external_qlib_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ai_external_qlib_features = None  # type: ignore[assignment]
-try:
-    from ai_repos_pandas_ta_classic_features import compute_ai_repos_pandas_ta_classic_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ai_repos_pandas_ta_classic_features = None  # type: ignore[assignment]
-try:
-    from ai_repos_featuretools_features import compute_ai_repos_featuretools_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ai_repos_featuretools_features = None  # type: ignore[assignment]
-try:
-    from ai_external_zvt_features import compute_ai_external_zvt_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ai_external_zvt_features = None  # type: ignore[assignment]
-try:
-    from ai_repos_evidently_features import compute_ai_repos_evidently_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ai_repos_evidently_features = None  # type: ignore[assignment]
-try:
-    from ai_repos_feast_features import compute_ai_repos_feast_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ai_repos_feast_features = None  # type: ignore[assignment]
-try:
-    from ai_external_rdagent_features import compute_ai_external_rdagent_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ai_external_rdagent_features = None  # type: ignore[assignment]
-try:
-    from ai_external_ccxt_features import compute_ai_external_ccxt_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ai_external_ccxt_features = None  # type: ignore[assignment]
-try:
-    from oc1_historical_build_features import compute_oc1_historical_build_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_historical_build_features = None  # type: ignore[assignment]
-try:
-    from oc1_alpaca_build_features import compute_oc1_alpaca_build_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_alpaca_build_features = None  # type: ignore[assignment]
-try:
-    from oc1_alpaca_claude_features import compute_oc1_alpaca_claude_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_alpaca_claude_features = None  # type: ignore[assignment]
-try:
-    from oc1_historical_merged_features import compute_oc1_historical_merged_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_historical_merged_features = None  # type: ignore[assignment]
-try:
-    from oc1_trading_repos_bitquant_features import compute_oc1_trading_repos_bitquant_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_trading_repos_bitquant_features = None  # type: ignore[assignment]
-try:
-    from oc1_trading_repos_cryptosignal_features import compute_oc1_trading_repos_cryptosignal_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_trading_repos_cryptosignal_features = None  # type: ignore[assignment]
-try:
-    from oc1_trading_repos_kmeans_features import compute_oc1_trading_repos_kmeans_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_trading_repos_kmeans_features = None  # type: ignore[assignment]
-try:
-    from oc1_trading_repos_finrl_features import compute_oc1_trading_repos_finrl_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_trading_repos_finrl_features = None  # type: ignore[assignment]
-try:
-    from oc1_trading_repos_finrl_trading_features import compute_oc1_trading_repos_finrl_trading_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_trading_repos_finrl_trading_features = None  # type: ignore[assignment]
-try:
-    from oc1_trading_repos_quantmuse_features import compute_oc1_trading_repos_quantmuse_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_trading_repos_quantmuse_features = None  # type: ignore[assignment]
-try:
-    from oc1_strategy_system_features import compute_oc1_strategy_system_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_strategy_system_features = None  # type: ignore[assignment]
-try:
-    from oc1_alpaca_timeframes_features import compute_oc1_alpaca_timeframes_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_oc1_alpaca_timeframes_features = None  # type: ignore[assignment]
-try:
-    from ph0tis2_strategy_raw_features import compute_ph0tis2_strategy_raw_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis2_strategy_raw_features = None  # type: ignore[assignment]
-try:
-    from ph0tis2_strategy_formatted_features import compute_ph0tis2_strategy_formatted_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis2_strategy_formatted_features = None  # type: ignore[assignment]
-try:
-    from ph0tis2_alpaca_timeframes_dup_features import compute_ph0tis2_alpaca_timeframes_dup_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis2_alpaca_timeframes_dup_features = None  # type: ignore[assignment]
-try:
-    from ph0tis2_alpaca_timeframes_features import compute_ph0tis2_alpaca_timeframes_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis2_alpaca_timeframes_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_edgar_src_features import compute_ph0tis_edgar_src_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_edgar_src_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_gov_trades_src_features import compute_ph0tis_gov_trades_src_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_gov_trades_src_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_gov_trades_archive_features import compute_ph0tis_gov_trades_archive_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_gov_trades_archive_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_alpaca_system_features import compute_ph0tis_alpaca_system_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_alpaca_system_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_historical_src_features import compute_ph0tis_historical_src_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_historical_src_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_strategy_system_source_features import compute_ph0tis_strategy_system_source_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_strategy_system_source_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_strategy_test_features import compute_ph0tis_strategy_test_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_strategy_test_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_strategy_raw_features import compute_ph0tis_strategy_raw_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_strategy_raw_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_strategy_formatted_features import compute_ph0tis_strategy_formatted_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_strategy_formatted_features = None  # type: ignore[assignment]
-try:
-    from ph0tis_alpaca_timeframes_features import compute_ph0tis_alpaca_timeframes_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_ph0tis_alpaca_timeframes_features = None  # type: ignore[assignment]
-try:
-    from gabriel_historical_indicators_features import compute_gabriel_historical_indicators_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_historical_indicators_features = None  # type: ignore[assignment]
-try:
-    from gabriel_synapse_strategies_features import compute_gabriel_synapse_strategies_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_synapse_strategies_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_system_src_features import compute_gabriel_alpaca_system_src_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_system_src_features = None  # type: ignore[assignment]
-try:
-    from gabriel_research_cycle_prompts_features import compute_gabriel_research_cycle_prompts_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_research_cycle_prompts_features = None  # type: ignore[assignment]
-try:
-    from gabriel_research_cycle_workspaces_features import compute_gabriel_research_cycle_workspaces_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_research_cycle_workspaces_features = None  # type: ignore[assignment]
-try:
-    from gabriel_gov_trades_features import compute_gabriel_gov_trades_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_gov_trades_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_1m_merged_features import compute_gabriel_alpaca_timeframes_1m_merged_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_1m_merged_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_1m_features import compute_gabriel_alpaca_timeframes_1m_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_1m_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_5m_features import compute_gabriel_alpaca_timeframes_5m_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_5m_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_15m_features import compute_gabriel_alpaca_timeframes_15m_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_15m_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_30m_features import compute_gabriel_alpaca_timeframes_30m_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_30m_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_45m_features import compute_gabriel_alpaca_timeframes_45m_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_45m_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_1h_features import compute_gabriel_alpaca_timeframes_1h_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_1h_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_4h_features import compute_gabriel_alpaca_timeframes_4h_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_4h_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_8h_features import compute_gabriel_alpaca_timeframes_8h_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_8h_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_12h_features import compute_gabriel_alpaca_timeframes_12h_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_12h_features = None  # type: ignore[assignment]
-try:
-    from gabriel_alpaca_timeframes_1day_features import compute_gabriel_alpaca_timeframes_1day_features  # dir-glob 2026-05-18
-except ImportError:
-    compute_gabriel_alpaca_timeframes_1day_features = None  # type: ignore[assignment]
+# --- lazy-import shim (refactor 2026-05-21): replaces 56 try/except blocks ---
+# These names are resolved on first access via _lazy_features.__getattr__
+# (PEP 562).  If the underlying module fails to import, the name is None,
+# preserving the legacy try-except-ImportError semantics.
+from _lazy_features import (  # noqa: E402
+    compute_oc1_alpaca_timeframes_root_features,
+    compute_ph0tis2_alpaca_timeframes_root_features,
+    compute_ph0tis_alpaca_timeframes_root_features,
+    compute_save_dir_features,
+    compute_claudes_test_data_features,
+    compute_ai_external_qlib_features,
+    compute_ai_repos_pandas_ta_classic_features,
+    compute_ai_repos_featuretools_features,
+    compute_ai_external_zvt_features,
+    compute_ai_repos_evidently_features,
+    compute_ai_repos_feast_features,
+    compute_ai_external_rdagent_features,
+    compute_ai_external_ccxt_features,
+    compute_oc1_historical_build_features,
+    compute_oc1_alpaca_build_features,
+    compute_oc1_alpaca_claude_features,
+    compute_oc1_historical_merged_features,
+    compute_oc1_trading_repos_bitquant_features,
+    compute_oc1_trading_repos_cryptosignal_features,
+    compute_oc1_trading_repos_kmeans_features,
+    compute_oc1_trading_repos_finrl_features,
+    compute_oc1_trading_repos_finrl_trading_features,
+    compute_oc1_trading_repos_quantmuse_features,
+    compute_oc1_strategy_system_features,
+    compute_oc1_alpaca_timeframes_features,
+    compute_ph0tis2_strategy_raw_features,
+    compute_ph0tis2_strategy_formatted_features,
+    compute_ph0tis2_alpaca_timeframes_dup_features,
+    compute_ph0tis2_alpaca_timeframes_features,
+    compute_ph0tis_edgar_src_features,
+    compute_ph0tis_gov_trades_src_features,
+    compute_ph0tis_gov_trades_archive_features,
+    compute_ph0tis_alpaca_system_features,
+    compute_ph0tis_historical_src_features,
+    compute_ph0tis_strategy_system_source_features,
+    compute_ph0tis_strategy_test_features,
+    compute_ph0tis_strategy_raw_features,
+    compute_ph0tis_strategy_formatted_features,
+    compute_ph0tis_alpaca_timeframes_features,
+    compute_gabriel_historical_indicators_features,
+    compute_gabriel_synapse_strategies_features,
+    compute_gabriel_alpaca_system_src_features,
+    compute_gabriel_research_cycle_prompts_features,
+    compute_gabriel_research_cycle_workspaces_features,
+    compute_gabriel_gov_trades_features,
+    compute_gabriel_alpaca_timeframes_1m_merged_features,
+    compute_gabriel_alpaca_timeframes_1m_features,
+    compute_gabriel_alpaca_timeframes_5m_features,
+    compute_gabriel_alpaca_timeframes_15m_features,
+    compute_gabriel_alpaca_timeframes_30m_features,
+    compute_gabriel_alpaca_timeframes_45m_features,
+    compute_gabriel_alpaca_timeframes_1h_features,
+    compute_gabriel_alpaca_timeframes_4h_features,
+    compute_gabriel_alpaca_timeframes_8h_features,
+    compute_gabriel_alpaca_timeframes_12h_features,
+    compute_gabriel_alpaca_timeframes_1day_features,
+)
 
 
 # Cross-sectional cache (unchanged from v9)
