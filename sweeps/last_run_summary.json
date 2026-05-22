@@ -1,15 +1,15 @@
 {
-  "run_id": "26283220827",
+  "run_id": "26283221805",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T10:49:03.473209Z",
+  "timestamp": "2026-05-22T10:49:14.012788Z",
   "jobs": [
     {
-      "ticker": "NUE",
+      "ticker": "EXPD",
       "strategy": "v10",
       "status": "ok",
-      "path": "backtests/NUE/v10/result.json"
+      "path": "backtests/EXPD/v10/result.json"
     }
   ]
 }
