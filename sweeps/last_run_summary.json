@@ -1,15 +1,15 @@
 {
-  "run_id": "26280563227",
+  "run_id": "26280554120",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T09:52:17.617618Z",
+  "timestamp": "2026-05-22T09:53:43.737627Z",
   "jobs": [
     {
       "ticker": "EW",
-      "strategy": "VWAP",
+      "strategy": "ORB",
       "status": "ok",
-      "path": "backtests/EW/VWAP/result.json"
+      "path": "backtests/EW/ORB/result.json"
     }
   ]
 }
