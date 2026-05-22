@@ -1,15 +1,15 @@
 {
-  "run_id": "26272520136",
+  "run_id": "26272522326",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T06:43:16.022990Z",
+  "timestamp": "2026-05-22T06:43:18.447427Z",
   "jobs": [
     {
       "ticker": "NUE",
-      "strategy": "v10_xsec",
+      "strategy": "ORB",
       "status": "ok",
-      "path": "backtests/NUE/v10_xsec/result.json"
+      "path": "backtests/NUE/ORB/result.json"
     }
   ]
 }
