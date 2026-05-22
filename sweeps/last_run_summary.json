@@ -1,15 +1,15 @@
 {
-  "run_id": "26280565347",
+  "run_id": "26280562799",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T09:54:30.363139Z",
+  "timestamp": "2026-05-22T09:54:32.452398Z",
   "jobs": [
     {
-      "ticker": "EW",
+      "ticker": "ADI",
       "strategy": "MEAN_REV",
       "status": "ok",
-      "path": "backtests/EW/MEAN_REV/result.json"
+      "path": "backtests/ADI/MEAN_REV/result.json"
     }
   ]
 }
