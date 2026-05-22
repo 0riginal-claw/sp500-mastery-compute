@@ -1,15 +1,15 @@
 {
-  "run_id": "26280551633",
+  "run_id": "26280566486",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T09:51:11.625578Z",
+  "timestamp": "2026-05-22T09:51:36.044954Z",
   "jobs": [
     {
-      "ticker": "ADI",
-      "strategy": "ORB",
+      "ticker": "ADM",
+      "strategy": "v10_xsec",
       "status": "ok",
-      "path": "backtests/ADI/ORB/result.json"
+      "path": "backtests/ADM/v10_xsec/result.json"
     }
   ]
 }
