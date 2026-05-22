@@ -88,6 +88,21 @@ except Exception:
     _RL = None
     _RL_BULK = None
 
+# ── limit-order router (a6ead433 #1: capture 10-20bps retail limit lift) ─────
+# Off by default; enable via LIMIT_ORDER_ROUTER=1 in env. When on, paper-trade
+# BUY/SELL go through the smart-limit router (passive-mid OR marketable-limit
+# depending on signal_strength) with a 60s TIF and market-fallback on no-fill.
+# See `scripts/limit_order_router.py` + report
+# `AI-Tools/research/limit_order_router_2026-05-21/repo_2026-05-21.md`.
+try:
+    from limit_order_router import route_order as _route_limit_order  # type: ignore
+    _LIMIT_ROUTER_AVAILABLE = True
+except Exception:
+    _route_limit_order = None  # type: ignore
+    _LIMIT_ROUTER_AVAILABLE = False
+
+_LIMIT_ROUTER_ENABLED = os.environ.get("LIMIT_ORDER_ROUTER", "0") in ("1", "true", "yes")
+
 
 def _rl_call(fn, *args, **kwargs):
     """Invoke `fn` via ALPACA_RL.call when available; else direct call."""
@@ -551,6 +566,127 @@ def _place_market_order_alpaca(
     }
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Smart limit-order wrapper (a6ead433 #1: retail-fill bps lift)
+# Wraps `_place_market_order_alpaca` so existing callsites can opt in to the
+# smart-limit router without changing their call signature. When the router
+# isn't available or LIMIT_ORDER_ROUTER!=1, falls through to the market path.
+# ─────────────────────────────────────────────────────────────────────────────
+def _alpaca_get_quote(ticker: str) -> dict[str, float] | None:
+    """Fetch latest NBBO bid/ask via Gabriel wrapper's MarketDataManager."""
+    try:
+        _om, _am, md = _alpaca_managers()
+        for attr in ("get_latest_quote", "get_quote"):
+            fn = getattr(md, attr, None)
+            if callable(fn):
+                q = _rl_call(fn, ticker)
+                bid = (
+                    getattr(q, "bid_price", None)
+                    or getattr(q, "bid", None)
+                    or (q.get("bid_price") if isinstance(q, dict) else None)
+                    or (q.get("bid") if isinstance(q, dict) else None)
+                )
+                ask = (
+                    getattr(q, "ask_price", None)
+                    or getattr(q, "ask", None)
+                    or (q.get("ask_price") if isinstance(q, dict) else None)
+                    or (q.get("ask") if isinstance(q, dict) else None)
+                )
+                if bid and ask:
+                    return {"bid": float(bid), "ask": float(ask)}
+        return None
+    except Exception as e:  # noqa: BLE001
+        log.debug(f"_alpaca_get_quote {ticker} failed: {e}")
+        return None
+
+
+def _alpaca_place_limit_order(
+    *, ticker: str, side: str, qty: int, limit_price: float, tif: str = "day",
+) -> dict[str, Any]:
+    """Place a LIMIT order via Gabriel wrapper. Mirrors _place_market_order_alpaca."""
+    om, _am, _md = _alpaca_managers()
+    coid = _make_client_order_id(ticker, side)
+    place_kwargs: dict[str, Any] = {
+        "symbol": ticker,
+        "side": side,
+        "order_type": "limit",
+        "time_in_force": tif,
+        "limit_price": round(float(limit_price), 2),
+        "qty": qty,
+        "client_order_id": coid,
+    }
+    order = _rl_call(om.place_order, **place_kwargs)
+    return {
+        "order_id": str(getattr(order, "id", "")),
+        "client_order_id": coid,
+        "status": str(getattr(order, "status", "")),
+        "qty": qty,
+        "limit_price": place_kwargs["limit_price"],
+    }
+
+
+def _alpaca_cancel_order(order_id: str) -> None:
+    """Cancel an open order via Gabriel wrapper."""
+    if not order_id:
+        return
+    om, _am, _md = _alpaca_managers()
+    fn = getattr(om, "cancel_order", None) or getattr(om, "cancel_order_by_id", None)
+    if callable(fn):
+        try:
+            _rl_call(fn, order_id)
+        except Exception as e:  # noqa: BLE001
+            log.debug(f"cancel_order {order_id} ignored: {e}")
+
+
+def _alpaca_get_order(order_id: str) -> dict[str, Any]:
+    """Poll order status/fill via Gabriel wrapper."""
+    if not order_id:
+        return {"status": "unknown", "filled_qty": 0}
+    om, _am, _md = _alpaca_managers()
+    fn = getattr(om, "get_order", None) or getattr(om, "get_order_by_id", None)
+    if not callable(fn):
+        return {"status": "unknown", "filled_qty": 0}
+    try:
+        o = _rl_call(fn, order_id)
+        return {
+            "status": str(getattr(o, "status", "")),
+            "filled_qty": getattr(o, "filled_qty", 0) or 0,
+            "filled_avg_price": getattr(o, "filled_avg_price", None),
+        }
+    except Exception as e:  # noqa: BLE001
+        log.debug(f"get_order {order_id} err: {e}")
+        return {"status": "unknown", "filled_qty": 0}
+
+
+def _place_smart_order_alpaca(
+    ticker: str,
+    qty: int | None = None,
+    side: str = "buy",
+    notional: float | None = None,
+    *,
+    signal_strength: Any = None,
+    prob: float | None = None,
+) -> dict:
+    """Route through smart-limit router if enabled; else market order (legacy)."""
+    if not (_LIMIT_ROUTER_ENABLED and _LIMIT_ROUTER_AVAILABLE and _route_limit_order is not None):
+        return _place_market_order_alpaca(ticker, qty=qty, side=side, notional=notional)
+    try:
+        return _route_limit_order(  # type: ignore[misc]
+            ticker, side, qty=qty, notional=notional,
+            signal_strength=signal_strength, prob=prob,
+            get_quote_fn=_alpaca_get_quote,
+            place_limit_fn=_alpaca_place_limit_order,
+            cancel_fn=_alpaca_cancel_order,
+            get_order_fn=_alpaca_get_order,
+            place_market_fn=lambda t, side, qty=None, notional=None: _place_market_order_alpaca(
+                t, qty=qty, side=side, notional=notional,
+            ),
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"smart-router error for {ticker}: {e} — falling back to market")
+        return _place_market_order_alpaca(ticker, qty=qty, side=side, notional=notional)
+
+
 def _get_alpaca_positions() -> dict[str, dict]:
     """Return current open positions via Gabriel wrapper's AccountManager.
 
@@ -897,6 +1033,27 @@ def cmd_open_trades(args) -> int:
             )
 
     orders_placed = []
+
+    # ----- 5-gate pre-trade risk engine (Kelly / Liquidity / Correlation /
+    # Concentration / Drawdown). Instantiate once with current equity +
+    # positions so every per-ticker check sees consistent state. Refusals
+    # are logged to paper_trade/risk_engine_decisions.jsonl. Greedy approval:
+    # tickers approved earlier in this batch participate in correlation
+    # checks for later candidates. -----
+    try:
+        from risk_engine import RiskEngine  # type: ignore[import-not-found]
+        _equity_for_risk = float(
+            state.get("equity") or state.get("portfolio_value") or 100_000.0
+        )
+        risk_engine = RiskEngine(
+            equity=_equity_for_risk,
+            positions=state.get("positions", {}),
+        )
+        log.info(f"[RISK] engine initialized equity=${_equity_for_risk:.0f}")
+    except Exception as _re_err:
+        log.warning(f"[RISK] engine init failed — gates DISABLED: {_re_err}")
+        risk_engine = None
+
     for _i, sig in enumerate(sized):
         # 1s stagger reduces 0.0930 mass-fill latency cost per helper finding
         # (reports/alpaca_risk_sizing_2026-05-18.md §"Stagger the 9:30 AM batch").
@@ -932,6 +1089,25 @@ def cmd_open_trades(args) -> int:
             log.warning(f"Skipping {ticker}: notional ${actual_notional:.0f} exceeds cap.")
             continue
 
+        # ----- 5-gate pre-trade risk check -----
+        if risk_engine is not None:
+            decision = risk_engine.check(
+                ticker=ticker, qty=qty, signal=sig, price=price
+            )
+            if not decision.passed:
+                log.warning(
+                    f"[RISK] {ticker} REFUSED by gate={decision.gate}: "
+                    f"{decision.reason}"
+                )
+                continue
+            if decision.adjusted_qty is not None and decision.adjusted_qty != qty:
+                log.info(
+                    f"[RISK] {ticker} DOWNSIZED by {decision.gate}: "
+                    f"qty {qty}→{decision.adjusted_qty} ({decision.reason})"
+                )
+                qty = decision.adjusted_qty
+                actual_notional = qty * price
+
         if dry_run:
             # DRY-RUN: log intended action, do NOT submit, do NOT mutate state.
             log.info(
@@ -945,9 +1121,14 @@ def cmd_open_trades(args) -> int:
             # the symbol rejects notional (sub-$1, recently-IPO'd, etc.).
             order_result = None
             order_size_notional = float(notional)
+            # Signal-strength hint for the smart-limit router (a6ead433 #1).
+            # Falls through to a plain market order when LIMIT_ORDER_ROUTER!=1.
+            _sig_prob = sig.get("prob") if isinstance(sig, dict) else None
+            _sig_strength = sig.get("signal_strength") if isinstance(sig, dict) else None
             try:
-                order_result = _place_market_order_alpaca(
-                    ticker, side="buy", notional=order_size_notional
+                order_result = _place_smart_order_alpaca(
+                    ticker, side="buy", notional=order_size_notional,
+                    signal_strength=_sig_strength, prob=_sig_prob,
                 )
             except Exception as e:
                 log.warning(
@@ -955,8 +1136,9 @@ def cmd_open_trades(args) -> int:
                     f"{e} — falling back to qty={qty}"
                 )
                 try:
-                    order_result = _place_market_order_alpaca(
-                        ticker, qty=qty, side="buy"
+                    order_result = _place_smart_order_alpaca(
+                        ticker, qty=qty, side="buy",
+                        signal_strength=_sig_strength, prob=_sig_prob,
                     )
                 except Exception as e2:
                     log.error(f"qty fallback also failed for {ticker}: {e2}")
