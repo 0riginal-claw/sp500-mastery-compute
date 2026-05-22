@@ -16,7 +16,9 @@ Mode detection:
                  wrapper's public manager surface.
 
 Risk guardrails:
-    MAX_POSITION_NOTIONAL    $400 per ticker  (20% of $2k synthetic budget)
+    MAX_POSITION_NOTIONAL    $100 per ticker  (5% of $2k synthetic budget,
+                              matches Kelly half-K cap KELLY_MAX_FRACTION=0.05
+                              and concentration gate MAX_PCT_PER_TICKER=0.05)
     MAX_TOTAL_EXPOSURE       $2,000 across all open positions
                               (synthetic budget — Alpaca paper account equity
                                ~$95k is IGNORED for sizing; used for reporting only)
@@ -31,11 +33,13 @@ Risk guardrails:
     Cap rationale (2026-05-22): user requested live paper-trade balance
     restricted to $2,000 starting July 2026 (sized for transition to real money).
     Alpaca paper account equity inflates PnL ~47×; capping at $2k via synthetic
-    budget makes paper PnL representative of live $2k account.
+    budget makes paper PnL representative of live $2k account. Per-ticker cap
+    is 5% (matches Kelly + concentration gates) so a 20-name portfolio fully
+    deploys the $2k budget without any risk gate refusing.
 
     Env overrides (read at startup):
       LIVE_BUDGET_USD              — total budget (default 2000)
-      LIVE_MAX_POSITION_USD        — per-ticker cap (default 400, 20% of budget)
+      LIVE_MAX_POSITION_USD        — per-ticker cap (default 100, 5% of budget)
       LIVE_DAILY_LOSS_SOFT_USD     — soft halt (default -120, 6% of budget)
       LIVE_DAILY_LOSS_HARD_USD     — hard halt (default -200, 10% of budget)
 
@@ -170,9 +174,15 @@ log = logging.getLogger("paper_trade")
 #
 # Defaults (calibrated to $2k):
 #   total budget               $2,000           (LIVE_BUDGET_USD)
-#   per-ticker max             $400  (20%)      (LIVE_MAX_POSITION_USD)
+#   per-ticker max             $100  (5%)       (LIVE_MAX_POSITION_USD)
 #   daily soft halt             -$120 (6%)      (LIVE_DAILY_LOSS_SOFT_USD)
 #   daily hard halt             -$200 (10%)     (LIVE_DAILY_LOSS_HARD_USD)
+#
+# Per-ticker = 5% matches risk_engine.KELLY_MAX_FRACTION (0.05) and
+# MAX_PCT_PER_TICKER (0.05). At 5%, a fully-deployed portfolio holds 20 names
+# at $100 each = $2k. The Kelly + concentration gates therefore PASS the
+# sized notional cleanly; if we used 20% per ticker ($400), Kelly would refuse
+# every entry.
 #
 # Halt thresholds were previously -$1,500 / -$2,500 (1.6% / 2.6% of $95k).
 # At $2k budget the equivalent %-of-budget figures are -$32 / -$53, but those
@@ -180,7 +190,7 @@ log = logging.getLogger("paper_trade")
 # consistent with the per-ticker DD bands in risk_engine.py.
 LIVE_BUDGET_USD = float(os.environ.get("LIVE_BUDGET_USD", "2000"))
 MAX_POSITION_NOTIONAL = float(
-    os.environ.get("LIVE_MAX_POSITION_USD", str(LIVE_BUDGET_USD * 0.20))
+    os.environ.get("LIVE_MAX_POSITION_USD", str(LIVE_BUDGET_USD * 0.05))
 )
 MAX_TOTAL_EXPOSURE = LIVE_BUDGET_USD
 
