@@ -86,8 +86,8 @@
   },
   "n_trades": 66,
   "win_rate": 0.3939393939393939,
-  "profit_factor": 0.8820066439562622,
-  "total_return_pct": -0.013532833511299336,
-  "max_drawdown_pct": -0.03934068614083142,
+  "profit_factor": 0.8820066785933539,
+  "total_return_pct": -0.013532826666678785,
+  "max_drawdown_pct": -0.03934067110096184,
   "status": "ok"
 }
