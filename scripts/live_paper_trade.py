@@ -1053,6 +1053,63 @@ def cmd_open_trades(args) -> int:
         log.warning("No signals available — skipping open-trades.")
         return 0
 
+    # ----- Signal-decay exit (Quick-win B, 2026-05-22) -----
+    # Per ac0f5aca: re-check current signal probs for already-held positions.
+    # If entry signal_prob has decayed by >SIGNAL_DECAY_EXIT_THRESHOLD vs today's
+    # signal, sell BEFORE opening new trades so the freed slot/cash recycles
+    # into the new batch. Held tickers absent from today's signal file are NOT
+    # decayed (no current prob to compare against); they wait for STOP/TP/EOD.
+    SIGNAL_DECAY_EXIT_THRESHOLD = 0.20
+    current_signals_by_ticker = {
+        s["ticker"]: s for s in signals if isinstance(s, dict) and s.get("ticker")
+    }
+    decay_exits: list[str] = []
+    for ticker, pos in list(state["positions"].items()):
+        entry_prob = pos.get("signal_prob")
+        curr_sig = current_signals_by_ticker.get(ticker)
+        if entry_prob is None or curr_sig is None:
+            continue
+        curr_prob = curr_sig.get("prob")
+        if curr_prob is None:
+            continue
+        try:
+            decay = float(entry_prob) - float(curr_prob)
+        except (TypeError, ValueError):
+            continue
+        if decay > SIGNAL_DECAY_EXIT_THRESHOLD:
+            decay_exits.append(ticker)
+            log.info(
+                f"[DECAY-EXIT] {ticker}: entry_prob={entry_prob:.3f} "
+                f"curr_prob={curr_prob:.3f} decay={decay:.3f} > "
+                f"{SIGNAL_DECAY_EXIT_THRESHOLD:.2f} — queuing sell"
+            )
+    for t in decay_exits:
+        pos = state["positions"][t]
+        qty = int(pos.get("qty") or 0)
+        if qty <= 0:
+            log.warning(f"[DECAY-EXIT] {t}: qty<=0, skipping sell")
+            continue
+        if dry_run:
+            log.info(f"[DRY-RUN][DECAY-EXIT] would sell {qty} {t} (signal_decay)")
+        elif MODE == "LIVE_PAPER":
+            try:
+                _place_smart_order_alpaca(t, qty=qty, side="sell")
+            except Exception as _de_err:  # noqa: BLE001
+                log.warning(f"[DECAY-EXIT] {t}: sell failed: {_de_err} — skipping")
+                continue
+        else:
+            log.info(f"[SIM][DECAY-EXIT] SELL {qty} {t} (signal_decay)")
+        closed = state["positions"].pop(t)
+        closed["closed_reason"] = "signal_decay"
+        closed["closed_at"] = datetime.now(timezone.utc).isoformat()
+        state["closed_trades"].append(closed)
+    if decay_exits:
+        log.info(
+            f"[DECAY-EXIT] freed {len(decay_exits)} slot(s) via signal_decay: "
+            f"{decay_exits}"
+        )
+    # ----- end signal-decay exit -----
+
     current_exposure = sum(
         p.get("notional", 0) for p in state["positions"].values()
     )
