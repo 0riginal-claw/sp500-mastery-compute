@@ -1,15 +1,15 @@
 {
-  "run_id": "26285952135",
+  "run_id": "26288645288",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T11:57:04.517591Z",
+  "timestamp": "2026-05-22T12:51:46.961646Z",
   "jobs": [
     {
-      "ticker": "NTRS",
-      "strategy": "MEAN_REV",
+      "ticker": "WAT",
+      "strategy": "ORB__5Min",
       "status": "ok",
-      "path": "backtests/NTRS/MEAN_REV/result.json"
+      "path": "backtests/WAT/ORB__5Min/result.json"
     }
   ]
 }
