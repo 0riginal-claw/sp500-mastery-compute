@@ -1,15 +1,15 @@
 {
-  "run_id": "26264747298",
+  "run_id": "26264747844",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T02:28:34.424794Z",
+  "timestamp": "2026-05-22T02:32:20.685702Z",
   "jobs": [
     {
-      "ticker": "ES",
-      "strategy": "v10_xsec",
+      "ticker": "ABNB",
+      "strategy": "VWAP",
       "status": "ok",
-      "path": "backtests/ES/v10_xsec/result.json"
+      "path": "backtests/ABNB/VWAP/result.json"
     }
   ]
 }
