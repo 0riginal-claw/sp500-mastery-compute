@@ -5434,6 +5434,7 @@ def main() -> None:
         "n_trades": metrics["n_trades"],
         "win_rate": metrics.get("win_rate"),
         "profit_factor": metrics.get("profit_factor"),
+        "sharpe": metrics.get("sharpe"),
         "total_return_pct": metrics.get("total_return_pct"),
         "max_drawdown_pct": metrics.get("max_drawdown_pct"),
         "status": "ok",
@@ -5442,6 +5443,54 @@ def main() -> None:
     with open(result_path, "w") as fp:
         json.dump(to_py(result), fp, indent=2, default=str)
     logger.info("  Wrote %s", result_path)
+
+    # 2026-05-22 mastery-writer wire (af6ff6f7 root cause #1): merge this
+    # (strategy, TF) result into state/<TICKER>/mastery.json so the gate can
+    # promote tickers. Previously NEVER called in production. Fail-safe: any
+    # exception is logged + recorded in silent_skips.jsonl but doesn't break
+    # the backtest. Reject-log per §8 GITHUB recommendation (abf04bde).
+    try:
+        from mastery_writer import update_mastery_per_tf
+        _hp = {
+            "tp_atr": getattr(args, "tp_atr", None),
+            "sl_atr": getattr(args, "sl_atr", None),
+            "max_hold": getattr(args, "max_hold", None),
+            "prob_threshold": float(chosen_thr) if chosen_thr is not None else None,
+        }
+        _pf = float(metrics.get("profit_factor") or 0.0)
+        _sharpe = float(metrics.get("sharpe") or 0.0)
+        _dd = abs(float(metrics.get("max_drawdown_pct") or 0.0))
+        _nt = int(metrics.get("n_trades") or 0)
+        update_mastery_per_tf(
+            ticker=args.ticker,
+            timeframe=args.timeframe,
+            strategy=args.strategy,
+            hyperparams=_hp,
+            pf=_pf, sharpe=_sharpe, dd=_dd,
+            n_trades=_nt, n_evals=1,
+        )
+        logger.info(
+            "  mastery_writer: %s tf=%s strat=%s pf=%.3f sharpe=%.3f",
+            args.ticker, args.timeframe, args.strategy, _pf, _sharpe,
+        )
+    except Exception as _mw_exc:  # pylint: disable=broad-except
+        logger.warning("  mastery_writer skip: %s", _mw_exc)
+        try:
+            _skip_dir = Path(__file__).resolve().parent.parent / "state" / "mastery_writer"
+            _skip_dir.mkdir(parents=True, exist_ok=True)
+            _skip_path = _skip_dir / "silent_skips.jsonl"
+            with open(_skip_path, "a") as _sp:
+                _sp.write(json.dumps({
+                    "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "ticker": getattr(args, "ticker", None),
+                    "strategy": getattr(args, "strategy", None),
+                    "timeframe": getattr(args, "timeframe", None),
+                    "reason": str(_mw_exc),
+                    "source": "backtest_xgb_v10.py",
+                }) + "\n")
+        except Exception:
+            pass
+
     logger.info("[v10] DONE. features=%d rows=%d", len(fc), len(f))
 
 
