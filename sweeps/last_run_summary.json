@@ -1,15 +1,15 @@
 {
-  "run_id": "26291621163",
+  "run_id": "26291605177",
   "completed": 0,
   "failed": 1,
   "total": 1,
-  "timestamp": "2026-05-22T13:58:44.275198Z",
+  "timestamp": "2026-05-22T13:58:23.979595Z",
   "jobs": [
     {
-      "ticker": "CRWD",
-      "strategy": "ORB__5Min",
+      "ticker": "EXE",
+      "strategy": "ORB",
       "status": "ok",
-      "path": "backtests/CRWD/ORB__5Min/result.json"
+      "path": "backtests/EXE/ORB/result.json"
     }
   ]
 }
