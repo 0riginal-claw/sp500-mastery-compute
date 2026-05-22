@@ -17,7 +17,7 @@ Output format per ticker:
     "prob": 0.73,
     "threshold": 0.68,
     "signal": 1,           # 1 = BUY, 0 = NO TRADE
-    "position_size": 400.0, # notional in USD (capped at MAX_POSITION_NOTIONAL=$400=20% of $2k budget; informational only — live_paper_trade.compute_position_sizes does the actual sizing and may downsize further)
+    "position_size": 100.0, # notional in USD (capped at MAX_POSITION_NOTIONAL=$100=5% of $2k budget; informational only — live_paper_trade.compute_position_sizes does the actual sizing and may downsize further)
     "pipeline": "xgb_v8_alpha158",
     "model_run_dir": "...",
     "features_used": 50
@@ -182,7 +182,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 # files written under a non-default budget reflect the active cap.
 MAX_POSITION_NOTIONAL = float(
     os.environ.get("LIVE_MAX_POSITION_USD",
-                   str(float(os.environ.get("LIVE_BUDGET_USD", "2000")) * 0.20))
+                   str(float(os.environ.get("LIVE_BUDGET_USD", "2000")) * 0.05))
 )
 LABEL_EMBARGO_DAYS = 21
 
