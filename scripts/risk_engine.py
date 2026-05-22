@@ -21,6 +21,14 @@ Gates:
   5. Drawdown     — if 7-day equity DD > 5%, downsize all positions to 50%.
                     If > 10%, refuse new entries entirely.
 
+NOTE (2026-05-22): `equity` passed to RiskEngine is now the SYNTHETIC budget
+($2k via live_paper_trade.LIVE_BUDGET_USD), NOT the Alpaca paper account
+equity (~$95k). All gate caps below scale to this synthetic budget. Per-ticker
+Kelly cap = 5% × $2k = $100; concentration cap = 5% × $2k = $100; sector cap
+= 25% × $2k = $500. Background: live paper-trade transitions to a real $2k
+account in July 2026; capping the sizing now ensures paper PnL is
+representative.
+
 Audit log: every decision (pass/refuse/downsize) is appended as one JSON line
 to paper_trade/risk_engine_decisions.jsonl. Schema:
   {ts, ticker, requested_qty, requested_notional, equity, gate, passed,
@@ -28,7 +36,7 @@ to paper_trade/risk_engine_decisions.jsonl. Schema:
 
 Usage:
   from risk_engine import RiskEngine
-  engine = RiskEngine(equity=100_000.0, positions=state["positions"])
+  engine = RiskEngine(equity=2_000.0, positions=state["positions"])  # $2k synthetic
   decision = engine.check(ticker="AAPL", qty=10, signal={"prob":0.62,...})
   if not decision.passed:
       log.warning(f"[RISK] {ticker} refused by {decision.gate}: {decision.reason}")
@@ -532,7 +540,11 @@ class RiskEngine:
         equity_series: list[float] | None = None,
         log_path: Path | None = None,
     ):
-        self.equity = float(equity) if equity and equity > 0 else 100_000.0
+        # Fallback default lowered 2026-05-22: 100k → 2k synthetic budget. A
+        # caller that forgets to pass equity now gets a conservative cap
+        # instead of an inflated one. live_paper_trade.py always passes
+        # LIVE_BUDGET_USD explicitly so this fallback should not fire in prod.
+        self.equity = float(equity) if equity and equity > 0 else 2_000.0
         self.positions = dict(positions or {})
         self.historic_trades = list(historic_trades or _load_historic_closed_trades())
         self.equity_series = (equity_series if equity_series is not None
