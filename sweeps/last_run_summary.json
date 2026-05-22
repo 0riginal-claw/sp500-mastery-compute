@@ -1,15 +1,15 @@
 {
-  "run_id": "26280566486",
+  "run_id": "26280552694",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T09:51:36.044954Z",
+  "timestamp": "2026-05-22T09:51:47.766150Z",
   "jobs": [
     {
-      "ticker": "ADM",
-      "strategy": "v10_xsec",
+      "ticker": "ADI",
+      "strategy": "VWAP",
       "status": "ok",
-      "path": "backtests/ADM/v10_xsec/result.json"
+      "path": "backtests/ADI/VWAP/result.json"
     }
   ]
 }
