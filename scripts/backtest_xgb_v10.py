@@ -4593,8 +4593,21 @@ def _build_v10_features_impl(
     f = f.loc[:, ~f.columns.duplicated()]
     f = f.dropna(subset=["rsi_14", "atr_14", "ema_200", "fwd_ret_21d", "y"])
 
+    # Wave OW-21 (2026-05-21) — orphan-wire audit a995e379: closeable_gaps
+    # is wired in v8 (build_v8_features ->  add_closeable_gap_features) and
+    # flows through v9->v10 inside v9_base. We expose an audit counter here
+    # for manifest accountability — value is the # of expected feature names
+    # from closeable_gap_feature_names() (18), since the actual delta is
+    # already subsumed in after_v9 above.
+    try:
+        from closeable_gaps_features import closeable_gap_feature_names  # noqa: E402
+        added_closeable_gap = len(closeable_gap_feature_names())
+    except Exception:
+        added_closeable_gap = 0
+
     module_feature_counts = {
         "v9_base": after_v9,
+        "closeable_gap_added": added_closeable_gap,  # audit-only; subsumed in v9_base
         "alpaca_added": added_alpaca,
         "insider_form4_added": added_insider,
         "daily_integration_added": added_daily_int,
