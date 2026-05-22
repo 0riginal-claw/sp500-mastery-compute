@@ -1,4 +1,4 @@
-# autosolve_skip: multi-TF wire — 2026-05-21
+# autosolve_skip: multi-TF wire + bootstrap CI + exec-aware — 2026-05-21
 """mastery_writer.py — Forward-compatible writer for state/<TICKER>/mastery.json.
 
 Introduced 2026-05-21 (multi-TF wire) so the sweep rollup can merge per-TF
@@ -23,9 +23,27 @@ EXTENDED SCHEMA (additive — old readers still work):
         "5Min": {"best_pf": 1.85, ...},
         ...
       },
+      # NEW 2026-05-21 (bootstrap CI + exec-aware metrics):
+      "sharpe_ci_low":  0.42,          # 95% block-bootstrap CI lower bound
+      "sharpe_ci_high": 1.78,          # 95% block-bootstrap CI upper bound
+      "pf_ci_low":      1.21,
+      "pf_ci_high":     2.04,
+      "dd_ci_low":      0.12,
+      "dd_ci_high":     0.27,
+      "sharpe_net":     1.07,          # post-execution-cost (slippage+spread+comm)
+      "pf_net":         1.69,
+      "dd_net":         0.22,
+      "exec_cost_bps":  7.0,           # total round-trip bps assumed
       "mastered": true,
       "last_updated": "2026-05-21T16:00:00Z"
     }
+
+Gate (tightened 2026-05-21): a ticker is `mastered` ONLY IF
+  best_pf      >= master_pf      (default 1.2)
+  best_sharpe  >= master_sharpe  (default 0.8)
+  sharpe_ci_low > 0   (when CI present — i.e. lower bound of 95% bootstrap
+                       CI must be strictly positive; absence of CI fields
+                       falls back to legacy gate for backward-compat).
 
 Backward compatibility:
   - All keys present in old schema remain.
