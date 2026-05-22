@@ -36,6 +36,7 @@ applies the model trained on the final fold.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import logging
@@ -728,14 +729,76 @@ def run_inference(ticker: str, model_info: dict, features_df: pd.DataFrame) -> d
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main() -> int:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """CLI argument parser. Supports optional --refresh-tickers subset mode.
+
+    --refresh-tickers <CSV|@FILE>
+        Run inference ONLY for the listed tickers (comma-separated, or @file
+        with one ticker per line). New per-ticker results are merged INTO the
+        existing {today}.json — non-listed tickers in the existing file are
+        preserved. Use case (Quick-win B, 2026-05-22): re-score held positions
+        mid-day for the signal-decay-exit check in cmd_open_trades without
+        running the full universe pass.
+    """
+    p = argparse.ArgumentParser(description="Generate paper-trade signals.")
+    p.add_argument(
+        "--refresh-tickers",
+        type=str,
+        default=None,
+        metavar="CSV|@FILE",
+        help=(
+            "Refresh only the listed tickers (comma-sep or @path/to/list.txt). "
+            "Merges INTO existing today.json instead of overwriting."
+        ),
+    )
+    return p.parse_args(argv)
+
+
+def _resolve_refresh_tickers(arg: str | None) -> set[str] | None:
+    """Resolve --refresh-tickers arg to a set of uppercase tickers, or None."""
+    if not arg:
+        return None
+    raw: str
+    if arg.startswith("@"):
+        path = Path(arg[1:])
+        if not path.exists():
+            raise FileNotFoundError(f"--refresh-tickers file not found: {path}")
+        raw = path.read_text()
+        tokens = re.split(r"[,\s]+", raw)
+    else:
+        tokens = arg.split(",")
+    tickers = {t.strip().upper() for t in tokens if t.strip()}
+    return tickers or None
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    refresh_set = _resolve_refresh_tickers(args.refresh_tickers)
+
     today = date.today().isoformat()
     log.info(f"=== SIGNAL GENERATION {today} ===")
+    if refresh_set is not None:
+        log.info(
+            f"[REFRESH-MODE] limiting to {len(refresh_set)} ticker(s): "
+            f"{sorted(refresh_set)}"
+        )
 
     models = discover_models()
     if not models:
         log.error("No models found in backtests_xgb_v7 or backtests_xgb_v8")
         return 1
+
+    # In refresh mode, filter discovered models to the requested subset.
+    if refresh_set is not None:
+        missing = sorted(refresh_set - set(models.keys()))
+        if missing:
+            log.warning(
+                f"[REFRESH-MODE] requested tickers without models: {missing}"
+            )
+        models = {t: m for t, m in models.items() if t in refresh_set}
+        if not models:
+            log.error("[REFRESH-MODE] no requested tickers have models — abort")
+            return 1
 
     results = []
     errors = []
@@ -771,12 +834,33 @@ def main() -> int:
     if errors:
         log.warning(f"Errors on: {errors}")
 
-    # Write output file
+    # Write output file. In refresh mode, MERGE into existing file: refreshed
+    # tickers overwrite, untouched ones stay. In full mode, overwrite entirely.
     output_path = SIGNALS_DIR / f"{today}.json"
-    with open(output_path, "w") as f:
-        json.dump(results, f, indent=2)
-
-    log.info(f"Signals written → {output_path} ({len(results)} tickers)")
+    if refresh_set is not None and output_path.exists():
+        try:
+            with open(output_path) as f:
+                existing = json.load(f)
+        except Exception as _ex:
+            log.warning(
+                f"[REFRESH-MODE] could not load existing {output_path}: {_ex} — "
+                "writing refreshed subset only"
+            )
+            existing = []
+        by_ticker = {r["ticker"]: r for r in existing if isinstance(r, dict) and r.get("ticker")}
+        for r in results:
+            by_ticker[r["ticker"]] = r
+        merged = list(by_ticker.values())
+        with open(output_path, "w") as f:
+            json.dump(merged, f, indent=2)
+        log.info(
+            f"Signals MERGED → {output_path} "
+            f"({len(results)} refreshed, {len(merged)} total)"
+        )
+    else:
+        with open(output_path, "w") as f:
+            json.dump(results, f, indent=2)
+        log.info(f"Signals written → {output_path} ({len(results)} tickers)")
 
     # Print summary of firing tickers
     if firing:
