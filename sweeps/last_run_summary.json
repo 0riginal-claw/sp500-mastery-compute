@@ -1,15 +1,15 @@
 {
-  "run_id": "26274950871",
+  "run_id": "26274944798",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T08:41:07.469014Z",
+  "timestamp": "2026-05-22T08:42:14.996224Z",
   "jobs": [
     {
-      "ticker": "EVRG",
+      "ticker": "ETR",
       "strategy": "v10",
       "status": "ok",
-      "path": "backtests/EVRG/v10/result.json"
+      "path": "backtests/ETR/v10/result.json"
     }
   ]
 }
