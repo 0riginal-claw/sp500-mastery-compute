@@ -1,15 +1,15 @@
 {
-  "run_id": "26268185048",
+  "run_id": "26270478887",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T04:28:32.107597Z",
+  "timestamp": "2026-05-22T05:46:13.077211Z",
   "jobs": [
     {
-      "ticker": "ABT",
+      "ticker": "ACGL",
       "strategy": "v10_xsec",
       "status": "ok",
-      "path": "backtests/ABT/v10_xsec/result.json"
+      "path": "backtests/ACGL/v10_xsec/result.json"
     }
   ]
 }
