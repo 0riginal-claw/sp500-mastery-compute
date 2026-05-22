@@ -2048,6 +2048,9 @@ def cmd_ingest(args) -> int:
     today = getattr(args, "date", None) or date.today().isoformat()
     dry_run = bool(getattr(args, "dry_run", False))
     log.info(f"=== INGEST {today} | mode={MODE} | dry_run={dry_run} ===")
+    # Market-day guard: skip on weekends + NYSE holidays (dry-run still proceeds for smoke tests).
+    if not dry_run and not _market_day_guard("ingest"):
+        return 0
 
     if dry_run:
         # DRY-RUN: log what we'd reconcile + ingest, do NOT mutate state and
