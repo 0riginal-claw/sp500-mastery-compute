@@ -84,10 +84,10 @@
     "market_regime_hmm_added": 7,
     "total_after_dedup_dropna": 1594
   },
-  "n_trades": 51,
-  "win_rate": 0.5098039215686274,
-  "profit_factor": 1.7270681618981518,
-  "total_return_pct": 0.05110371510765869,
-  "max_drawdown_pct": -0.015472795811519105,
+  "n_trades": 63,
+  "win_rate": 0.49206349206349204,
+  "profit_factor": 1.570653616296354,
+  "total_return_pct": 0.05101095647838706,
+  "max_drawdown_pct": -0.023795892090035308,
   "status": "ok"
 }

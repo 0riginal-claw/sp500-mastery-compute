@@ -1,15 +1,15 @@
 {
-  "run_id": "26283224677",
+  "run_id": "26283209918",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T10:50:34.952859Z",
+  "timestamp": "2026-05-22T10:52:04.848579Z",
   "jobs": [
     {
-      "ticker": "BEN",
-      "strategy": "ORB__5Min",
+      "ticker": "ADI",
+      "strategy": "MEAN_REV",
       "status": "ok",
-      "path": "backtests/BEN/ORB__5Min/result.json"
+      "path": "backtests/ADI/MEAN_REV/result.json"
     }
   ]
 }
