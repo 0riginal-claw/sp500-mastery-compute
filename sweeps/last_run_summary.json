@@ -1,15 +1,15 @@
 {
-  "run_id": "26291603202",
+  "run_id": "26291622253",
   "completed": 0,
   "failed": 1,
   "total": 1,
-  "timestamp": "2026-05-22T13:58:38.792065Z",
+  "timestamp": "2026-05-22T13:59:00.021308Z",
   "jobs": [
     {
-      "ticker": "ETN",
-      "strategy": "MEAN_REV",
+      "ticker": "CINF",
+      "strategy": "ORB__15Min",
       "status": "ok",
-      "path": "backtests/ETN/MEAN_REV/result.json"
+      "path": "backtests/CINF/ORB__15Min/result.json"
     }
   ]
 }
