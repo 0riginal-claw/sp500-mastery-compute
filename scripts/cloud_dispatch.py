@@ -141,7 +141,27 @@ def _queue_line(record: dict[str, Any]) -> str:
     with dispatched.jsonl records so that processed lines can be atomically
     removed from the queue after each dispatch pass.  Older 3-token lines
     (written before this change) are still accepted by Job.from_line().
+
+    Word-split guard (added 2026-05-21 — Slice 3):
+    If any of (script, ticker, strategy) contains whitespace, the downstream
+    parser (Job.from_line) splits on whitespace and mis-aligns the tokens.
+    Observed in the wild: job ef6eaf0a, where script="/Users/.../My Drive/.../
+    backtest_xgb_v10.py" was passed by a caller that had already word-split
+    the path-with-spaces. After the dispatcher re-split on " ", the record
+    landed with script="/Users/.../My", ticker="Drive/AI-Tools/..." (a path
+    fragment, not a ticker) — completely unusable. This raises early so the
+    caller sees the bug instead of producing a garbage queue line that the
+    dispatcher will try (and fail) to run for hours.
     """
+    for field_name in ("script", "ticker", "strategy"):
+        val = record.get(field_name, "")
+        if val and any(ch.isspace() for ch in str(val)):
+            raise ValueError(
+                f"_queue_line: field {field_name!r}={val!r} contains whitespace "
+                f"— would word-split on parse. Pass an absolute path without "
+                f"spaces (or use a symlink), and ensure ticker/strategy are "
+                f"single tokens. Job record: id={record.get('id')!r}"
+            )
     return f"{record['script']} {record['ticker']} {record['strategy']} {record['id']}\n"
 
 
@@ -191,6 +211,22 @@ def enqueue_job(
     """
     if not ticker or not strategy or not script:
         raise ValueError("ticker, strategy, and script must all be non-empty strings")
+
+    # Whitespace guard (added 2026-05-21 — Slice 3): the 4-token queue.txt
+    # format word-splits on whitespace at parse time, so any space inside one
+    # of these fields silently re-aligns the tokens and corrupts the job.
+    # Reject early so the caller (master_sweep, run_wave, auto_cloud_dispatcher,
+    # external bash wrappers) sees the bug instead of producing a garbage
+    # record that the dispatcher will try to run for hours. Root-cause of
+    # job ef6eaf0a (script="/Users/.../My", ticker="Drive/AI-Tools/...").
+    for _name, _val in (("ticker", ticker), ("strategy", strategy), ("script", script)):
+        if any(ch.isspace() for ch in str(_val)):
+            raise ValueError(
+                f"enqueue_job: field {_name}={_val!r} contains whitespace; the "
+                f"4-token queue.txt format would word-split on parse. Use a "
+                f"repo-relative script path (e.g. 'scripts/backtest_xgb_v10.py') "
+                f"or a symlink without spaces for absolute paths."
+            )
 
     job_id   = _short_id()
     resolved_out = out_path or _default_out_path(ticker, strategy)
