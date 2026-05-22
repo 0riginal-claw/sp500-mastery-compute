@@ -1,15 +1,15 @@
 {
-  "run_id": "26283218980",
+  "run_id": "26283219902",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T10:53:26.892128Z",
+  "timestamp": "2026-05-22T10:53:43.209681Z",
   "jobs": [
     {
-      "ticker": "EXE",
-      "strategy": "MEAN_REV",
+      "ticker": "ADSK",
+      "strategy": "v10_xsec",
       "status": "ok",
-      "path": "backtests/EXE/MEAN_REV/result.json"
+      "path": "backtests/ADSK/v10_xsec/result.json"
     }
   ]
 }
