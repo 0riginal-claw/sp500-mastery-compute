@@ -1,15 +1,15 @@
 {
-  "run_id": "26291607825",
+  "run_id": "26291631372",
   "completed": 0,
   "failed": 1,
   "total": 1,
-  "timestamp": "2026-05-22T13:54:20.623360Z",
+  "timestamp": "2026-05-22T13:55:54.755724Z",
   "jobs": [
     {
-      "ticker": "JCI",
-      "strategy": "ORB__15Min",
+      "ticker": "CARR",
+      "strategy": "ORB__30Min",
       "status": "ok",
-      "path": "backtests/JCI/ORB__15Min/result.json"
+      "path": "backtests/CARR/ORB__30Min/result.json"
     }
   ]
 }
