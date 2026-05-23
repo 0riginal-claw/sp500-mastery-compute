@@ -1,15 +1,15 @@
 {
-  "run_id": "26291623267",
+  "run_id": "26319018520",
   "completed": 0,
-  "failed": 1,
+  "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-22T13:58:45.303805Z",
+  "timestamp": "2026-05-23T00:58:54.917842Z",
   "jobs": [
     {
-      "ticker": "TDY",
-      "strategy": "ORB__5Min",
+      "ticker": "BEN",
+      "strategy": "momentum__8Hour",
       "status": "ok",
-      "path": "backtests/TDY/ORB__5Min/result.json"
+      "path": "backtests/BEN/momentum__8Hour/result.json"
     }
   ]
 }
