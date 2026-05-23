@@ -113,16 +113,22 @@ def _fetch_apewisdom_snapshot(max_pages: int = 5) -> dict[str, dict]:
         except Exception as e:
             logger.warning("[altdata] apewisdom page %d failed: %s", page, e)
             break
+        def _ii(v):
+            try:
+                return int(v) if v is not None else 0
+            except (TypeError, ValueError):
+                return 0
+
         for row in data.get("results", []):
             tk = (row.get("ticker") or "").upper()
             if not tk:
                 continue
-            mentions = int(row.get("mentions", 0))
-            mentions_prev = int(row.get("mentions_24h_ago", 0))
+            mentions = _ii(row.get("mentions"))
+            mentions_prev = _ii(row.get("mentions_24h_ago"))
             out[tk] = {
                 "mentions": mentions,
-                "upvotes": int(row.get("upvotes", 0)),
-                "rank": int(row.get("rank", 0)),
+                "upvotes": _ii(row.get("upvotes")),
+                "rank": _ii(row.get("rank")),
                 "mentions_prev": mentions_prev,
                 "velocity": (mentions - mentions_prev) / max(mentions_prev, 1),
             }
