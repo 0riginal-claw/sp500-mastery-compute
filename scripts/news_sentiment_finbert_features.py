@@ -141,7 +141,11 @@ def _score_headlines(headlines: list[str]) -> pd.DataFrame:
         enc = tok(headlines, padding=True, truncation=True, max_length=128,
                   return_tensors="pt")
         out = model(**enc)
-        probs = torch.softmax(out.logits, dim=1).numpy()
+        # Use .tolist() then np.asarray to dodge torch<->numpy ABI conflict
+        # (torch 2.2.2 was compiled against numpy 1.x; env has numpy 2.x —
+        # tensor.numpy() raises "Numpy is not available" but .tolist() is safe).
+        probs_list = torch.softmax(out.logits, dim=1).tolist()
+    probs = np.asarray(probs_list, dtype=np.float64)
     # FinBERT label order: 0=positive, 1=negative, 2=neutral
     df = pd.DataFrame({
         "text": headlines,
