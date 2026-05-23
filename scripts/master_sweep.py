@@ -67,18 +67,18 @@ BEST_PARQUET = SCRIPT_DIR.parent / 'cache' / 'per_ticker_best.parquet'
 # Used by --strategy-tf-filter to skip incoherent (strategy, TF) cells.
 # Mirror of the warn-only check in backtest_xgb_v10.main().
 STRATEGY_TF_COMPAT: dict[str, set[str]] = {
-    "ORB":         {"1Min", "5Min", "15Min", "30Min"},
-    "VWAP":        {"1Min", "5Min", "15Min", "30Min", "45Min", "1Hour"},
+    "ORB":         {"1Min", "5Min", "10Min", "15Min", "30Min"},   # 2026-05-22: 10Min added (bridge TF)
+    "VWAP":        {"1Min", "5Min", "10Min", "15Min", "30Min", "45Min", "1Hour"},   # 2026-05-22: 10Min
     "v10":         {"1Hour", "1Day"},
     "ML_XGB_v10":  {"1Hour", "1Day"},   # alias used by default --strategy
     "default":     {"1Day"},             # plain "default" sweeps stay daily
     "momentum":    {"1Hour", "4Hour", "8Hour", "12Hour", "1Day"},
     "catalyst":    {"1Day"},
-    "mean_revert": {"5Min", "15Min", "30Min"},
+    "mean_revert": {"5Min", "10Min", "15Min", "30Min"},   # 2026-05-22: 10Min added
 }
 
 ALL_TIMEFRAMES = [
-    "1Min", "5Min", "15Min", "30Min", "45Min",
+    "1Min", "5Min", "10Min", "15Min", "30Min", "45Min",   # 2026-05-22: 10Min added
     "1Hour", "4Hour", "8Hour", "12Hour", "1Day",
 ]
 
