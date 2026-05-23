@@ -1,15 +1,15 @@
 {
-  "run_id": "26320351396",
+  "run_id": "26320350240",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T01:58:22.962625Z",
+  "timestamp": "2026-05-23T02:01:19.870640Z",
   "jobs": [
     {
-      "ticker": "CHD",
+      "ticker": "AAPL",
       "strategy": "ML_XGB_v10__1Hour",
       "status": "ok",
-      "path": "backtests/CHD/ML_XGB_v10__1Hour/result.json"
+      "path": "backtests/AAPL/ML_XGB_v10__1Hour/result.json"
     }
   ]
 }
