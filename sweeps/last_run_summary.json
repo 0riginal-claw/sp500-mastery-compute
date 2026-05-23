@@ -1,8 +1,15 @@
 {
-  "run_id": "26321862822",
+  "run_id": "26323077012",
   "completed": 0,
   "failed": 0,
-  "total": 0,
-  "timestamp": "2026-05-23T03:17:57.230864Z",
-  "jobs": []
+  "total": 1,
+  "timestamp": "2026-05-23T04:13:11.891706Z",
+  "jobs": [
+    {
+      "ticker": "CRM",
+      "strategy": "VWAP__1Min",
+      "status": "ok",
+      "path": "backtests/CRM/VWAP__1Min/result.json"
+    }
+  ]
 }
