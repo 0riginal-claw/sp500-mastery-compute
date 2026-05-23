@@ -1,15 +1,15 @@
 {
-  "run_id": "26323076618",
+  "run_id": "26324542384",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T04:19:08.157997Z",
+  "timestamp": "2026-05-23T05:31:44.999990Z",
   "jobs": [
     {
-      "ticker": "CL",
-      "strategy": "VWAP__1Hour",
+      "ticker": "AAPL",
+      "strategy": "orb",
       "status": "ok",
-      "path": "backtests/CL/VWAP__1Hour/result.json"
+      "path": "backtests/AAPL/orb/result.json"
     }
   ]
 }
