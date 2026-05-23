@@ -25,6 +25,7 @@ Timeframe directory map:
     12Hour  -> "Hour TimeFrames/12Hour"
     1Min    -> "Minutes TimeFrames/1Min"
     5Min    -> "Minutes TimeFrames/5Min"
+    10Min   -> "Minutes TimeFrames/10Min"   # 2026-05-22: derived via resample_10min_from_5min.py
     15Min   -> "Minutes TimeFrames/15Min"
     30Min   -> "Minutes TimeFrames/30Min"
     45Min   -> "Minutes TimeFrames/45Min"
@@ -72,6 +73,7 @@ TIMEFRAME_DIR_MAP = {
     "12Hour": ("Hour TimeFrames", "12Hour"),
     "1Min": ("Minutes TimeFrames", "1Min"),
     "5Min": ("Minutes TimeFrames", "5Min"),
+    "10Min": ("Minutes TimeFrames", "10Min"),
     "15Min": ("Minutes TimeFrames", "15Min"),
     "30Min": ("Minutes TimeFrames", "30Min"),
     "45Min": ("Minutes TimeFrames", "45Min"),
