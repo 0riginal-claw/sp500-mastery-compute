@@ -1,15 +1,15 @@
 {
-  "run_id": "26323070171",
+  "run_id": "26323070573",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T04:17:39.074691Z",
+  "timestamp": "2026-05-23T04:18:34.455023Z",
   "jobs": [
     {
-      "ticker": "BSX",
-      "strategy": "momentum__12Hour",
+      "ticker": "XYZ",
+      "strategy": "momentum__8Hour",
       "status": "ok",
-      "path": "backtests/BSX/momentum__12Hour/result.json"
+      "path": "backtests/XYZ/momentum__8Hour/result.json"
     }
   ]
 }
