@@ -115,7 +115,16 @@ def _load_finbert():
 
     logger.info("Loading FinBERT (ProsusAI/finbert) — first call downloads ~440MB")
     _TOKENIZER = AutoTokenizer.from_pretrained("ProsusAI/finbert")
-    _MODEL = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")
+    # use_safetensors=True avoids the torch>=2.6 requirement introduced by
+    # transformers >=4.50 for CVE-2025-32434 (we have torch 2.2.2).
+    # ProsusAI/finbert publishes a safetensors variant (commit 0574315).
+    try:
+        _MODEL = AutoModelForSequenceClassification.from_pretrained(
+            "ProsusAI/finbert", use_safetensors=True
+        )
+    except Exception as e:
+        logger.warning(f"safetensors load failed ({e}); falling back to default")
+        _MODEL = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")
     _MODEL.eval()
     return _TOKENIZER, _MODEL
 
