@@ -97,69 +97,60 @@ def _score_text(text: str) -> Tuple[float, float, float]:
     return compound, pos, neg
 
 
-def _fetch_transcripts(ticker: str) -> pd.DataFrame:
+def _fetch_transcripts(ticker: str, max_quarters: int = 24) -> pd.DataFrame:
     """
     Returns DataFrame with columns:
       date (Timestamp), sentiment (float), pos_ratio (float), neg_ratio (float)
-    One row per quarterly earnings call. Empty if no transcripts found.
+    One row per quarterly earnings call (most recent `max_quarters`). Empty if
+    no transcripts found.
+
+    defeatbeta-api two-step pattern:
+      t.earning_call_transcripts() -> Transcripts wrapper
+      .get_transcripts_list() -> DataFrame [symbol, fiscal_year, fiscal_quarter, report_date]
+      .get_transcript(year, quarter) -> DataFrame [paragraph_number, speaker, content]
     """
     from defeatbeta_api.data.ticker import Ticker
 
     t = Ticker(ticker)
-    raw = t.earning_call_transcripts()
-    # defeatbeta returns a wrapper object — extract the underlying DataFrame
-    df = None
-    for attr in ("transcripts", "df", "data", "to_df", "to_pandas"):
-        if hasattr(raw, attr):
-            cand = getattr(raw, attr)
-            if callable(cand):
-                try:
-                    df = cand()
-                except Exception:
-                    df = None
-            else:
-                df = cand
-            if isinstance(df, pd.DataFrame) and not df.empty:
-                break
-    if df is None and isinstance(raw, pd.DataFrame):
-        df = raw
-
-    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+    wrapper = t.earning_call_transcripts()
+    try:
+        idx = wrapper.get_transcripts_list()
+    except Exception as e:
+        logger.warning("defeatbeta get_transcripts_list failed for %s: %s", ticker, e)
         return pd.DataFrame(columns=["date", "sentiment", "pos_ratio", "neg_ratio"])
 
-    # Identify date and transcript-text columns heuristically
-    cols_lower = {c.lower(): c for c in df.columns}
-    date_col = None
-    for k in ("report_date", "date", "earnings_date", "call_date", "fiscal_date"):
-        if k in cols_lower:
-            date_col = cols_lower[k]
-            break
-    text_col = None
-    for k in ("transcript", "text", "content", "transcript_text", "call_transcript"):
-        if k in cols_lower:
-            text_col = cols_lower[k]
-            break
-
-    if date_col is None or text_col is None:
-        logger.warning(
-            "defeatbeta transcript schema unrecognized for %s; cols=%s",
-            ticker,
-            list(df.columns),
-        )
+    if idx is None or not isinstance(idx, pd.DataFrame) or idx.empty:
         return pd.DataFrame(columns=["date", "sentiment", "pos_ratio", "neg_ratio"])
+
+    # Keep the most recent N transcripts
+    idx_sorted = idx.sort_values("report_date").tail(max_quarters)
 
     rows = []
-    for _, r in df.iterrows():
+    for _, meta in idx_sorted.iterrows():
         try:
-            d = pd.to_datetime(r[date_col]).normalize()
-            compound, pos, neg = _score_text(r[text_col])
+            year = int(meta["fiscal_year"])
+            quarter = int(meta["fiscal_quarter"])
+            d = pd.to_datetime(meta["report_date"]).normalize()
+            try:
+                tx_df = wrapper.get_transcript(year, quarter)
+            except Exception as e:
+                logger.debug("get_transcript(%d,%d) failed for %s: %s", year, quarter, ticker, e)
+                continue
+            if not isinstance(tx_df, pd.DataFrame) or tx_df.empty or "content" not in tx_df.columns:
+                continue
+            full_text = " ".join(str(x) for x in tx_df["content"].dropna().tolist())
+            if not full_text.strip():
+                continue
+            compound, pos, neg = _score_text(full_text)
             rows.append(
                 {"date": d, "sentiment": compound, "pos_ratio": pos, "neg_ratio": neg}
             )
         except Exception as e:
-            logger.debug("skip transcript row: %s", e)
+            logger.debug("skip transcript meta row: %s", e)
             continue
 
+    if not rows:
+        return pd.DataFrame(columns=["date", "sentiment", "pos_ratio", "neg_ratio"])
     out = pd.DataFrame(rows).sort_values("date").reset_index(drop=True)
     return out
 
