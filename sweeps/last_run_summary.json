@@ -1,15 +1,15 @@
 {
-  "run_id": "26323070967",
+  "run_id": "26323069862",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T04:13:27.293746Z",
+  "timestamp": "2026-05-23T04:13:12.205691Z",
   "jobs": [
     {
-      "ticker": "JCI",
-      "strategy": "VWAP__1Min",
+      "ticker": "XOM",
+      "strategy": "momentum__12Hour",
       "status": "ok",
-      "path": "backtests/JCI/VWAP__1Min/result.json"
+      "path": "backtests/XOM/momentum__12Hour/result.json"
     }
   ]
 }
