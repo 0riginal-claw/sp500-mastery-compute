@@ -1,15 +1,15 @@
 {
-  "run_id": "26323072048",
+  "run_id": "26323071697",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T04:16:29.569309Z",
+  "timestamp": "2026-05-23T04:16:43.471067Z",
   "jobs": [
     {
-      "ticker": "AAPL",
+      "ticker": "DIS",
       "strategy": "VWAP__45Min",
       "status": "ok",
-      "path": "backtests/AAPL/VWAP__45Min/result.json"
+      "path": "backtests/DIS/VWAP__45Min/result.json"
     }
   ]
 }
