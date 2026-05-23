@@ -1,15 +1,15 @@
 {
-  "run_id": "26321860487",
+  "run_id": "26321865910",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T03:15:47.184761Z",
+  "timestamp": "2026-05-23T03:16:16.312650Z",
   "jobs": [
     {
-      "ticker": "SWKS",
+      "ticker": "WBD",
       "strategy": "ML_XGB_v10__1Hour",
       "status": "ok",
-      "path": "backtests/SWKS/ML_XGB_v10__1Hour/result.json"
+      "path": "backtests/WBD/ML_XGB_v10__1Hour/result.json"
     }
   ]
 }
