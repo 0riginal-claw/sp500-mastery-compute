@@ -1,15 +1,15 @@
 {
-  "run_id": "26320352058",
+  "run_id": "26320350984",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T02:01:32.010041Z",
+  "timestamp": "2026-05-23T02:02:51.475334Z",
   "jobs": [
     {
-      "ticker": "VTR",
+      "ticker": "MAR",
       "strategy": "ML_XGB_v10__1Hour",
       "status": "ok",
-      "path": "backtests/VTR/ML_XGB_v10__1Hour/result.json"
+      "path": "backtests/MAR/ML_XGB_v10__1Hour/result.json"
     }
   ]
 }
