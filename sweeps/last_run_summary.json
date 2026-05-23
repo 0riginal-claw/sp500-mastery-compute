@@ -1,15 +1,15 @@
 {
-  "run_id": "26321858403",
+  "run_id": "26321859305",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T03:16:07.849372Z",
+  "timestamp": "2026-05-23T03:16:18.625628Z",
   "jobs": [
     {
-      "ticker": "CMI",
-      "strategy": "ORB__1Min",
+      "ticker": "BKNG",
+      "strategy": "ML_XGB_v10__1Hour",
       "status": "ok",
-      "path": "backtests/CMI/ORB__1Min/result.json"
+      "path": "backtests/BKNG/ML_XGB_v10__1Hour/result.json"
     }
   ]
 }
