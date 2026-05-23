@@ -1,15 +1,15 @@
 {
-  "run_id": "26321861629",
+  "run_id": "26321858403",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T03:16:24.671309Z",
+  "timestamp": "2026-05-23T03:16:07.849372Z",
   "jobs": [
     {
-      "ticker": "COF",
-      "strategy": "ML_XGB_v10__1Hour",
+      "ticker": "CMI",
+      "strategy": "ORB__1Min",
       "status": "ok",
-      "path": "backtests/COF/ML_XGB_v10__1Hour/result.json"
+      "path": "backtests/CMI/ORB__1Min/result.json"
     }
   ]
 }
