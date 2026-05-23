@@ -230,14 +230,19 @@ def add_fundamental_ratio_features(
 
     # Reindex ratios onto daily grid via merge_asof (backward = use latest known)
     rt_sorted = rt.sort_index()
-    daily_df = pd.DataFrame(index=daily_idx).sort_index()
+    daily_sorted = daily_idx.sort_values()
+    daily_df = pd.DataFrame({"_d": daily_sorted})
+    rt_reset = rt_sorted.copy()
+    rt_reset.index.name = "_d"
+    rt_reset = rt_reset.reset_index()
     merged = pd.merge_asof(
-        daily_df.reset_index().rename(columns={"index": "_d"}),
-        rt_sorted.reset_index().rename(columns={"index": "_d"}),
+        daily_df,
+        rt_reset,
         on="_d",
         direction="backward",
     ).set_index("_d")
-    merged.index = daily_idx  # preserve original order
+    # Re-align to ORIGINAL (possibly-unsorted) df order
+    merged = merged.reindex(daily_idx)
     # Shift by 1 bar to enforce no-lookahead (value on t = info known at t-1)
     merged = merged.shift(1).fillna(0.0)
 
