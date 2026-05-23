@@ -1,15 +1,15 @@
 {
-  "run_id": "26319018520",
+  "run_id": "26319017601",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T00:58:54.917842Z",
+  "timestamp": "2026-05-23T00:59:01.203563Z",
   "jobs": [
     {
       "ticker": "BEN",
-      "strategy": "momentum__8Hour",
+      "strategy": "momentum__1Hour",
       "status": "ok",
-      "path": "backtests/BEN/momentum__8Hour/result.json"
+      "path": "backtests/BEN/momentum__1Hour/result.json"
     }
   ]
 }
