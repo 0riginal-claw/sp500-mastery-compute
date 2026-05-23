@@ -1,15 +1,15 @@
 {
-  "run_id": "26319020199",
+  "run_id": "26319020520",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T01:02:09.044836Z",
+  "timestamp": "2026-05-23T01:03:29.661347Z",
   "jobs": [
     {
       "ticker": "META",
-      "strategy": "momentum__8Hour",
+      "strategy": "momentum__12Hour",
       "status": "ok",
-      "path": "backtests/META/momentum__8Hour/result.json"
+      "path": "backtests/META/momentum__12Hour/result.json"
     }
   ]
 }
