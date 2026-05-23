@@ -2846,6 +2846,72 @@ except Exception as _gtja_err:
 
 
 # ---------------------------------------------------------------------------
+# Helper GW: alpha101_191_features (combined Alpha101 + Alpha191 expansion, ~118 features)
+# Wired 2026-05-22. Source: github:popbo/alphas (MIT-style formulas).
+# Env-gated: ALPHA101_191_ENABLED=1 (default OFF). Pure OHLCV; ts_rank for CS rank.
+# .shift(1)-safe: all OHLCV inputs pre-shifted 1 bar inside the module.
+# ---------------------------------------------------------------------------
+ALPHA101_191_ENABLED = os.environ.get("ALPHA101_191_ENABLED", "0") == "1"
+try:
+    from alpha101_191_features import (  # noqa: E402
+        compute_alpha101_191_features,
+        A101_191_FEATURE_NAMES,
+        A101_191_FEATURE_COUNT,
+    )
+    ALPHA101_191_AVAILABLE = True
+    logger.info("[v10] alpha101_191_features loaded OK (%d features, enabled=%s)",
+                A101_191_FEATURE_COUNT, ALPHA101_191_ENABLED)
+except Exception as _a101_191_err:
+    logger.warning("[v10] alpha101_191_features not importable: %s — features zeroed", _a101_191_err)
+    ALPHA101_191_AVAILABLE = False
+    A101_191_FEATURE_COUNT = 118
+    A101_191_FEATURE_NAMES: list[str] = []  # type: ignore[no-redef]
+
+    def compute_alpha101_191_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: no-op when module unavailable."""
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper GX: qlib_alpha360_features (Qlib Alpha360, 60 lags x 6 fields = 360 features)
+# Wired 2026-05-22. Source: microsoft/qlib (MIT). Pure-pandas port; no qlib dep.
+# Env-gated: QLIB_ALPHA360_ENABLED=1 (default OFF).
+# .shift(1)-safe: all features shift(1) inside module; ref = close[t-1].
+# ---------------------------------------------------------------------------
+QLIB_ALPHA360_ENABLED = os.environ.get("QLIB_ALPHA360_ENABLED", "0") == "1"
+try:
+    from qlib_alpha360_features import (  # noqa: E402
+        compute_qlib_alpha360_features,
+        ALPHA360_FEATURE_NAMES,
+        ALPHA360_FEATURE_COUNT,
+    )
+    QLIB_ALPHA360_AVAILABLE = True
+    logger.info("[v10] qlib_alpha360_features loaded OK (%d features, enabled=%s)",
+                ALPHA360_FEATURE_COUNT, QLIB_ALPHA360_ENABLED)
+except Exception as _a360_err:
+    logger.warning("[v10] qlib_alpha360_features not importable: %s — features zeroed", _a360_err)
+    QLIB_ALPHA360_AVAILABLE = False
+    ALPHA360_FEATURE_COUNT = 360
+    ALPHA360_FEATURE_NAMES: list[str] = []  # type: ignore[no-redef]
+
+    def compute_qlib_alpha360_features(  # type: ignore[misc]
+        df: pd.DataFrame,
+        ticker: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Stub: no-op when module unavailable."""
+        return df
+
+
+# ---------------------------------------------------------------------------
+# Helper QA158: qlib_alpha158 env-gate (module already imported above; gate added 2026-05-22)
+# ---------------------------------------------------------------------------
+QLIB_ALPHA158_ENABLED = os.environ.get("QLIB_ALPHA158_ENABLED", "0") == "1"
+
+
+# ---------------------------------------------------------------------------
 # DRIVE-MAP-TOP7 (2026-05-20): direct wiring of 7 unwired feature modules
 # scored highest by drive_full_map/wire_priority_top100.csv. Each gets a
 # try/except import block + a stub fallback that preserves column names.
@@ -4236,6 +4302,42 @@ def _build_v10_features_impl(
     logger.info(
         "  [v10] +gtja_alpha191: +%d cols -> %d total", added_gtja, f.shape[1]
     )
+
+    # ---- Step 58.5: alpha101_191 (combined Alpha101 + Alpha191 expansion, ~118 features) — Wave A101_191 ----
+    # Env-gated: ALPHA101_191_ENABLED=1 (default OFF). Pure OHLCV; ts_rank for CS rank.
+    if ALPHA101_191_ENABLED and ALPHA101_191_AVAILABLE:
+        before_a101_191 = f.shape[1]
+        try:
+            f = compute_alpha101_191_features(f, ticker=ticker)
+        except Exception as exc:
+            logger.warning(
+                "  [v10] alpha101_191 call failed (%s): %s — zeroing", ticker, exc
+            )
+            for col in A101_191_FEATURE_NAMES:
+                if col not in f.columns:
+                    f[col] = 0.0
+        added_a101_191 = f.shape[1] - before_a101_191
+        logger.info(
+            "  [v10] +alpha101_191: +%d cols -> %d total", added_a101_191, f.shape[1]
+        )
+
+    # ---- Step 58.6: qlib_alpha360 (Qlib Alpha360, 360 features) — Wave QLIB360 ----
+    # Env-gated: QLIB_ALPHA360_ENABLED=1 (default OFF). 60 lags × 6 fields.
+    if QLIB_ALPHA360_ENABLED and QLIB_ALPHA360_AVAILABLE:
+        before_a360 = f.shape[1]
+        try:
+            f = compute_qlib_alpha360_features(f, ticker=ticker)
+        except Exception as exc:
+            logger.warning(
+                "  [v10] qlib_alpha360 call failed (%s): %s — zeroing", ticker, exc
+            )
+            for col in ALPHA360_FEATURE_NAMES:
+                if col not in f.columns:
+                    f[col] = 0.0
+        added_a360 = f.shape[1] - before_a360
+        logger.info(
+            "  [v10] +qlib_alpha360: +%d cols -> %d total", added_a360, f.shape[1]
+        )
 
     # ---- Step 59: vwap_indicator_python_features (~7 cols) - Wave TOP7-1 ----
     # Session-VWAP + 1sigma/2sigma deviation flags. Pure OHLCV.
