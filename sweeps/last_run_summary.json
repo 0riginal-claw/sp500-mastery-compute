@@ -1,15 +1,15 @@
 {
-  "run_id": "26319019426",
+  "run_id": "26320352413",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T01:03:43.288363Z",
+  "timestamp": "2026-05-23T01:58:11.998227Z",
   "jobs": [
     {
-      "ticker": "META",
-      "strategy": "momentum__1Hour",
+      "ticker": "FSLR",
+      "strategy": "ML_XGB_v10__1Hour",
       "status": "ok",
-      "path": "backtests/META/momentum__1Hour/result.json"
+      "path": "backtests/FSLR/ML_XGB_v10__1Hour/result.json"
     }
   ]
 }
