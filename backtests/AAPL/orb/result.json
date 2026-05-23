@@ -3,7 +3,7 @@
   "strategy": "orb",
   "timeframe": "1Day",
   "strategy_variant": "ML_XGB_v10",
-  "job_id": "b7774a98",
+  "job_id": "7091dacf",
   "pipeline_version": "xgb_v10",
   "features_total": 1587,
   "rows": 1035,
@@ -86,9 +86,9 @@
   },
   "n_trades": 67,
   "win_rate": 0.5223880597014925,
-  "profit_factor": 1.8525757094361182,
-  "sharpe": 4.539425044784116,
-  "total_return_pct": 0.05876166734866105,
-  "max_drawdown_pct": -0.012881730742586053,
+  "profit_factor": 1.8525757075798466,
+  "sharpe": 4.539424485328697,
+  "total_return_pct": 0.058761671694703116,
+  "max_drawdown_pct": -0.012881731952889117,
   "status": "ok"
 }
