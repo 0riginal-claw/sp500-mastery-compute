@@ -1,15 +1,15 @@
 {
-  "run_id": "26320356393",
+  "run_id": "26320350610",
   "completed": 0,
   "failed": 0,
   "total": 1,
-  "timestamp": "2026-05-23T02:03:21.285731Z",
+  "timestamp": "2026-05-23T02:04:06.443058Z",
   "jobs": [
     {
-      "ticker": "COIN",
+      "ticker": "VST",
       "strategy": "ML_XGB_v10__1Hour",
       "status": "ok",
-      "path": "backtests/COIN/ML_XGB_v10__1Hour/result.json"
+      "path": "backtests/VST/ML_XGB_v10__1Hour/result.json"
     }
   ]
 }
