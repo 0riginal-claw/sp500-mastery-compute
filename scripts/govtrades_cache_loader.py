@@ -169,6 +169,103 @@ class GovTradesCache:
             cls._df_cache[key] = df
         return cls._df_cache[key].copy()
 
+    @classmethod
+    def get_offexchange(
+        cls,
+        ticker: str,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Off-exchange / dark-pool short-volume series for `ticker`.
+        Columns: ticker, date, otc_short, otc_total, dpi (Dark Pool Index =
+        otc_short/otc_total). Sourced from QuiverQuant Hobbyist-tier
+        live+historical/offexchange endpoints.
+        """
+        if not ticker:
+            return pd.DataFrame()
+        key = ("ox", ticker.upper())
+        if key not in cls._df_cache:
+            sql = (
+                "SELECT ticker, date, otc_short, otc_total, dpi "
+                "FROM offexchange WHERE ticker = ? ORDER BY date"
+            )
+            df = cls._query_df(sql, (ticker.upper(),), parse_dates=["date"])
+            cls._df_cache[key] = df
+        df = cls._df_cache[key]
+        if df.empty:
+            return df
+        if start:
+            df = df[df["date"] >= pd.to_datetime(start)]
+        if end:
+            df = df[df["date"] <= pd.to_datetime(end)]
+        return df.reset_index(drop=True)
+
+    @classmethod
+    def get_flights(
+        cls,
+        ticker: str,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> pd.DataFrame:
+        """Corporate-jet flight tracking for `ticker`. Columns: ticker, date,
+        departure_city, arrival_city. Sourced from QuiverQuant live/flights.
+        Sparse signal — null cities on many rows; treat as event flag rather
+        than continuous series.
+        """
+        if not ticker:
+            return pd.DataFrame()
+        key = ("flights", ticker.upper())
+        if key not in cls._df_cache:
+            sql = (
+                "SELECT ticker, date, departure_city, arrival_city "
+                "FROM flights WHERE ticker = ? ORDER BY date"
+            )
+            df = cls._query_df(sql, (ticker.upper(),), parse_dates=["date"])
+            cls._df_cache[key] = df
+        df = cls._df_cache[key]
+        if df.empty:
+            return df
+        if start:
+            df = df[df["date"] >= pd.to_datetime(start)]
+        if end:
+            df = df[df["date"] <= pd.to_datetime(end)]
+        return df.reset_index(drop=True)
+
+    @classmethod
+    def get_politicians(cls) -> pd.DataFrame:
+        """All Congressional politicians with bio_guide_id, party, chamber,
+        state, image_url, trade_count, trade_volume, net_worth.
+        """
+        key = ("politicians", "_all")
+        if key not in cls._df_cache:
+            sql = (
+                "SELECT bio_guide_id, candidate_id, name, party, chamber, "
+                "state, image_url, trade_count, trade_volume, net_worth, "
+                "last_updated FROM politicians"
+            )
+            df = cls._query_df(sql, ())
+            cls._df_cache[key] = df
+        return cls._df_cache[key].copy()
+
+    @classmethod
+    def get_corporate_donors(cls, ticker: str) -> pd.DataFrame:
+        """Corporate PAC donations to politicians, keyed by ticker.
+        Columns: bio_guide_id, ticker, company_cmte_id, committee_name,
+        transaction_date, transaction_amount, transaction_type, cycle.
+        """
+        if not ticker:
+            return pd.DataFrame()
+        key = ("donors", ticker.upper())
+        if key not in cls._df_cache:
+            sql = (
+                "SELECT bio_guide_id, ticker, company_cmte_id, company_cmte_nm, "
+                "committee_name, transaction_date, transaction_amount, "
+                "transaction_type, cycle FROM corporate_donors WHERE ticker = ?"
+            )
+            df = cls._query_df(sql, (ticker.upper(),))
+            cls._df_cache[key] = df
+        return cls._df_cache[key].copy()
+
 
 # Smoke
 if __name__ == "__main__":
@@ -187,3 +284,13 @@ if __name__ == "__main__":
     print(f"{tk} contracts 2024-2025: {len(con)} rows")
     q = GovTradesCache.get_contracts_quarterly(tk)
     print(f"{tk} contracts quarterly (all): {len(q)} rows")
+    ox = GovTradesCache.get_offexchange(tk, "2024-01-01", "2025-12-31")
+    print(f"{tk} offexchange 2024-2025: {len(ox)} rows")
+    if not ox.empty:
+        print(ox[["date", "otc_short", "dpi"]].head(3))
+    fl = GovTradesCache.get_flights(tk, "2024-01-01", "2025-12-31")
+    print(f"{tk} flights 2024-2025: {len(fl)} rows")
+    pols = GovTradesCache.get_politicians()
+    print(f"politicians (all): {len(pols)} rows")
+    donors = GovTradesCache.get_corporate_donors(tk)
+    print(f"{tk} corporate donors: {len(donors)} rows")
