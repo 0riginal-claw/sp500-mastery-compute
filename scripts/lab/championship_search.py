@@ -92,6 +92,11 @@ _TF_STACK_BY_SEED = {
     # news velocity Z) are bar-timestamp-keyed and disclose at day-level
     # granularity. Multi-TF for v2 is deferred to a follow-up task.
     "GOV_AWARE_v2":  ["1d"],
+    # CHAMP-002 seeds (task #69) — alt-data NUMERIC as PRIMARY trigger. Both
+    # use the 5min entry + higher TFs as gates pattern (Mission 12 intent),
+    # with the cohort being the CHAMP-002 12-ticker pre-registered set.
+    "CATALYST_CONFLUENCE":  ["5min", "15min", "1h", "1d"],
+    "CROSS_SYMBOL_REGIME":  ["5min", "15min", "1h", "1d"],
     "HYBRID_REGIME": ["5min", "1h",    "1d"],
 }
 
@@ -263,6 +268,71 @@ _SEED_TEMPLATES = [
             "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
         ],
     },
+    # ─── CHAMP-002 seeds (task #69, 2026-05-29) ────────────────────────────
+    # Alt-data NUMERIC tokens become the PRIMARY trigger (not boolean gate).
+    # See AI-Tools/reports/champ_002_pre_registration_2026-05-29.md for the
+    # locked thresholds + 12-ticker cohort that this seed targets.
+    {
+        "seed_id": "CATALYST_CONFLUENCE",
+        "theory": (
+            "Numeric alt-data catalysts (Form 4 insider cluster, 8-K pulse, "
+            "news velocity Z) are leading indicators. Treat them as PRIMARY "
+            "entry trigger; OHLCV (ADX regime, EMA bias, volume confirm, "
+            "daily VWAP timing) is confirmation. CHAMP-002 investigational."
+        ),
+        "side": "long",
+        # 1D regime gate: F4 insider cluster + daily ADX both must agree
+        "regime_gate": "form4_insider_cluster_score > 60 AND 1d.ADX(14) > {adx_thresh}",
+        # 1D bias filter: daily EMA stack
+        "bias_filter": "1d.EMA({ema_fast}) > 1d.EMA({ema_slow})",
+        # PRIMARY trigger = alt-data numeric token threshold (NOT OHLCV)
+        "trigger": "8k_pulse >= 1 OR news_velocity_zscore > 1.5",
+        # Confirmation: volume expansion at the entry TF + 1h not-overbought
+        "confirmation": "Volume > 1.3 * SMA(Volume, 20) AND 1h.RSI(14) < 70",
+        # Timing: above daily VWAP — net-positive trading day
+        "timing": "1d.Close > 1d.VWAP",
+        "exit": "{atr_mult} * ATR(14) trailing stop",
+        "no_trade": "1d.ChopIdx(14) > 65",
+        "data_sources": [
+            "alpaca_5yr local 5Min cache (/Volumes/ZG-2TB/zg/cache/alpaca_5yr/5Min)",
+            "yfinance_daily_5yr cache (1d.VWAP + ADX + EMA + Chop + Volume baseline)",
+            "indicator_compute_altdata.form4_insider_cluster_score (edgar Form 4)",
+            "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
+            "indicator_compute_altdata.news_velocity_zscore (news 7d-vs-90d Z)",
+            "15min/1h — resampled from 5min on the fly",
+        ],
+    },
+    {
+        "seed_id": "CROSS_SYMBOL_REGIME",
+        "theory": (
+            "Cross-asset macro state (vix_term_structure + hyg_lqd_ratio) "
+            "defines the regime; sector_rs_rank picks the ticker; spy_beta_60d "
+            "picks market exposure. Donchian-20 break is the entry trigger. "
+            "Tests whether macro-cross-asset gating beats ticker-local gates."
+        ),
+        "side": "long",
+        # Cross-asset regime: risk-on (vix-TS in contango + HYG/LQD rising)
+        "regime_gate": "vix_term_struct > 1.0 AND hyg_lqd_ratio > 0",
+        # Bias: ticker is leading its sector (top-3 by RS rank)
+        "bias_filter": "sector_rs_rank <= 3",
+        # Entry: daily Donchian-20 break (slow-trend follower)
+        "trigger": "1d.Close > 1d.Donchian_UP({donch})",
+        # Confirmation: volume expansion
+        "confirmation": "Volume > 1.5 * SMA(Volume, 20)",
+        # Timing: non-trivial market exposure
+        "timing": "spy_beta_60d > 0.5",
+        "exit": "{atr_mult} * ATR(14) trailing stop",
+        "no_trade": "sector_rs_rank > 6",
+        "data_sources": [
+            "alpaca_5yr local 5Min cache",
+            "yfinance_daily_5yr cache (1d.Donchian + ATR + Volume baseline)",
+            "indicator_compute_xsym.vix_term_structure (^VIX + ^VXV)",
+            "indicator_compute_xsym.hyg_lqd_ratio (HYG + LQD)",
+            "indicator_compute_xsym.sector_rs_rank (sector ETFs)",
+            "indicator_compute_xsym.spy_beta_60d (60d OLS vs SPY)",
+            "15min/1h — resampled from 5min on the fly",
+        ],
+    },
     {
         "seed_id": "HYBRID_REGIME",
         "theory": (
@@ -431,25 +501,43 @@ def _stratified_perturb_samples(n_per_seed: int, priors: Optional[dict] = None) 
     return base_combos[:n_per_seed]
 
 
-def variant_generator(ticker: str, n: int, priors: Optional[dict] = None) -> Iterable[dict]:
+def variant_generator(
+    ticker: str,
+    n: int,
+    priors: Optional[dict] = None,
+    seeds: Optional[List[str]] = None,
+) -> Iterable[dict]:
     """Yield up to N strategy hypotheses for the ticker.
 
-    Layout: divide N across 5 seed templates as evenly as possible. For each seed,
-    apply stratified perturbations. Each yielded variant has a unique SAP ID
+    Layout: divide N across active seed templates as evenly as possible. For each
+    seed, apply stratified perturbations. Each yielded variant has a unique SAP ID
     `SAP-<TICKER>-<NNN>` and a `parent_seed_id` field for traceability.
+
+    If `seeds` is given (list of seed_id strings), the generator restricts the
+    search to those seeds only — used by CHAMP-002 to run just the
+    CATALYST_CONFLUENCE + CROSS_SYMBOL_REGIME + GOV_AWARE_v2 trio without the
+    Mission 12 legacy 5-agent grid.
 
     Variants that fail `validate_test_unit` are skipped (with a warning printed) —
     the generator may yield FEWER than N if many variants fail validation. In
     practice all template-rendered variants pass the gate since required roles are
     always present.
     """
-    n_seeds = len(_SEED_TEMPLATES)
+    active_seeds = _SEED_TEMPLATES
+    if seeds:
+        wanted = {s.strip() for s in seeds if s.strip()}
+        active_seeds = [s for s in _SEED_TEMPLATES if s["seed_id"] in wanted]
+        if not active_seeds:
+            print(f"  [variant_generator] no seeds matched {seeds!r}; "
+                  f"available: {[s['seed_id'] for s in _SEED_TEMPLATES]}", flush=True)
+            return
+    n_seeds = len(active_seeds)
     base_per = max(1, n // n_seeds)
     remainder = n - base_per * n_seeds
     counts = [base_per + (1 if i < remainder else 0) for i in range(n_seeds)]
 
     seq = 0
-    for seed, cnt in zip(_SEED_TEMPLATES, counts):
+    for seed, cnt in zip(active_seeds, counts):
         if cnt <= 0:
             continue
         # Resolve the TF stack for this seed. Stacks come from _TF_STACK_BY_SEED;
@@ -847,6 +935,7 @@ def search_championship(
     n_variants: int = 24,
     timeframe: str = "1d",
     n_folds: int = 12,
+    seeds: Optional[List[str]] = None,
 ) -> dict:
     """Run N hypothesis variants on the ticker, return the best by holdout Sharpe.
 
@@ -893,7 +982,7 @@ def search_championship(
     post = _load_posterior(ticker)
     priors = post.get("next_priors") or None
 
-    variants = list(variant_generator(ticker, n_variants, priors=priors))
+    variants = list(variant_generator(ticker, n_variants, priors=priors, seeds=seeds))
     print(
         f"\n=== championship_search({ticker}) — {len(variants)} variants "
         f"(timeframe={timeframe}, priors={'yes' if priors else 'none'}) ===",
@@ -999,12 +1088,16 @@ def main():
     ap.add_argument("--n-variants", type=int, default=10)
     ap.add_argument("--timeframe", default="1d", choices=["1d", "5min"])
     ap.add_argument("--n-folds", type=int, default=12)
+    ap.add_argument("--seeds", nargs="+", default=None,
+                    help="Optional seed_id allowlist (e.g. CATALYST_CONFLUENCE "
+                         "CROSS_SYMBOL_REGIME GOV_AWARE_v2). Default: all seeds.")
     args = ap.parse_args()
 
     summary = {}
     for tk in args.tickers:
         res = search_championship(tk, n_variants=args.n_variants,
-                                  timeframe=args.timeframe, n_folds=args.n_folds)
+                                  timeframe=args.timeframe, n_folds=args.n_folds,
+                                  seeds=args.seeds)
         summary[tk] = {
             "best_sap_id": res["best_sap_id"],
             "best_score": res["best_score"],
