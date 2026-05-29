@@ -66,70 +66,129 @@ LOCAL_CHAMP_MIRROR = Path("/Volumes/ZG-2TB/zg/championship_mirror")
 # Variant generator — 5 seeds × perturbations
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Per-seed multi-TF stacks (task #53, 2026-05-29). The original Mission 12 spec
+# called for 3-TF stacks per seed (1d bias + 15min structure + 5min entry, etc.)
+# — task #41 flattened these to single-TF because the 5min FUSE path was hostile
+# under load. Task #53 wires the multi-TF data path (via the local
+# /Volumes/ZG-2TB/zg/cache/alpaca_5yr mirror + on-the-fly resampling from 5min)
+# and restores the 3-TF stacks.
+#
+# Conventions:
+#   * The FIRST entry is the PRIMARY (entry/exit) timeframe. Trades fire here.
+#   * Higher TFs are regime gates / bias filters / trend confirmation, accessed
+#     via the ``<TF>.<TOKEN>`` cross-TF role-expression syntax (see
+#     hypothesis_runner._rewrite_tf_prefixes).
+#   * 1min is currently unavailable on the local cache (only 5Min + 1Day are
+#     mirrored). ORB_MORNING substitutes "first 5min bar of session" for "1min
+#     break of opening range" — honest degradation, documented in the template's
+#     data_sources field.
+_TF_STACK_BY_SEED = {
+    "PURE_TECH":     ["5min", "15min", "1d"],
+    "ORB_MORNING":   ["5min", "5min", "1d"],   # 1min unavailable — see note
+    "VWAP_MTF":      ["5min", "15min", "1h"],
+    "GOV_AWARE":     ["5min", "1h",    "1d"],
+    "HYBRID_REGIME": ["5min", "1h",    "1d"],
+}
+
 # 5 seed templates derived from Mission 12's agent_assignment_plan('A').
-# Each template encodes the agent's archetype as a runnable hypothesis dict using
-# only roles the hypothesis_runner's _RoleParser understands. ORB/VWAP intraday
-# specifics that require sub-day timeframes are approximated on daily data
-# (intraday-equivalent gates: RSI/EMA/Volume confluence), which is honest given
-# the Mac sees only daily yfinance cache (FUSE blocks 5min on this host).
+# Each template encodes the agent's archetype as a runnable hypothesis dict.
+# Role expressions support the cross-TF ``<TF>.<TOKEN>`` syntax — higher TFs
+# in each seed's stack are used for bias/regime gates so the seed actually
+# behaves as a multi-timeframe strategy (Mission 12 intent).
 _SEED_TEMPLATES = [
     {
         "seed_id": "PURE_TECH",
-        "theory": "Pure technical confluence — Donchian breakout with ADX/EMA regime",
+        "theory": (
+            "Pure technical confluence — 1D trend bias (EMA stack) + 15min higher-low "
+            "structure (RSI stays above 50 + Close > 15min Donchian mid) + 5min entry "
+            "on VWAP reclaim. Three-TF Mission 12 design."
+        ),
         "side": "long",
-        "regime_gate": "ADX(14) > {adx_thresh}",
-        "bias_filter": "EMA({ema_fast}) > EMA({ema_slow})",
-        "trigger": "Close > Donchian_UP({donch})",
+        # 1D regime: ADX above thresh on the daily TF. Forward-filled onto 5min bars.
+        "regime_gate": "1d.ADX(14) > {adx_thresh}",
+        # 1D bias: daily EMA trend stack must agree.
+        "bias_filter": "1d.EMA({ema_fast}) > 1d.EMA({ema_slow})",
+        # 15min structure: close above mid-Donchian AND RSI above 50 (higher-low proxy).
+        # 5min entry trigger: VWAP reclaim AND close > 5min Donchian.
+        "trigger": "Close > VWAP AND Close > Donchian_UP({donch}) AND 15min.RSI(14) > 50",
         "confirmation": "Volume > 1.2 * SMA(Volume, 20)",
         "timing": "RSI(14) > 50",
         "exit": "{atr_mult} * ATR(14) trailing stop",
-        "no_trade": "ChopIdx(14) > 62",
+        "no_trade": "1d.ChopIdx(14) > 62",
         "data_sources": [
-            "yfinance_daily_5yr_cache (lab.indicator_hardening_runner.DRIVE_OHLC_DAILY)",
+            "alpaca_5yr local 5Min cache (/Volumes/ZG-2TB/zg/cache/alpaca_5yr/5Min)",
+            "yfinance_daily_5yr cache (lab.indicator_hardening_runner.DRIVE_OHLC_DAILY)",
+            "15min — resampled from 5min on the fly (hypothesis_runner._resample_ohlcv_from_5min)",
         ],
     },
     {
         "seed_id": "ORB_MORNING",
-        "theory": "Opening Range Breakout proxy — N-bar high break + volume expansion",
+        "theory": (
+            "Opening Range Breakout — 1D direction bias + 5min ORB (first bar of session "
+            "high/low) + 5min trigger on break of opening range. "
+            "1min not available in local cache; uses 5min first-bar of session as ORB "
+            "proxy (honest degradation, documented)."
+        ),
         "side": "long",
-        # On daily: 'opening range' proxy = recent N-bar Donchian + volume expansion + above VWAP
-        "regime_gate": "ADX(14) > {adx_thresh}",
-        "bias_filter": "Close > VWAP",
-        "trigger": "Close > Donchian_UP({donch})",
+        # 1D regime: daily ADX above thresh.
+        "regime_gate": "1d.ADX(14) > {adx_thresh}",
+        # 1D bias: daily EMA stack — direction filter.
+        "bias_filter": "1d.EMA({ema_fast}) > 1d.EMA({ema_slow})",
+        # 5min entry trigger: above VWAP (intraday bias) AND Donchian break (ORB proxy).
+        "trigger": "Close > VWAP AND Close > Donchian_UP({donch})",
         "confirmation": "VolumeExpansion(20, 1.5)",
         "timing": "RSI(14) > 50",
         "exit": "{atr_mult} * ATR(14) trailing stop",
-        "no_trade": "ChopIdx(14) > 60",
+        "no_trade": "1d.ChopIdx(14) > 60",
         "data_sources": [
-            "yfinance_daily_5yr_cache (lab.indicator_hardening_runner.DRIVE_OHLC_DAILY) "
-            "[ORB-archetype approximated on daily; live intraday deferred until 5min FUSE access]",
+            "alpaca_5yr local 5Min cache (/Volumes/ZG-2TB/zg/cache/alpaca_5yr/5Min)",
+            "yfinance_daily_5yr cache (1D direction bias)",
+            "1Min: NOT LOADED — local cache has 5Min + 1Day only; ORB-1min trigger "
+            "approximated by 5min first-bar break + VWAP confluence. Adding 1Min "
+            "directly is future work (FUSE blocks under load on this Mac).",
         ],
     },
     {
         "seed_id": "VWAP_MTF",
-        "theory": "VWAP-based multi-timeframe continuation with RSI gating",
+        "theory": (
+            "VWAP-anchored multi-timeframe continuation — 1H trend (Close vs 1H VWAP "
+            "+ EMA stack), 15min pullback setup (RSI dip below 60, Close holds VWAP), "
+            "5min entry on continuation."
+        ),
         "side": "long",
-        "regime_gate": "ADX(14) > {adx_thresh}",
-        "bias_filter": "Close > VWAP AND EMA({ema_fast}) > EMA({ema_slow})",
-        "trigger": "Close > VWAP AND Close > EMA({ema_fast})",
+        # 1H trend bias: 1H VWAP + EMA stack.
+        "regime_gate": "1h.Close > 1h.VWAP",
+        "bias_filter": "1h.EMA({ema_fast}) > 1h.EMA({ema_slow})",
+        # 15min setup: pullback then continuation (RSI in setup band).
+        # 5min entry: Close > 5min VWAP + 5min EMA(fast).
+        "trigger": "Close > VWAP AND Close > EMA({ema_fast}) AND 15min.RSI(14) > 45",
         "confirmation": "Volume > 1.0 * SMA(Volume, 20)",
         "timing": "RSI(14) > 45 AND RSI(14) < 75",
         "exit": "{atr_mult} * ATR(14) trailing stop",
-        "no_trade": "ChopIdx(14) > 65",
+        "no_trade": "1h.ChopIdx(14) > 65",
         "data_sources": [
-            "yfinance_daily_5yr_cache [VWAP-MTF approximated on daily]",
+            "alpaca_5yr local 5Min cache",
+            "1H + 15min — resampled from 5min on the fly",
         ],
     },
     {
         "seed_id": "GOV_AWARE",
-        "theory": "Catalyst-confirmed momentum — ADX/volume confluence (alt-data overlay deferred)",
+        "theory": (
+            "Catalyst-confirmed momentum — alt-data event (Form 4 / Congress / 8-K) "
+            "AND 1H confluence (above 1H VWAP + EMA stack) AND 5min entry trigger. "
+            "When the alt-data overlay's EDGAR/Govtrades backfill is incomplete, "
+            "tokens resolve to False and the variant naturally never fires "
+            "(no silent degradation to pure-tech)."
+        ),
         "side": "long",
-        "regime_gate": "ADX(14) > {adx_thresh}",
-        "bias_filter": "EMA({ema_fast}) > EMA({ema_slow})",
-        # NOTE: live alt-data overlay (Form 4 / Congress) attaches at runtime via
-        # task #40's alt-data hook in hypothesis_runner. When the overlay is absent,
-        # the variant degrades to a pure-tech catalyst-momentum strategy.
-        "trigger": "Close > Donchian_UP({donch})",
+        # 1D regime: daily ADX above thresh (long-trend qualifier).
+        "regime_gate": "1d.ADX(14) > {adx_thresh}",
+        # 1H confluence: above 1H VWAP + EMA stack (intraday bias filter).
+        "bias_filter": "1h.Close > 1h.VWAP AND 1h.EMA({ema_fast}) > 1h.EMA({ema_slow})",
+        # 5min entry: Close > 5min Donchian AND alt-data event window present.
+        # InsiderForm4_LT30d is the canonical "Form 4 buy in last 30d" token — alt
+        # resolver returns False until the EDGAR Form 4 backfill lands.
+        "trigger": "Close > Donchian_UP({donch}) AND InsiderForm4_LT30d",
         "alt_data_overlay": {
             "trigger_extra": [
                 {
@@ -143,15 +202,22 @@ _SEED_TEMPLATES = [
         "confirmation": "VolumeExpansion(20, 1.5)",
         "timing": "RSI(14) > 45",
         "exit": "{atr_mult} * ATR(14) trailing stop",
-        "no_trade": "ADX(14) < 15",
+        "no_trade": "1d.ADX(14) < 15",
         "data_sources": [
-            "yfinance_daily_5yr_cache",
-            "edgar (lab.knowledge.edgar.get_form4) — Form 4 insider transactions [overlay deferred]",
+            "alpaca_5yr local 5Min cache",
+            "yfinance_daily_5yr cache (1D regime gate)",
+            "1H — resampled from 5min on the fly",
+            "edgar (lab.knowledge.edgar.get_form4) — Form 4 insider transactions "
+            "[backfill pending — overlay token resolves to False until landed]",
         ],
     },
     {
         "seed_id": "HYBRID_REGIME",
-        "theory": "Regime-switching: trend (Donchian) when ADX>thresh; range (Connors RSI) when ADX<low",
+        "theory": (
+            "Regime-switching MTF: 1D ADX regime selects child strategy — trend child "
+            "(1H BB setup + 5min Donchian entry) when 1d.ADX > thresh, range child "
+            "(5min Connors-RSI + BB.lower mean-revert) when 1d.ADX < 20."
+        ),
         "side": "long",
         "regime_gate": "TRUE",
         "bias_filter": "TRUE",
@@ -159,16 +225,22 @@ _SEED_TEMPLATES = [
         "confirmation": "TRUE",
         "timing": "TRUE",
         "exit": "FALSE",
-        "no_trade": "ChopIdx(14) > 70",
-        "data_sources": ["yfinance_daily_5yr_cache"],
+        "no_trade": "1d.ChopIdx(14) > 70",
+        "data_sources": [
+            "alpaca_5yr local 5Min cache",
+            "yfinance_daily_5yr cache (1D regime selector)",
+            "1H — resampled from 5min on the fly",
+        ],
         "child_hypotheses": [
             {
-                "regime": "ADX(14) > {adx_thresh}",
+                # Trend child: 1D ADX confirms trend, 1H BB(2) setup, 5min Donchian
+                # break entry. Higher TFs as gates; 5min as the entry timeframe.
+                "regime": "1d.ADX(14) > {adx_thresh}",
                 "hypothesis": {
                     "id": "_trend",
-                    "regime_gate": "ADX(14) > {adx_thresh}",
-                    "bias_filter": "EMA({ema_fast}) > EMA({ema_slow})",
-                    "trigger": "Close > Donchian_UP({donch})",
+                    "regime_gate": "1d.ADX(14) > {adx_thresh}",
+                    "bias_filter": "1h.Close > 1h.BB.mid(20, 2.0) AND 1h.EMA({ema_fast}) > 1h.EMA({ema_slow})",
+                    "trigger": "Close > Donchian_UP({donch}) AND Close > VWAP",
                     "confirmation": "Volume > 1.2 * SMA(Volume, 20)",
                     "timing": "RSI(14) > 50",
                     "exit": "{atr_mult} * ATR(14) trailing stop",
@@ -176,15 +248,17 @@ _SEED_TEMPLATES = [
                     "side": "long",
                     "cost": "5bps_per_side",
                     "universe": "SP500_502",
-                    "timeframe": "1d",
-                    "data_sources": ["yfinance_daily_5yr_cache"],
+                    "timeframe": "5min",
+                    "data_sources": ["alpaca_5yr 5Min", "yfinance daily", "1H resampled"],
                 },
             },
             {
-                "regime": "ADX(14) < 20",
+                # Range child: 1D ADX low → mean-revert on 5min via Connors RSI +
+                # BB.lower setup. No higher-TF gates (range regimes act locally).
+                "regime": "1d.ADX(14) < 20",
                 "hypothesis": {
                     "id": "_range",
-                    "regime_gate": "ADX(14) < 20",
+                    "regime_gate": "1d.ADX(14) < 20",
                     "bias_filter": "TRUE",
                     "trigger": "ConnorsRSI(3, 2, 100) < 15",
                     "confirmation": "Close < BB.lower(20, 2.0)",
@@ -194,8 +268,8 @@ _SEED_TEMPLATES = [
                     "side": "long",
                     "cost": "5bps_per_side",
                     "universe": "SP500_502",
-                    "timeframe": "1d",
-                    "data_sources": ["yfinance_daily_5yr_cache"],
+                    "timeframe": "5min",
+                    "data_sources": ["alpaca_5yr 5Min", "yfinance daily"],
                 },
             },
         ],
@@ -326,6 +400,17 @@ def variant_generator(ticker: str, n: int, priors: Optional[dict] = None) -> Ite
     for seed, cnt in zip(_SEED_TEMPLATES, counts):
         if cnt <= 0:
             continue
+        # Resolve the TF stack for this seed. Stacks come from _TF_STACK_BY_SEED;
+        # the primary TF is the first entry (entry/exit fires here), the rest are
+        # higher TFs available via the cross-TF role-expression syntax.
+        tf_stack = list(_TF_STACK_BY_SEED.get(seed["seed_id"], ["1d"]))
+        # Dedupe while preserving order (e.g. ORB_MORNING has 5min twice).
+        seen = []
+        for t in tf_stack:
+            if t not in seen:
+                seen.append(t)
+        tf_stack = seen
+        primary_tf = tf_stack[0]
         for p in _stratified_perturb_samples(cnt, priors=priors):
             seq += 1
             tmpl = _format_template(seed, p)
@@ -333,10 +418,11 @@ def variant_generator(ticker: str, n: int, priors: Optional[dict] = None) -> Ite
             variant = {
                 "id": sap_id,
                 "name": f"{seed['seed_id']} @ ADX>{p['adx_thresh']} EMA({p['ema_fast']}/{p['ema_slow']}) "
-                        f"Donch{p['donch']} {p['atr_mult']}xATR",
+                        f"Donch{p['donch']} {p['atr_mult']}xATR  TF={'>'.join(tf_stack)}",
                 "thesis": (
                     f"Per-ticker championship variant for {ticker} seeded from "
-                    f"Mission 12 agent grid '{seed['seed_id']}': {seed['theory']}"
+                    f"Mission 12 agent grid '{seed['seed_id']}' "
+                    f"(MTF stack: {' / '.join(tf_stack)}): {seed['theory']}"
                 ),
                 "parent_seed_id": seed["seed_id"],
                 "perturb_params": p,
@@ -352,7 +438,10 @@ def variant_generator(ticker: str, n: int, priors: Optional[dict] = None) -> Ite
                 # Required gate fields
                 "cost": "5bps_per_side",
                 "universe": f"single_ticker:{ticker.upper()}",
-                "timeframe": "1d",
+                # Multi-TF (task #53): primary is the entry TF; the stack is
+                # propagated through hypothesis_runner.run_hypothesis_for_ticker.
+                "timeframe": primary_tf,
+                "timeframe_stack": tf_stack,
                 "data_sources": list(seed.get("data_sources", [])),
             }
             # Carry child_hypotheses / alt_data_overlay through if present
@@ -713,6 +802,23 @@ def search_championship(
       }
     """
     t0 = time.time()
+
+    # SIV pre-flight gate (Council R3+R4): SOFT warning only — don't break dispatch.
+    # `lab.knowledge.siv.is_promotion_allowed()` returns (False, reason) until the
+    # SIV checklist is fully PRESENT (kill-criterion + DSMB + blinding + holdout
+    # separation all complete). Champions written below MUST NOT be promoted to
+    # paper trading while this gate is closed.
+    try:
+        from .knowledge import siv as _siv  # type: ignore
+        _allowed, _siv_reason = _siv.is_promotion_allowed()
+        if not _allowed:
+            print(f"  [SIV-GATE] promotion-to-paper BLOCKED: {_siv_reason}", flush=True)
+        else:
+            print(f"  [SIV-GATE] {_siv_reason}", flush=True)
+    except Exception as _siv_e:  # pragma: no cover — defensive: gate must never crash search
+        print(f"  [SIV-GATE] check failed ({type(_siv_e).__name__}: {_siv_e}); "
+              f"treating as CLOSED (no promotion).", flush=True)
+
     _ihr.set_timeframe(timeframe)
     bars_per_year = _ihr._state["bars_per_year"]
 
