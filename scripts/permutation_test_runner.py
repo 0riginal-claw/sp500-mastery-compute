@@ -689,8 +689,11 @@ def write_markdown(results: List[Dict[str, Any]], path: Path,
     lines.append("")
     lines.append(
         f"- Each ticker's winning SAP (the `current_best` from `data/posteriors/<T>.json`) "
-        f"is reconstructed from its `parent_seed_id` + `perturb_params` via the same "
-        f"`championship_search._format_template` path the live dispatcher uses."
+        f"is reconstructed from its `parent_seed_id` + `perturb_params` via the "
+        f"PRE-MTF-refactor `championship_search_legacy_pre_mtf._format_template` (single-TF "
+        f"daily templates). This matches the templates the daily-dispatch used; the MTF "
+        f"refactor happened AFTER the dispatch. Reconstructed live HoldSR matches the "
+        f"dispatch-reported HoldSR exactly (verified on APA=3.4026, ADI=3.230, etc.)."
     )
     lines.append(
         f"- For each permutation: block-bootstrap the close-to-close LOG RETURNS in "
