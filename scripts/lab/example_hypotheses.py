@@ -261,7 +261,134 @@ SAP_005 = {
 }
 
 
-HYPOTHESES: List[Dict] = [SAP_001, SAP_002, SAP_003, SAP_004, SAP_005]
+# ─────────────────────────────────────────────────────────────────────────────
+# CHAMP-002 templates (added 2026-05-29, R5 task #69) — alt-data NUMERIC as
+# PRIMARY trigger (not boolean gate). Per chairman verdict: First Principles R5
+# + Executor R5 + Expansionist R5 converged on "numeric alt-data signals are
+# the next investigational layer; treat as primary entries with classical
+# OHLCV as confirmation, not the inverse."
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# SAP-CAT-CC — CATALYST_CONFLUENCE
+#   Alt-data event window (Form 4 insider cluster + 8-K pulse + news velocity)
+#   becomes the PRIMARY trigger; OHLCV (ADX regime gate + EMA bias + volume
+#   confirmation + 1d VWAP timing) supports it. ATR trailing-stop exit.
+#   Anchor TF: 5min entry, 15min/1h/1d as higher-TF gates.
+SAP_CAT_CC = {
+    "id": "CHAMP-002-CATALYST_CONFLUENCE",
+    "name": "Catalyst confluence — F4 cluster + 8-K + news velocity as PRIMARY trigger",
+    "thesis": (
+        "Numeric alt-data catalysts (Form 4 insider cluster score, 8-K pulse, "
+        "news velocity Z) are leading indicators of subsequent OHLCV moves. "
+        "Treat them as the PRIMARY trigger (not gate), with classical "
+        "confluence (ADX regime, EMA bias, volume) as confirmation. Tests "
+        "whether catalyst-as-entry beats catalyst-as-filter, which is the "
+        "Mission 12 GOV_AWARE v1 + v2 default mode."
+    ),
+    "regime_gate": "form4_insider_cluster_score > 60 AND ADX(14) > 18",
+    "bias_filter": "EMA(9) > EMA(21)",
+    # PRIMARY trigger = alt-data event (numeric tokens). Either an 8-K pulse
+    # OR a news velocity surge fires entry.
+    "trigger": "8k_pulse >= 1 OR news_velocity_zscore > 1.5",
+    # Classical confirmation: volume expansion + 1h not-overbought
+    "confirmation": "Volume > 1.3 * SMA(Volume, 20) AND 1h.RSI(14) < 70",
+    # Timing: above daily VWAP — bar must be net positive intraday in higher TF
+    "timing": "1d.Close > 1d.VWAP",
+    "exit": "1.5 * ATR(14) trailing stop",
+    "no_trade": "ChopIdx(14) > 65",
+    "side": "long",
+    "cost": "5bps_per_side",
+    "universe": "CHAMP-002 cohort (top-3 ADV × 4 sectors)",
+    "timeframe": "5min",
+    "timeframe_stack": ["15min", "1h", "1d"],
+    "data_sources": [
+        "alpaca_5yr local 5Min cache (/Volumes/ZG-2TB/zg/cache/alpaca_5yr/5Min)",
+        "yfinance_daily_5yr cache (1d.VWAP + ADX + EMA + Chop)",
+        "indicator_compute_altdata.form4_insider_cluster_score (edgar Form 4)",
+        "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
+        "indicator_compute_altdata.news_velocity_zscore (news 7d-vs-90d Z)",
+        "15min/1h — resampled from 5min on the fly",
+    ],
+}
+
+
+# SAP-CSR — CROSS_SYMBOL_REGIME
+#   Cross-asset macro state (vix_term_structure + hyg_lqd_ratio) defines the
+#   regime; sector_rs_rank picks the ticker; spy_beta picks the market
+#   exposure. Donchian-20 break is the entry trigger.
+SAP_CSR = {
+    "id": "CHAMP-002-CROSS_SYMBOL_REGIME",
+    "name": "Cross-symbol regime — VIX-TS contango + sector top-3 + spy-beta>0.5",
+    "thesis": (
+        "Cross-asset macro state is a stronger gate than ticker-local "
+        "indicators in regimes where the market regime dominates ticker "
+        "idiosyncrasy. Filter for risk-on cross-asset (vix_term_struct > 1, "
+        "hyg_lqd_ratio rising), then pick tickers leading their sector "
+        "(sector_rs_rank <= 3) with non-trivial market exposure (spy_beta > "
+        "0.5). Entry on a daily Donchian-20 break with 1.5× volume expansion."
+    ),
+    "regime_gate": "vix_term_struct > 1.0 AND hyg_lqd_ratio > 0",
+    "bias_filter": "sector_rs_rank <= 3",
+    "trigger": "1d.Close > 1d.Donchian_UP(20)",
+    "confirmation": "Volume > 1.5 * SMA(Volume, 20)",
+    "timing": "spy_beta_60d > 0.5",
+    "exit": "2.0 * ATR(14) trailing stop",
+    "no_trade": "sector_rs_rank > 6",
+    "side": "long",
+    "cost": "5bps_per_side",
+    "universe": "CHAMP-002 cohort (top-3 ADV × 4 sectors)",
+    "timeframe": "5min",
+    "timeframe_stack": ["15min", "1h", "1d"],
+    "data_sources": [
+        "alpaca_5yr local 5Min cache",
+        "yfinance_daily_5yr cache (1d.Donchian + ATR + Volume baseline)",
+        "indicator_compute_xsym.vix_term_structure (^VIX + ^VXV)",
+        "indicator_compute_xsym.hyg_lqd_ratio (HYG + LQD)",
+        "indicator_compute_xsym.sector_rs_rank (sector ETFs)",
+        "indicator_compute_xsym.spy_beta_60d (60d OLS vs SPY)",
+        "15min/1h — resampled from 5min on the fly",
+    ],
+}
+
+
+# SAP-GAv2N — GOV_AWARE_v2_numeric template (also referenced as a seed in
+# championship_search._SEED_TEMPLATES under seed_id 'GOV_AWARE_v2'). Re-exported
+# here as a static example so validate_test_unit can sanity-check it.
+SAP_GAV2N = {
+    "id": "CHAMP-002-GOV_AWARE_v2_numeric",
+    "name": "GOV_AWARE v2 (numeric) — F4 cluster OR congress lead-lag + news/dark-pool",
+    "thesis": (
+        "Numeric alt-data tokens (F4 cluster, congress lead-lag, news velocity, "
+        "dark-pool divergence Z) compose via thresholds and degrade NaN→0 "
+        "where the source is missing, vs. v1's boolean tokens which silently "
+        "return False. Test whether the numeric overlay beats the boolean."
+    ),
+    "regime_gate": "ADX(14) > 18 AND 8k_pulse < 3",
+    "bias_filter": "EMA(9) > EMA(21)",
+    "trigger": "form4_insider_cluster_score > 50 OR congress_lead_lag < 15",
+    "confirmation": "news_velocity_zscore > 1.5 OR dark_pool_divergence_z < -1.5",
+    "timing": "RSI(14) > 45",
+    "exit": "1.5 * ATR(14) trailing stop",
+    "no_trade": "ADX(14) < 15",
+    "side": "long",
+    "cost": "5bps_per_side",
+    "universe": "CHAMP-002 cohort (top-3 ADV × 4 sectors)",
+    "timeframe": "1d",
+    "timeframe_stack": ["1d"],
+    "data_sources": [
+        "yfinance_daily_5yr cache (OHLCV anchor)",
+        "indicator_compute_altdata.form4_insider_cluster_score (edgar Form 4)",
+        "indicator_compute_altdata.congress_lead_lag (govtrades)",
+        "indicator_compute_altdata.news_velocity_zscore",
+        "indicator_compute_altdata.dark_pool_divergence_z (FINRA offexchange)",
+        "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
+    ],
+}
+
+
+HYPOTHESES: List[Dict] = [SAP_001, SAP_002, SAP_003, SAP_004, SAP_005,
+                          SAP_CAT_CC, SAP_CSR, SAP_GAV2N]
 HYPOTHESES_BY_ID: Dict[str, Dict] = {h["id"]: h for h in HYPOTHESES}
 
 
