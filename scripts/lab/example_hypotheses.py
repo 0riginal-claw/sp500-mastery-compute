@@ -71,14 +71,17 @@ SAP_002 = {
     ),
     "regime_gate": "ADX(14) > 20",
     "bias_filter": "EMA(9) > EMA(21)",
-    # NOTE: The role parser does not natively know `InsiderForm4_LT5d`. The runner falls
-    # back to "TRUE" for unknown alt-data tokens unless an alt-data hook is registered.
-    # For the smoke test we degrade gracefully: when the alt-data sidecar is missing, the
-    # trigger reduces to a Donchian-20 breakout so the pipeline still runs end-to-end.
-    "trigger": "Close > Donchian_UP(20)",  # alt-data overlay attaches at runtime
+    # Alt-data overlay (task #40, 2026-05-28): InsiderForm4_LT5d_GT1M now resolves through
+    # hypothesis_runner._AltDataResolver against lab.knowledge.edgar (Form 4). When the
+    # EDGAR Form 4 backfill is incomplete (current status — coverage() lists Form 4 as
+    # ``forms_partial_backfill_pending``), the resolver returns False for every bar with
+    # a diagnostic note, so the trigger degrades to never firing rather than silently
+    # falling back to Donchian. The legacy ``alt_data_overlay`` side-table below is kept
+    # for backward compat (task #41 orchestrator may still read it).
+    "trigger": "Close > Donchian_UP(20) AND InsiderForm4_LT5d_GT1M",
     "alt_data_overlay": {
         "trigger_extra": {
-            "name": "InsiderForm4_LT5d",
+            "name": "InsiderForm4_LT5d_GT1M",
             "loader": "lab.knowledge.edgar.get_form4",
             "params": {"min_value_usd": 1_000_000, "window_days": 5},
             "kind": "boolean_and",
@@ -113,8 +116,10 @@ SAP_003 = {
     ),
     "regime_gate": "ADX(14) > 20",
     "bias_filter": "EMA(20) > EMA(50)",
-    # Same fallback comment as SAP-002 — degrades to Donchian when alt-data unavailable
-    "trigger": "Close > Donchian_UP(20)",
+    # Alt-data tokens (task #40): CongressBuy_LT30d uses disclosure-date filtering
+    # (report_date if present; transaction_date + 45d otherwise) so the join is
+    # strictly post-disclosure. 8K_LT5d uses filed_at (post-publication).
+    "trigger": "Close > Donchian_UP(20) AND CongressBuy_LT30d AND 8K_LT5d",
     "alt_data_overlay": {
         "trigger_extra": [
             {
@@ -162,7 +167,13 @@ SAP_004 = {
     ),
     "regime_gate": "ADX(14) > 18",
     "bias_filter": "EMA(9) > EMA(21)",
-    "trigger": "Close > SMA(20)",  # alt-data overlay tightens this to DPI>90th pct
+    # Alt-data token DPI_GT_P90 resolves through _AltDataResolver against the
+    # offexchange table. DPI is forward-filled into bar-time using strictly prior
+    # event dates (no same-day lookahead), then a 5d rolling 90th-percentile gate
+    # is applied. (window_trading_days is fixed at 5 in the token; to use a 90d
+    # window the SAP can switch to a custom token like DPI_GT_P90 — see resolver
+    # docstring for the supported grammar.)
+    "trigger": "Close > SMA(20) AND DPI_GT_P90",
     "alt_data_overlay": {
         "trigger_extra": {
             "name": "DPI_GT_P90",
