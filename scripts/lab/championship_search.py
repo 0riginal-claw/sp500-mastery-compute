@@ -92,11 +92,20 @@ _TF_STACK_BY_SEED = {
     # news velocity Z) are bar-timestamp-keyed and disclose at day-level
     # granularity. Multi-TF for v2 is deferred to a follow-up task.
     "GOV_AWARE_v2":  ["1d"],
-    # CHAMP-002 seeds (task #69) — alt-data NUMERIC as PRIMARY trigger. Both
-    # use the 5min entry + higher TFs as gates pattern (Mission 12 intent),
-    # with the cohort being the CHAMP-002 12-ticker pre-registered set.
-    "CATALYST_CONFLUENCE":  ["5min", "15min", "1h", "1d"],
-    "CROSS_SYMBOL_REGIME":  ["5min", "15min", "1h", "1d"],
+    # CHAMP-002 seeds (task #69) — alt-data NUMERIC as PRIMARY trigger.
+    # ORIGINAL INTENT: 5min entry + higher TFs as gates (Mission 12 multi-TF
+    # pattern). DISPATCH-1 BLOCKED 2026-05-29T11:09Z when all 4 workers
+    # stalled in pyarrow ReadAt against the Gabriel Drive 5min mirror under
+    # FUSE — same root cause that flattened the Mission 12 seeds to single-TF
+    # in task #41. Since CHAMP-002's investigational question is "do NUMERIC
+    # alt-data signals beat OHLCV as PRIMARY triggers", and alt-data tokens
+    # are bar-keyed at daily granularity anyway (Form 4, 8-K, news, dark-pool
+    # all disclose at day level), the daily TF preserves the spirit of the
+    # test. Multi-TF stacks are deferred until the FUSE blocker is fixed (a
+    # separate task — likely require pre-warming the alpaca_5yr local 5min
+    # cache for the 12-ticker cohort before re-dispatch).
+    "CATALYST_CONFLUENCE":  ["1d"],
+    "CROSS_SYMBOL_REGIME":  ["1d"],
     "HYBRID_REGIME": ["5min", "1h",    "1d"],
 }
 
@@ -281,25 +290,24 @@ _SEED_TEMPLATES = [
             "daily VWAP timing) is confirmation. CHAMP-002 investigational."
         ),
         "side": "long",
-        # 1D regime gate: F4 insider cluster + daily ADX both must agree
-        "regime_gate": "form4_insider_cluster_score > 60 AND 1d.ADX(14) > {adx_thresh}",
-        # 1D bias filter: daily EMA stack
-        "bias_filter": "1d.EMA({ema_fast}) > 1d.EMA({ema_slow})",
+        # 1D regime gate: F4 insider cluster + daily ADX both must agree.
+        # DAILY-TF ONLY (post DISPATCH-1 FUSE block) — no TF prefixes.
+        "regime_gate": "form4_insider_cluster_score > 60 AND ADX(14) > {adx_thresh}",
+        # Bias filter: EMA stack (daily)
+        "bias_filter": "EMA({ema_fast}) > EMA({ema_slow})",
         # PRIMARY trigger = alt-data numeric token threshold (NOT OHLCV)
         "trigger": "8k_pulse >= 1 OR news_velocity_zscore > 1.5",
-        # Confirmation: volume expansion at the entry TF + 1h not-overbought
-        "confirmation": "Volume > 1.3 * SMA(Volume, 20) AND 1h.RSI(14) < 70",
+        # Confirmation: volume expansion + RSI not-overbought (all daily now)
+        "confirmation": "Volume > 1.3 * SMA(Volume, 20) AND RSI(14) < 70",
         # Timing: above daily VWAP — net-positive trading day
-        "timing": "1d.Close > 1d.VWAP",
+        "timing": "Close > VWAP",
         "exit": "{atr_mult} * ATR(14) trailing stop",
-        "no_trade": "1d.ChopIdx(14) > 65",
+        "no_trade": "ChopIdx(14) > 65",
         "data_sources": [
-            "alpaca_5yr local 5Min cache (/Volumes/ZG-2TB/zg/cache/alpaca_5yr/5Min)",
-            "yfinance_daily_5yr cache (1d.VWAP + ADX + EMA + Chop + Volume baseline)",
+            "yfinance_daily_5yr cache (daily OHLCV: ADX, EMA, VWAP, Volume, Chop)",
             "indicator_compute_altdata.form4_insider_cluster_score (edgar Form 4)",
             "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
             "indicator_compute_altdata.news_velocity_zscore (news 7d-vs-90d Z)",
-            "15min/1h — resampled from 5min on the fly",
         ],
     },
     {
@@ -315,8 +323,8 @@ _SEED_TEMPLATES = [
         "regime_gate": "vix_term_struct > 1.0 AND hyg_lqd_ratio > 0",
         # Bias: ticker is leading its sector (top-3 by RS rank)
         "bias_filter": "sector_rs_rank <= 3",
-        # Entry: daily Donchian-20 break (slow-trend follower)
-        "trigger": "1d.Close > 1d.Donchian_UP({donch})",
+        # Entry: daily Donchian break (no TF prefix on daily-only stack)
+        "trigger": "Close > Donchian_UP({donch})",
         # Confirmation: volume expansion
         "confirmation": "Volume > 1.5 * SMA(Volume, 20)",
         # Timing: non-trivial market exposure
@@ -324,13 +332,11 @@ _SEED_TEMPLATES = [
         "exit": "{atr_mult} * ATR(14) trailing stop",
         "no_trade": "sector_rs_rank > 6",
         "data_sources": [
-            "alpaca_5yr local 5Min cache",
-            "yfinance_daily_5yr cache (1d.Donchian + ATR + Volume baseline)",
+            "yfinance_daily_5yr cache (daily OHLCV: Donchian, ATR, Volume)",
             "indicator_compute_xsym.vix_term_structure (^VIX + ^VXV)",
             "indicator_compute_xsym.hyg_lqd_ratio (HYG + LQD)",
             "indicator_compute_xsym.sector_rs_rank (sector ETFs)",
             "indicator_compute_xsym.spy_beta_60d (60d OLS vs SPY)",
-            "15min/1h — resampled from 5min on the fly",
         ],
     },
     {
@@ -506,23 +512,80 @@ def variant_generator(
     n: int,
     priors: Optional[dict] = None,
     seeds: Optional[List[str]] = None,
+    use_seed_generator: bool = True,
+    n_proposed: int = 5,
+    n_random_control: int = 1,
 ) -> Iterable[dict]:
     """Yield up to N strategy hypotheses for the ticker.
 
-    Layout: divide N across active seed templates as evenly as possible. For each
-    seed, apply stratified perturbations. Each yielded variant has a unique SAP ID
-    `SAP-<TICKER>-<NNN>` and a `parent_seed_id` field for traceability.
+    Layout (R5 task #71 integration, 2026-05-29):
+      (a) If `use_seed_generator` and a fitted `lab.seed_generator` model exists,
+          prepend `n_proposed` (default 5) Bayesian-proposed variants from
+          seed_generator.propose_seeds(ticker, n_proposed). These are the
+          model's best guesses ranked by predicted HoldSR.
+      (b) Yield the remaining slots from the existing perturbation grid
+          (Mission 12 5-seed × stratified perturb grid), so the search retains
+          its full coverage on tickers the model hasn't seen yet.
+      (c) `n_random_control` (default 1) of the remaining slots is reserved for
+          a deliberately-random control variant so we can audit whether the
+          Bayesian proposals are actually outperforming chance.
+
+    When `use_seed_generator=False`, the legacy behaviour is preserved — N
+    variants come entirely from the existing grid.
 
     If `seeds` is given (list of seed_id strings), the generator restricts the
     search to those seeds only — used by CHAMP-002 to run just the
     CATALYST_CONFLUENCE + CROSS_SYMBOL_REGIME + GOV_AWARE_v2 trio without the
-    Mission 12 legacy 5-agent grid.
+    Mission 12 legacy 5-agent grid. (Note: the seed_generator path is bypassed
+    in this case so the explicit seed list is honoured.)
 
     Variants that fail `validate_test_unit` are skipped (with a warning printed) —
     the generator may yield FEWER than N if many variants fail validation. In
     practice all template-rendered variants pass the gate since required roles are
     always present.
+
+    Existing callers continue to work — all new kwargs have sensible defaults.
     """
+    # ── (a) Seed-generator proposals (R5 #71) ─────────────────────────────────
+    proposed_yielded = 0
+    used_seq_ids: List[str] = []
+    if use_seed_generator and not seeds and n_proposed > 0:
+        try:
+            import seed_generator as _sg  # type: ignore
+            info = _sg.model_info()
+            if info.get("status") not in ("no_model", "load_failed", None):
+                props = _sg.propose_seeds(ticker, n=min(n_proposed, n))
+                for p in props:
+                    if proposed_yielded >= min(n_proposed, n):
+                        break
+                    # Validate before yielding — seed_generator should have
+                    # produced a valid hypothesis but we re-check to be safe.
+                    gate = validate_test_unit(p)
+                    if not gate.get("ok"):
+                        print(f"  [variant_generator] proposed {p.get('id')} "
+                              f"FAILED gate: {gate.get('reason')} — skipping",
+                              flush=True)
+                        continue
+                    used_seq_ids.append(p.get("id"))
+                    proposed_yielded += 1
+                    yield p
+                if proposed_yielded > 0:
+                    print(f"  [variant_generator] seed_generator yielded "
+                          f"{proposed_yielded} model-proposed variants "
+                          f"(predicted HoldSR ranked); remaining "
+                          f"{max(0, n - proposed_yielded)} from grid",
+                          flush=True)
+        except Exception as e:
+            # Honest degradation — log + fall through to grid-only
+            print(f"  [variant_generator] seed_generator unavailable "
+                  f"({type(e).__name__}: {e}); falling back to grid-only",
+                  flush=True)
+
+    remaining = max(0, n - proposed_yielded)
+    if remaining <= 0:
+        return
+
+    # ── (b) Grid-based variants (existing behaviour) ─────────────────────────
     active_seeds = _SEED_TEMPLATES
     if seeds:
         wanted = {s.strip() for s in seeds if s.strip()}
@@ -531,12 +594,17 @@ def variant_generator(
             print(f"  [variant_generator] no seeds matched {seeds!r}; "
                   f"available: {[s['seed_id'] for s in _SEED_TEMPLATES]}", flush=True)
             return
+
+    # Reserve `n_random_control` slots from `remaining` for chance-baseline
+    # variants (yielded AFTER the grid loop).
+    grid_slots = max(0, remaining - (n_random_control if use_seed_generator else 0))
     n_seeds = len(active_seeds)
-    base_per = max(1, n // n_seeds)
-    remainder = n - base_per * n_seeds
+    base_per = max(1, grid_slots // n_seeds) if grid_slots > 0 else 0
+    remainder = grid_slots - base_per * n_seeds if grid_slots > 0 else 0
     counts = [base_per + (1 if i < remainder else 0) for i in range(n_seeds)]
 
-    seq = 0
+    # Seed sequence numbering offset by proposed count so SAP IDs don't collide.
+    seq = proposed_yielded
     for seed, cnt in zip(active_seeds, counts):
         if cnt <= 0:
             continue
@@ -610,6 +678,83 @@ def variant_generator(
                 print(f"  [variant_generator] {sap_id} FAILED gate: {gate['reason']}", flush=True)
                 continue
             yield variant
+
+    # ── (c) Random-control variants (R5 #71) ─────────────────────────────────
+    # Reserve `n_random_control` slots for chance-baseline variants that the
+    # auto-research loop can A/B against the seed_generator's proposals. Each
+    # control picks a random (seed, perturb) combo from the canonical grid, so
+    # the control distribution mirrors the search space the seed_generator was
+    # trained on. Skipped when use_seed_generator is False (legacy behaviour).
+    if use_seed_generator and not seeds and n_random_control > 0:
+        import random as _random
+        rng = _random.Random(hash(ticker.upper()) & 0xFFFFFFFF)
+        canonical_perturbs = [
+            {"adx_thresh": 15, "ema_fast": 5,  "ema_slow": 13, "donch": 10, "atr_mult": 1.0},
+            {"adx_thresh": 20, "ema_fast": 9,  "ema_slow": 21, "donch": 20, "atr_mult": 1.5},
+            {"adx_thresh": 22, "ema_fast": 13, "ema_slow": 34, "donch": 20, "atr_mult": 1.5},
+            {"adx_thresh": 25, "ema_fast": 9,  "ema_slow": 21, "donch": 40, "atr_mult": 2.0},
+            {"adx_thresh": 20, "ema_fast": 21, "ema_slow": 55, "donch": 20, "atr_mult": 2.0},
+        ]
+        controls_emitted = 0
+        for _i in range(n_random_control):
+            seed_tmpl = rng.choice(_SEED_TEMPLATES)
+            p = rng.choice(canonical_perturbs)
+            tf_stack = list(_TF_STACK_BY_SEED.get(seed_tmpl["seed_id"], ["1d"]))
+            seen: List[str] = []
+            for t in tf_stack:
+                if t not in seen:
+                    seen.append(t)
+            tf_stack = seen
+            primary_tf = tf_stack[0] if tf_stack else "1d"
+            tmpl = _format_template(seed_tmpl, p)
+            seq += 1
+            sap_id = f"SAP-{ticker.upper()}-RANDCTRL-{seq:03d}"
+            xa_idx = rng.randint(0, len(_CROSS_ASSET_GATE_VARIANTS) - 1)
+            cross_asset_gate = _CROSS_ASSET_GATE_VARIANTS[xa_idx]
+            variant = {
+                "id": sap_id,
+                "name": f"RANDCTRL {seed_tmpl['seed_id']} @ ADX>{p['adx_thresh']} "
+                        f"EMA({p['ema_fast']}/{p['ema_slow']}) "
+                        f"Donch{p['donch']} {p['atr_mult']}xATR TF={'>'.join(tf_stack)} XA={xa_idx}",
+                "thesis": (
+                    f"Random-control variant for {ticker} — deterministic seed "
+                    f"from hash(ticker); used to A/B against seed_generator's "
+                    f"Bayesian proposals so we can detect if the model is "
+                    f"actually beating chance."
+                ),
+                "parent_seed_id": seed_tmpl["seed_id"],
+                "perturb_params": p,
+                "regime_gate": tmpl.get("regime_gate", "TRUE"),
+                "bias_filter": tmpl.get("bias_filter", "TRUE"),
+                "trigger": tmpl.get("trigger", "FALSE"),
+                "confirmation": tmpl.get("confirmation", "TRUE"),
+                "timing": tmpl.get("timing", "TRUE"),
+                "exit": tmpl.get("exit", "FALSE"),
+                "no_trade": tmpl.get("no_trade", "FALSE"),
+                "side": tmpl.get("side", "long"),
+                "cross_asset_gate": cross_asset_gate,
+                "cost": "5bps_per_side",
+                "universe": f"single_ticker:{ticker.upper()}",
+                "timeframe": primary_tf,
+                "timeframe_stack": tf_stack,
+                "data_sources": list(seed_tmpl.get("data_sources", [])),
+                "source": "random_control",
+            }
+            if "child_hypotheses" in tmpl:
+                variant["child_hypotheses"] = tmpl["child_hypotheses"]
+            if "alt_data_overlay" in tmpl:
+                variant["alt_data_overlay"] = tmpl["alt_data_overlay"]
+            gate = validate_test_unit(variant)
+            if not gate.get("ok"):
+                print(f"  [variant_generator] random-control {sap_id} FAILED gate: "
+                      f"{gate.get('reason')}", flush=True)
+                continue
+            controls_emitted += 1
+            yield variant
+        if controls_emitted:
+            print(f"  [variant_generator] {controls_emitted} random-control "
+                  f"variant(s) yielded (A/B baseline vs seed_generator)",
+                  flush=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -743,6 +888,25 @@ def update_posterior(ticker: str, result: dict) -> None:
         tmp.replace(p)
     except OSError as e:
         print(f"  [posterior] write failed for {ticker}: {e}", flush=True)
+
+    # Notify seed_generator of the new observation (R5 task #71). Best-effort;
+    # the seed generator's own update_posterior just bumps a counter and triggers
+    # a background re-fit when REFIT_TRIGGER_N observations have accumulated.
+    try:
+        import seed_generator as _sg  # type: ignore
+        _sg.update_posterior(
+            ticker,
+            entry["sap_id"],
+            {
+                "parent_seed_id": entry.get("parent_seed_id"),
+                "holdout_sharpe": (entry.get("result") or {}).get("holdout_sharpe"),
+                "status": entry.get("status"),
+            },
+        )
+    except Exception:
+        # Defensive: never let a seed_generator side-effect break the primary
+        # posterior write path. Silent ok — this is best-effort metadata.
+        pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
