@@ -48,12 +48,60 @@ Functions
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Cross-variant fetch cache (task #76, 2026-05-29).
+#
+# Identical pattern + rationale to _ALTDATA_FETCH_CACHE in hypothesis_runner.py:
+# `_AltDataNumericResolver` is recreated per championship variant. Each variant
+# uses one or more numeric altdata tokens (form4_insider_cluster_score,
+# congress_lead_lag, news_velocity_zscore, etc.), and each call below would
+# otherwise re-fetch via lab.knowledge.{edgar, govtrades, news} → sqlite hit
+# every time. Caching the DataFrames keyed by (ticker, source_kind, [args])
+# eliminates the per-variant amortization cost so 23 variants run for the same
+# fetch cost as 1.
+#
+# Source-kind keys (paired with the _fetch_* function below):
+#   "filings:<form>"  → _fetch_filings(ticker, form=<form>)
+#   "filings:ALL"     → _fetch_filings(ticker, form=None)
+#   "congress"        → _fetch_congress(ticker)
+#   "offex"           → _fetch_offex(ticker)
+#   "lobbying"        → _fetch_lobbying(ticker)
+#   "contracts"       → _fetch_contracts(ticker)
+#   "news:<start>:<end>" → _fetch_news(ticker, start, end) — keyed by date range
+#
+# DataFrames returned by `_altdata_cache_get` MUST NOT be mutated by callers;
+# they're shared references across variants. All downstream consumers in this
+# module read-only (slice / filter / sort).
+# ---------------------------------------------------------------------------
+_ALTDATA_FETCH_CACHE: Dict[Tuple[str, str], pd.DataFrame] = {}
+
+
+def _altdata_cache_get(ticker: str, source_kind: str) -> Optional[pd.DataFrame]:
+    return _ALTDATA_FETCH_CACHE.get((ticker.upper(), source_kind))
+
+
+def _altdata_cache_set(ticker: str, source_kind: str, df: pd.DataFrame) -> None:
+    _ALTDATA_FETCH_CACHE[(ticker.upper(), source_kind)] = df
+
+
+def _altdata_cache_clear(ticker: Optional[str] = None) -> int:
+    if ticker is None:
+        n = len(_ALTDATA_FETCH_CACHE)
+        _ALTDATA_FETCH_CACHE.clear()
+        return n
+    tk = ticker.upper()
+    keys = [k for k in _ALTDATA_FETCH_CACHE if k[0] == tk]
+    for k in keys:
+        del _ALTDATA_FETCH_CACHE[k]
+    return len(keys)
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +140,10 @@ def _empty_series(idx: pd.DatetimeIndex) -> pd.Series:
 
 
 def _fetch_filings(ticker: str, form: Optional[str] = None) -> pd.DataFrame:
+    cache_key = f"filings:{form}" if form else "filings:ALL"
+    cached = _altdata_cache_get(ticker, cache_key)
+    if cached is not None:
+        return cached
     rows = None
     try:
         from lab.knowledge import edgar
@@ -110,6 +162,7 @@ def _fetch_filings(ticker: str, form: Optional[str] = None) -> pd.DataFrame:
         logger.debug("edgar fetch failed for %s/%s: %s", ticker, form, e)
     df = _to_dataframe(rows)
     if df.empty:
+        _altdata_cache_set(ticker, cache_key, df)
         return df
     if "filed_at" in df.columns:
         df["filed_at"] = _parse_dt(df["filed_at"])
@@ -117,89 +170,129 @@ def _fetch_filings(ticker: str, form: Optional[str] = None) -> pd.DataFrame:
         # Form 4 stored variously as "4", "Form 4"; 8-K as "8-K"
         form_norm = form.replace("Form ", "").strip()
         df = df[df["form"].astype(str).str.replace("Form ", "").str.strip() == form_norm]
+    _altdata_cache_set(ticker, cache_key, df)
     return df
 
 
 def _fetch_congress(ticker: str) -> pd.DataFrame:
+    cached = _altdata_cache_get(ticker, "congress")
+    if cached is not None:
+        return cached
     try:
         from lab.knowledge import govtrades
         rows = govtrades.get_congress_trades(ticker)
     except Exception as e:  # noqa: BLE001
         logger.debug("congress fetch failed for %s: %s", ticker, e)
-        return pd.DataFrame()
+        empty = pd.DataFrame()
+        _altdata_cache_set(ticker, "congress", empty)
+        return empty
     df = _to_dataframe(rows)
     if df.empty:
+        _altdata_cache_set(ticker, "congress", df)
         return df
     for col in ("disclosure_date", "disclosed_at", "report_date"):
         if col in df.columns:
             df["disclosure_date"] = _parse_dt(df[col])
             break
+    _altdata_cache_set(ticker, "congress", df)
     return df
 
 
 def _fetch_offex(ticker: str) -> pd.DataFrame:
+    cached = _altdata_cache_get(ticker, "offex")
+    if cached is not None:
+        return cached
     try:
         from lab.knowledge import govtrades
         rows = govtrades.get_offexchange(ticker)
     except Exception as e:  # noqa: BLE001
         logger.debug("offex fetch failed for %s: %s", ticker, e)
-        return pd.DataFrame()
+        empty = pd.DataFrame()
+        _altdata_cache_set(ticker, "offex", empty)
+        return empty
     df = _to_dataframe(rows)
     if df.empty:
+        _altdata_cache_set(ticker, "offex", df)
         return df
     for col in ("as_of_date", "date", "period_end"):
         if col in df.columns:
             df["as_of_date"] = _parse_dt(df[col])
             break
+    _altdata_cache_set(ticker, "offex", df)
     return df
 
 
 def _fetch_lobbying(ticker: str) -> pd.DataFrame:
+    cached = _altdata_cache_get(ticker, "lobbying")
+    if cached is not None:
+        return cached
     try:
         from lab.knowledge import govtrades
         rows = govtrades.get_lobbying(ticker)
     except Exception as e:  # noqa: BLE001
         logger.debug("lobby fetch failed for %s: %s", ticker, e)
-        return pd.DataFrame()
+        empty = pd.DataFrame()
+        _altdata_cache_set(ticker, "lobbying", empty)
+        return empty
     df = _to_dataframe(rows)
     if df.empty:
+        _altdata_cache_set(ticker, "lobbying", df)
         return df
     for col in ("period_end", "report_date", "filed_at", "date"):
         if col in df.columns:
             df["period_end"] = _parse_dt(df[col])
             break
+    _altdata_cache_set(ticker, "lobbying", df)
     return df
 
 
 def _fetch_contracts(ticker: str) -> pd.DataFrame:
+    cached = _altdata_cache_get(ticker, "contracts")
+    if cached is not None:
+        return cached
     try:
         from lab.knowledge import govtrades
         rows = govtrades.get_contracts(ticker)
     except Exception as e:  # noqa: BLE001
         logger.debug("contracts fetch failed for %s: %s", ticker, e)
-        return pd.DataFrame()
+        empty = pd.DataFrame()
+        _altdata_cache_set(ticker, "contracts", empty)
+        return empty
     df = _to_dataframe(rows)
     if df.empty:
+        _altdata_cache_set(ticker, "contracts", df)
         return df
     for col in ("awarded_at", "award_date", "date", "period_end"):
         if col in df.columns:
             df["awarded_at"] = _parse_dt(df[col])
             break
+    _altdata_cache_set(ticker, "contracts", df)
     return df
 
 
 def _fetch_news(ticker: str, start_dt: pd.Timestamp, end_dt: pd.Timestamp) -> pd.DataFrame:
+    # Key by date range so reuse only happens when the requested window is identical.
+    # Most callers (news_velocity_zscore + 8k_pulse) use the full bar timeframe so the
+    # ranges agree across variants for a given ticker/timeframe.
+    cache_key = f"news:{start_dt.date()}:{end_dt.date()}"
+    cached = _altdata_cache_get(ticker, cache_key)
+    if cached is not None:
+        return cached
     try:
         from lab.knowledge import news
         rows = news.get_news(ticker, start=str(start_dt.date()), end=str(end_dt.date()))
     except Exception as e:  # noqa: BLE001
         logger.debug("news fetch failed for %s: %s", ticker, e)
-        return pd.DataFrame()
+        empty = pd.DataFrame()
+        _altdata_cache_set(ticker, cache_key, empty)
+        return empty
     df = _to_dataframe(rows)
     if df.empty:
+        _altdata_cache_set(ticker, cache_key, df)
         return df
     if "published_utc" in df.columns:
         df["published_utc"] = _parse_dt(df["published_utc"])
+    _altdata_cache_set(ticker, cache_key, df)
     return df
 
 
