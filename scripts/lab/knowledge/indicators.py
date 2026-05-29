@@ -153,21 +153,37 @@ _RECOMMENDED_SETTINGS_5MIN_SP500 = {
 
 @lru_cache(maxsize=1)
 def all_indicators() -> List[Dict[str, str]]:
-    """Return all curated rows from indicator_mastery_index.csv (typically 38)."""
-    rows = _read_csv_safe(INDEX_CSV)
-    if rows is None:
-        # Drive FUSE blind to Tech0 — try lab mirror
+    """Return all curated rows from indicator_mastery_index.csv (typically 38).
+
+    Walks the fallback chain: Tech0 (FUSE) → 2TB local mirror → Drive sp500 mirror
+    → research-lab/data_inventory rglob. Returns the first non-empty result.
+    """
+    for path in INDEX_CSV_FALLBACKS:
+        rows = _read_csv_safe(path)
+        if rows:
+            return rows
+    # Last-resort: rglob the lab mirror dir
+    try:
         for fname in Path(LAB_MIRROR_DIR).rglob("indicator_mastery_index.csv"):
             rows = _read_csv_safe(str(fname))
             if rows:
-                break
-    return rows or []
+                return rows
+    except (OSError, FileNotFoundError):
+        pass
+    return []
 
 
 @lru_cache(maxsize=1)
 def manifest_full() -> List[Dict[str, Any]]:
-    """Return full 107-indicator manifest (every indicator the engine has implementations for)."""
-    return _read_json_safe(MANIFEST_JSON) or []
+    """Return full 107-indicator manifest (every indicator the engine has implementations for).
+
+    Walks the fallback chain: Tech0 (FUSE) → 2TB local mirror → Drive sp500 mirror.
+    """
+    for path in MANIFEST_JSON_FALLBACKS:
+        data = _read_json_safe(path)
+        if data:
+            return data
+    return []
 
 
 def by_status(status: str) -> List[Dict[str, str]]:
