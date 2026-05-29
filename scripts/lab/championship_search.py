@@ -517,22 +517,55 @@ def _fmt(v: Any, default: str = "n/a") -> str:
 
 
 def _ticker_metadata(ticker: str) -> Dict[str, str]:
-    """Look up sector / market-cap / ADV / vol-decile / beta if available.
+    """Look up sector / market-cap / ADV / vol-decile / beta for the championship file.
 
-    These come from `lab.indicator_hardening_runner` cache where present; otherwise
-    placeholders are inserted and flagged for backfill.
+    Delegates to `lab.championship_metadata.enrich_metadata`, which pulls:
+      sector     ← S&P GICS Sector (canonical from sp500_constituents-detailed.csv)
+      mcap       ← shares_outstanding × last_close
+      adv_20d    ← mean(volume[-20:]) from yfinance_5yr daily cache
+      vol_decile ← annualized realized vol → decile within 502-universe distribution
+      beta       ← 60-day OLS regression of ticker returns vs SPY returns
+
+    Falls back to placeholders if the enricher import fails (e.g. running in an
+    isolated context without the lab module). The championship file STILL gets
+    written either way — the values just degrade to 'unknown_pending_metadata_backfill'
+    so the downstream backfill pass can patch them in later.
     """
-    # Try lab.knowledge.inventory or similar; for now return placeholders that the
-    # downstream orchestrator can patch. The championship file STILL gets written
-    # so this isn't a hard blocker — the values are tagged 'unknown' which is
-    # honest given current data access.
-    return {
-        "sector": "unknown_pending_metadata_backfill",
-        "mcap": "unknown_pending_metadata_backfill",
-        "adv": "unknown_pending_metadata_backfill",
-        "vol_decile": "unknown_pending_metadata_backfill",
-        "beta": "unknown_pending_metadata_backfill",
-    }
+    try:
+        from . import championship_metadata as _cm  # type: ignore
+    except ImportError:
+        try:
+            import championship_metadata as _cm  # type: ignore
+        except ImportError as e:
+            print(f"  [championship] enricher unavailable ({e}) — placeholders inserted",
+                  flush=True)
+            return {
+                "sector": "unknown_pending_metadata_backfill",
+                "mcap": "unknown_pending_metadata_backfill",
+                "adv": "unknown_pending_metadata_backfill",
+                "vol_decile": "unknown_pending_metadata_backfill",
+                "beta": "unknown_pending_metadata_backfill",
+            }
+    try:
+        m = _cm.enrich_metadata(ticker, formatted=True)
+        return {
+            "sector": m.get("sector") or "unknown",
+            "mcap": m.get("mcap") or "unknown",
+            "adv": m.get("adv_20d") or "unknown",
+            "vol_decile": m.get("vol_decile") or "unknown",
+            "beta": m.get("beta") or "unknown",
+        }
+    except Exception as e:
+        # Honest degradation: enricher had a runtime error, mark for backfill.
+        print(f"  [championship] enrich_metadata({ticker}) raised {type(e).__name__}: {e}",
+              flush=True)
+        return {
+            "sector": "unknown_pending_metadata_backfill",
+            "mcap": "unknown_pending_metadata_backfill",
+            "adv": "unknown_pending_metadata_backfill",
+            "vol_decile": "unknown_pending_metadata_backfill",
+            "beta": "unknown_pending_metadata_backfill",
+        }
 
 
 def write_championship_file(ticker: str, best_result: dict) -> List[str]:
@@ -616,9 +649,15 @@ def write_championship_file(ticker: str, best_result: dict) -> List[str]:
               f"per-ticker variants tested.")
     md.append(f"- Cohort-level validation is a robustness diagnostic, not the primary "
               f"report — the unit of mastery is THIS ticker.")
-    md.append(f"- Metadata items 2-6 marked 'unknown_pending_metadata_backfill' will be "
-              f"filled by a separate metadata enrichment pass (sector/mcap/ADV "
-              f"sourced from sp500_universe.csv when accessible).")
+    if any(str(v).startswith("unknown_pending_metadata_backfill") for v in meta.values()):
+        md.append(f"- Metadata items 2-6 marked 'unknown_pending_metadata_backfill' will be "
+                  f"filled by a separate metadata enrichment pass — run "
+                  f"`python -m lab.championship_metadata --tickers {ticker_u} --backfill`.")
+    else:
+        md.append(f"- Metadata items 2-6 enriched at write time by "
+                  f"`lab.championship_metadata.enrich_metadata` (sector from S&P GICS, "
+                  f"mcap = shares_outstanding × last_close, ADV from 20-day yfinance "
+                  f"volume, vol decile within 502-universe, beta vs SPY).")
     body = "\n".join(md) + "\n"
 
     paths_written: List[str] = []
