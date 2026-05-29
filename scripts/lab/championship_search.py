@@ -87,8 +87,25 @@ _TF_STACK_BY_SEED = {
     "ORB_MORNING":   ["5min", "5min", "1d"],   # 1min unavailable — see note
     "VWAP_MTF":      ["5min", "15min", "1h"],
     "GOV_AWARE":     ["5min", "1h",    "1d"],
+    # GOV_AWARE_v2 (task #56) — numeric alt-data tokens. Runs on daily TF
+    # because numeric alt-data series (Form 4 cluster score, congress lead-lag,
+    # news velocity Z) are bar-timestamp-keyed and disclose at day-level
+    # granularity. Multi-TF for v2 is deferred to a follow-up task.
+    "GOV_AWARE_v2":  ["1d"],
     "HYBRID_REGIME": ["5min", "1h",    "1d"],
 }
+
+# Cross-asset gate variants (task #57). One per perturbation index; the
+# variant_generator picks one from this list per seed variant. The TRUE entry
+# is the default-on noop (=> no extra filter, same as legacy behavior).
+_CROSS_ASSET_GATE_VARIANTS: List[str] = [
+    "TRUE",                              # 0 — noop (back-compat)
+    "vix_term_struct > 1.0",             # 1 — contango (risk-on)
+    "vix_term_struct < 1.0",             # 2 — backwardation (risk-off)
+    "sector_rs_rank <= 3",               # 3 — ticker in top 3 of its sector
+    "hyg_lqd_ratio > 0",                 # 4 — credit risk-on
+    "abs_spy_beta_60d > 0.5",            # 5 — non-trivial market exposure
+]
 
 # 5 seed templates derived from Mission 12's agent_assignment_plan('A').
 # Each template encodes the agent's archetype as a runnable hypothesis dict.
@@ -209,6 +226,41 @@ _SEED_TEMPLATES = [
             "1H — resampled from 5min on the fly",
             "edgar (lab.knowledge.edgar.get_form4) — Form 4 insider transactions "
             "[backfill pending — overlay token resolves to False until landed]",
+        ],
+    },
+    {
+        "seed_id": "GOV_AWARE_v2",
+        "theory": (
+            "Catalyst-confirmed momentum (NUMERIC alt-data, task #56) — Form 4 insider "
+            "cluster score + congress lead-lag trigger, news velocity Z + dark-pool "
+            "divergence Z confirmation, 8K pulse / ADX regime gate. Numeric tokens "
+            "compare via thresholds and degrade NaN→0 (no signal) where the source "
+            "is missing, vs. v1's boolean tokens which silently return False."
+        ),
+        "side": "long",
+        # Daily TF only — numeric alt-data series are bar-keyed at daily granularity.
+        # ADX gate is the OHLCV anchor; 8k_pulse < 3 keeps the regime from firing
+        # during catalyst-overload chop (e.g. earnings + 10-K + 8-K in the same week).
+        "regime_gate": "ADX(14) > {adx_thresh} AND 8k_pulse < 3",
+        "bias_filter": "EMA({ema_fast}) > EMA({ema_slow})",
+        # Numeric trigger: ANY insider cluster OR recent congress disclosure.
+        # form4_insider_cluster_score > 50 = meaningful insider conviction
+        # congress_lead_lag < 15 = disclosure within last 15 days
+        "trigger": "form4_insider_cluster_score > 50 OR congress_lead_lag < 15",
+        # Numeric confirmation: news flow surge OR institutional positioning shift.
+        # news_velocity_zscore > 1.5 = catalyst-grade news flow
+        # dark_pool_divergence_z < -1.5 = dark-pool short-volume z-score collapse
+        "confirmation": "news_velocity_zscore > 1.5 OR dark_pool_divergence_z < -1.5",
+        "timing": "RSI(14) > 45",
+        "exit": "{atr_mult} * ATR(14) trailing stop",
+        "no_trade": "ADX(14) < 15",
+        "data_sources": [
+            "yfinance_daily_5yr cache (OHLCV anchor)",
+            "indicator_compute_altdata.form4_insider_cluster_score (edgar Form 4)",
+            "indicator_compute_altdata.congress_lead_lag (govtrades congress disclosures)",
+            "indicator_compute_altdata.news_velocity_zscore (news 7d-vs-90d Z)",
+            "indicator_compute_altdata.dark_pool_divergence_z (FINRA offexchange)",
+            "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
         ],
     },
     {
@@ -411,18 +463,30 @@ def variant_generator(ticker: str, n: int, priors: Optional[dict] = None) -> Ite
                 seen.append(t)
         tf_stack = seen
         primary_tf = tf_stack[0]
-        for p in _stratified_perturb_samples(cnt, priors=priors):
+        for perturb_idx, p in enumerate(_stratified_perturb_samples(cnt, priors=priors)):
             seq += 1
             tmpl = _format_template(seed, p)
             sap_id = f"SAP-{ticker.upper()}-{seq:03d}"
+            # Cross-asset gate (task #57): assign one perturbation per variant by
+            # stepping through _CROSS_ASSET_GATE_VARIANTS. Variant 0 is the legacy
+            # noop (TRUE) — preserves back-compat for the first variant per seed.
+            # GOV_AWARE_v2 (numeric) skips the noop and starts at idx 1 so EVERY
+            # v2 variant exercises an actual cross-asset filter — matches the task
+            # spec "≥1 variant per seed uses a cross_asset_gate".
+            if seed["seed_id"] == "GOV_AWARE_v2":
+                xa_idx = 1 + (perturb_idx % (len(_CROSS_ASSET_GATE_VARIANTS) - 1))
+            else:
+                xa_idx = perturb_idx % len(_CROSS_ASSET_GATE_VARIANTS)
+            cross_asset_gate = _CROSS_ASSET_GATE_VARIANTS[xa_idx]
             variant = {
                 "id": sap_id,
                 "name": f"{seed['seed_id']} @ ADX>{p['adx_thresh']} EMA({p['ema_fast']}/{p['ema_slow']}) "
-                        f"Donch{p['donch']} {p['atr_mult']}xATR  TF={'>'.join(tf_stack)}",
+                        f"Donch{p['donch']} {p['atr_mult']}xATR  TF={'>'.join(tf_stack)} XA={xa_idx}",
                 "thesis": (
                     f"Per-ticker championship variant for {ticker} seeded from "
                     f"Mission 12 agent grid '{seed['seed_id']}' "
-                    f"(MTF stack: {' / '.join(tf_stack)}): {seed['theory']}"
+                    f"(MTF stack: {' / '.join(tf_stack)}, XA-gate: {cross_asset_gate}): "
+                    f"{seed['theory']}"
                 ),
                 "parent_seed_id": seed["seed_id"],
                 "perturb_params": p,
@@ -435,6 +499,9 @@ def variant_generator(ticker: str, n: int, priors: Optional[dict] = None) -> Ite
                 "exit": tmpl.get("exit", "FALSE"),
                 "no_trade": tmpl.get("no_trade", "FALSE"),
                 "side": tmpl.get("side", "long"),
+                # Cross-asset regime gate (task #57). Evaluated by hypothesis_runner
+                # via _XSymResolver and AND'd onto regime_gate. TRUE = noop.
+                "cross_asset_gate": cross_asset_gate,
                 # Required gate fields
                 "cost": "5bps_per_side",
                 "universe": f"single_ticker:{ticker.upper()}",
