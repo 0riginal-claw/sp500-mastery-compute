@@ -849,10 +849,21 @@ class _AltDataResolver:
     # ---- source loaders (cached) ----
     def _load_edgar_form(self, form_code: str) -> "pd.DataFrame":
         """Pull a single form type out of EDGAR. ``form_code`` is the value stored
-        in the ``form`` column (e.g. ``'8-K'``, ``'4'``)."""
+        in the ``form`` column (e.g. ``'8-K'``, ``'4'``).
+
+        Cache order: instance (this resolver only) → module-level (cross-variant) → fetch.
+        """
         key = f"edgar:{form_code}"
         if key in self._source_cache:
             return self._source_cache[key]
+        # Cross-variant cache: same ticker + same source already fetched by a sibling
+        # resolver instance in this process → reuse without touching sqlite again.
+        cached = _altdata_cache_get(self.ticker, key)
+        if cached is not None:
+            self._source_cache[key] = cached
+            self._diagnostics.setdefault("source_rows", {})[key] = int(len(cached))
+            self._diagnostics.setdefault("cache_hits", []).append(key)
+            return cached
         # Resolve via wrapper if it works; otherwise direct SQLite over the EDGAR db.
         rows: List[Dict[str, Any]] = []
         try:
@@ -876,6 +887,7 @@ class _AltDataResolver:
             df["filed_at"] = pd.to_datetime(df["filed_at"], errors="coerce")
             df = df.dropna(subset=["filed_at"]).sort_values("filed_at")
         self._source_cache[key] = df
+        _altdata_cache_set(self.ticker, key, df)
         self._diagnostics.setdefault("source_rows", {})[key] = int(len(df))
         return df
 
@@ -883,6 +895,12 @@ class _AltDataResolver:
         key = "govtrades:congress"
         if key in self._source_cache:
             return self._source_cache[key]
+        cached = _altdata_cache_get(self.ticker, key)
+        if cached is not None:
+            self._source_cache[key] = cached
+            self._diagnostics.setdefault("source_rows", {})[key] = int(len(cached))
+            self._diagnostics.setdefault("cache_hits", []).append(key)
+            return cached
         df = pd.DataFrame()
         wrapper_err: Optional[str] = None
         try:
@@ -922,6 +940,7 @@ class _AltDataResolver:
             df = df.assign(_disclosure_date=disclosure)
             df = df.dropna(subset=["_disclosure_date"]).sort_values("_disclosure_date")
         self._source_cache[key] = df
+        _altdata_cache_set(self.ticker, key, df)
         self._diagnostics.setdefault("source_rows", {})[key] = int(len(df))
         return df
 
@@ -929,6 +948,12 @@ class _AltDataResolver:
         key = "govtrades:offexchange"
         if key in self._source_cache:
             return self._source_cache[key]
+        cached = _altdata_cache_get(self.ticker, key)
+        if cached is not None:
+            self._source_cache[key] = cached
+            self._diagnostics.setdefault("source_rows", {})[key] = int(len(cached))
+            self._diagnostics.setdefault("cache_hits", []).append(key)
+            return cached
         df = pd.DataFrame()
         wrapper_err: Optional[str] = None
         try:
@@ -962,6 +987,7 @@ class _AltDataResolver:
         if not df.empty:
             df = df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
         self._source_cache[key] = df
+        _altdata_cache_set(self.ticker, key, df)
         self._diagnostics.setdefault("source_rows", {})[key] = int(len(df))
         return df
 
@@ -969,6 +995,12 @@ class _AltDataResolver:
         key = "news"
         if key in self._source_cache:
             return self._source_cache[key]
+        cached = _altdata_cache_get(self.ticker, key)
+        if cached is not None:
+            self._source_cache[key] = cached
+            self._diagnostics.setdefault("source_rows", {})[key] = int(len(cached))
+            self._diagnostics.setdefault("cache_hits", []).append(key)
+            return cached
         df = pd.DataFrame()
         try:
             from knowledge import news as _news  # type: ignore
@@ -990,6 +1022,7 @@ class _AltDataResolver:
             df["published_utc"] = df["published_utc"].dt.tz_localize(None)
             df = df.dropna(subset=["published_utc"]).sort_values("published_utc").reset_index(drop=True)
         self._source_cache[key] = df
+        _altdata_cache_set(self.ticker, key, df)
         self._diagnostics.setdefault("source_rows", {})[key] = int(len(df))
         return df
 
@@ -1160,6 +1193,48 @@ class _AltDataResolver:
         thresh = s.shift(1).rolling(252, min_periods=30).quantile(percentile / 100.0)
         out = (s > thresh).fillna(False).to_numpy().astype(bool)
         return out
+
+    @classmethod
+    def _bulk_prefetch(cls, ticker: str, bar_timestamps: "pd.DatetimeIndex",
+                       lookback_pad_days: int = 400) -> Dict[str, int]:
+        """Prime the cross-variant fetch cache for `ticker`.
+
+        Creates a throwaway resolver instance and triggers every source loader so
+        all 4 source DataFrames (edgar:4, edgar:8-K, govtrades:congress,
+        govtrades:offexchange, news) end up in `_ALTDATA_FETCH_CACHE`. Subsequent
+        resolver instances for the same ticker (e.g. across PBO variants in
+        championship_search) will short-circuit on the cache instead of re-hitting
+        sqlite.
+
+        Returns: dict of source_kind → row count (or 0 on error). Safe to call
+        multiple times — each loader checks the module cache first.
+        """
+        try:
+            r = cls(ticker, bar_timestamps, lookback_pad_days=lookback_pad_days)
+        except Exception:
+            return {}
+        result: Dict[str, int] = {}
+        try:
+            result["edgar:4"] = int(len(r._load_edgar_form("4")))
+        except Exception:
+            result["edgar:4"] = 0
+        try:
+            result["edgar:8-K"] = int(len(r._load_edgar_form("8-K")))
+        except Exception:
+            result["edgar:8-K"] = 0
+        try:
+            result["govtrades:congress"] = int(len(r._load_congress()))
+        except Exception:
+            result["govtrades:congress"] = 0
+        try:
+            result["govtrades:offexchange"] = int(len(r._load_offexchange()))
+        except Exception:
+            result["govtrades:offexchange"] = 0
+        try:
+            result["news"] = int(len(r._load_news()))
+        except Exception:
+            result["news"] = 0
+        return result
 
 
 class _AltDataUnknownToken(Exception):
@@ -2090,10 +2165,21 @@ def run_hypothesis_for_ticker(
             bar_ts_obj = _load_bar_timestamps(ticker)
     if _hypothesis_uses_alt_data(hypothesis):
         if bar_ts_obj is not None and len(bar_ts_obj) == len(bars["close"]):
+            # Bulk-prefetch alt-data sources ONCE per ticker so subsequent variants
+            # in the same championship_search loop reuse cached DataFrames instead
+            # of re-hitting sqlite. No-op for tickers already cached this process.
+            try:
+                _AltDataResolver._bulk_prefetch(ticker, bar_ts_obj)
+            except Exception as _bp_e:  # noqa: BLE001 — defensive: don't break runner on cache failure
+                print(f"  [altdata_cache] bulk prefetch warn for {ticker}: {_bp_e}", flush=True)
             alt_resolver = _AltDataResolver(ticker, bar_ts_obj)
         # else: tokens degrade to all-False (no signal)
     if _hypothesis_uses_altdata_numeric(hypothesis):
         if bar_ts_obj is not None and len(bar_ts_obj) == len(bars["close"]):
+            # Numeric resolver dispatches into lab.indicator_compute_altdata which has its
+            # own module-level _ALTDATA_FETCH_CACHE — the indicator functions consult that
+            # cache before sqlite. No explicit prefetch is required (each indicator triggers
+            # exactly one fetch per source on first call); cross-variant calls hit cache.
             try:
                 altdata_numeric_resolver = _AltDataNumericResolver(ticker, bar_ts_obj)
             except Exception as e:
