@@ -147,14 +147,70 @@ def verify_kill_criterion() -> dict[str, Any]:
 
 
 def verify_dsmb_charter() -> dict[str, Any]:
+    """DSMB charter PRESENT when all four parts exist:
+      1. Frozen rubric — reports/adjudicator_rubric.md
+      2. Panel script  — s&p500-ticker-mastery/scripts/dsmb_lite.py
+      3. PreToolUse hook — home/.claude/hooks/dsmb-lite-gate/check.sh
+      4. Settings registration — ClaudeCode/config/settings.json contains
+         the hook command in PreToolUse
+    """
+    rubric = REPORTS / "adjudicator_rubric.md"
+    panel = PROJECT / "scripts" / "dsmb_lite.py"
+    hook = DRIVE_BASE / "AI-Tools" / "home" / ".claude" / "hooks" / "dsmb-lite-gate" / "check.sh"
+    settings = DRIVE_BASE / "AI-Tools" / "ClaudeCode" / "config" / "settings.json"
+
+    parts = {
+        "rubric": rubric,
+        "panel": panel,
+        "hook": hook,
+        "settings": settings,
+    }
+    missing = [k for k, p in parts.items() if not p.exists()]
+
+    # Verify hook is actually registered in settings.json
+    registered = False
+    if settings.exists():
+        try:
+            import json as _json
+            s = _json.loads(settings.read_text(encoding="utf-8"))
+            for entry in s.get("hooks", {}).get("PreToolUse", []) or []:
+                for h in entry.get("hooks", []) or []:
+                    if "dsmb-lite-gate" in str(h.get("command", "")):
+                        registered = True
+                        break
+                if registered:
+                    break
+        except (OSError, ValueError):
+            pass
+    if not registered:
+        missing.append("settings_registration")
+
+    files_present = [str(p) for k, p in parts.items() if k not in missing and p.exists()]
+    if missing:
+        return _record(
+            "MISSING",
+            files=files_present,
+            missing=missing,
+            note=(
+                "DSMB charter incomplete. Missing parts: " + ", ".join(missing) + ". "
+                "R4 chairman demand: independent adjudicator must be wired before "
+                "any SAP promotion to paper."
+            ),
+        )
+
     return _record(
-        "MISSING",
-        files=[],
+        "PRESENT",
+        files=files_present,
+        sha256={
+            "adjudicator_rubric.md": sha256_file(rubric),
+            "dsmb_lite.py": sha256_file(panel),
+            "dsmb-lite-gate/check.sh": sha256_file(hook),
+        },
         note=(
-            "DSMB charter / independent adjudicator process NOT BUILT. R4 chairman "
-            "flagged: not earned the right to skip. Required before any SAP promotion "
-            "to paper trading. Next action: draft charter (who adjudicates, when, "
-            "what authority to halt a champion)."
+            "DSMB-Lite independent adjudicator wired: frozen rubric + 3-advisor "
+            "DeepSeek panel + PreToolUse hook gating paper_trade.commit / "
+            "promote_to_paper / cohort:paper writes. Registered in settings.json. "
+            "Decisions persisted to state/dsmb_lite/decisions/."
         ),
     )
 
