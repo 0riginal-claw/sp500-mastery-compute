@@ -134,6 +134,39 @@ def _normalize_tf(tf: str) -> str:
     return _TF_ALIASES[k]
 
 
+def _candidate_5min_dirs(ticker: str) -> List[Path]:
+    """Return the ordered fallback chain of candidate 5min-parquet directories.
+
+    Walks (first hit wins; "hit" means dir exists AND contains >=1 *.parquet):
+      1. env override ``OHLC_BASE`` — if set, looks for ``$OHLC_BASE/5Min/<TICKER>/``
+         or ``$OHLC_BASE/Minutes TimeFrames/5Min/<TICKER>/`` (either layout).
+      2. Gabriel PRIMARY store — canonical 502-ticker x 62-monthly-parquet tree
+         at ``…/My Drive/version_3 - Gabriel/Gabriel_Alpaca TimeFrames/Minutes TimeFrames/5Min/<TICKER>/``.
+      3. ``_ALPACA_5YR_LOCAL`` 2TB SSD mirror at ``/Volumes/ZG-2TB/zg/cache/alpaca_5yr/5Min/<TICKER>/``
+         — populated for a small subset (~5 tickers as of 2026-05-29 audit) but FAST when present.
+
+    History: prior to 2026-05-29, the dispatch path ran local SSD FIRST, but the local
+    mirror was sparse (5/502 tickers); 497 tickers fell through to an empty dir-check
+    that returned None silently. Gabriel-first ensures correctness at the cost of FUSE
+    latency (~30s for a full concat vs <1s for local). Both layers stay so tickers
+    actually present locally still get the fast path.
+    """
+    import os as _os
+    cands: List[Path] = []
+    env = _os.environ.get("OHLC_BASE")
+    if env:
+        env_p = Path(env)
+        # Accept either layout: env points at a dir containing "5Min/<TICKER>"
+        # OR at a dir containing "Minutes TimeFrames/5Min/<TICKER>".
+        cands.append(env_p / "5Min" / ticker.upper())
+        cands.append(env_p / "Minutes TimeFrames" / "5Min" / ticker.upper())
+    # PRIMARY: Gabriel canonical store
+    cands.append(_ALPACA_5YR_DRIVE / "Minutes TimeFrames" / "5Min" / ticker.upper())
+    # FALLBACK: 2TB local SSD mirror (sparse — may not exist for this ticker)
+    cands.append(_ALPACA_5YR_LOCAL / "5Min" / ticker.upper())
+    return cands
+
+
 def _load_alpaca_5min_concat(ticker: str) -> Optional["pd.DataFrame"]:
     """Concat all monthly 5min parquet files for a ticker into one DataFrame.
 
@@ -141,15 +174,21 @@ def _load_alpaca_5min_concat(ticker: str) -> Optional["pd.DataFrame"]:
     close, volume]. Schema mirrors the alpaca alpaca_5yr cache (timestamp tz-aware
     UTC — stripped to tz-naive for downstream join-friendliness).
 
-    Returns None if no parquets exist.
+    Walks the fallback chain from ``_candidate_5min_dirs`` (env -> Gabriel -> local
+    SSD). Returns None if no candidate path holds any parquets — caller is
+    responsible for raising or skipping.
     """
-    base_local = _ALPACA_5YR_LOCAL / "5Min" / ticker.upper()
-    base_drive = _ALPACA_5YR_DRIVE / "Minutes TimeFrames" / "5Min" / ticker.upper()
-    base = base_local if base_local.is_dir() else base_drive
-    if not base.is_dir():
-        return None
-    parquets = sorted(base.glob("*.parquet"))
-    if not parquets:
+    base: Optional[Path] = None
+    parquets: List[Path] = []
+    for cand in _candidate_5min_dirs(ticker):
+        if not cand.is_dir():
+            continue
+        found = sorted(cand.glob("*.parquet"))
+        if found:
+            base = cand
+            parquets = found
+            break
+    if base is None or not parquets:
         return None
     frames = []
     for p in parquets:
