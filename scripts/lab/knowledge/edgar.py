@@ -50,15 +50,24 @@ def _underlying():
 
 
 def get_filings(ticker: str, start: Optional[str] = None,
-                end: Optional[str] = None, form: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Get filings for a ticker. Forwards to edgar_cache_loader.get_filings if available."""
+                end: Optional[str] = None, form: Optional[str] = None,
+                form_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Get filings for a ticker. Forwards to edgar_cache_loader.get_filings if available.
+
+    The outward-facing kwarg ``form=`` is preserved for backward compatibility and is
+    aliased to ``form_type=`` (the underlying ``EdgarCache.get_filings`` signature).
+    Callers may pass either ``form=`` or ``form_type=``; if both are given,
+    ``form_type=`` wins.
+    """
+    # Alias: prefer explicit form_type, fall back to form for back-compat.
+    _form_type = form_type if form_type is not None else form
     u = _underlying()
     if u and hasattr(u, "get_filings"):
-        return u.get_filings(ticker, start=start, end=end, form=form)
+        return u.get_filings(ticker, start=start, end=end, form_type=_form_type)
     if u and hasattr(u, "EdgarCache"):
-        # Older API may expose a class
-        cache = u.EdgarCache()
-        return cache.get_filings(ticker, start=start, end=end, form=form)
+        # Underlying API exposes a classmethod on EdgarCache.
+        cache = u.EdgarCache
+        return cache.get_filings(ticker, form_type=_form_type, start=start, end=end)
     raise NotImplementedError(
         "edgar_cache_loader not importable from this context. "
         "Ensure scripts/ is on PYTHONPATH or call from a sibling script."
