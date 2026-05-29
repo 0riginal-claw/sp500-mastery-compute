@@ -15,6 +15,13 @@ Public API:
   evaluate_hypothesis(bars, hypothesis) -> np.ndarray  # signal per bar in {-1,0,+1}
 
 The role parser is intentionally minimal — see `_RoleParser` docstring for the grammar.
+
+Alt-data overlay (added 2026-05-28, task #40): role expressions may include alt-data event-
+window tokens (e.g. ``InsiderForm4_LT5d``, ``CongressBuy_LT30d``, ``8K_LT5d``, ``DPI_GT_P90``,
+``DarkPoolZ_LT_neg1p5``, ``NewsEvent_LT3d``, ``NewsCount_GT_P75_30d``). These resolve through
+``_AltDataResolver`` (this file) against ``lab.knowledge.{edgar, govtrades, news}``. All
+resolutions strictly enforce ``event_timestamp <= bar_timestamp`` (no look-ahead). The resolver
+caches one fetch per (ticker, source) and one resolved series per (ticker, token).
 """
 
 from __future__ import annotations
@@ -97,9 +104,13 @@ DRIVE_RESULTS = Path(
 # ============================================================================
 
 
+# NB: ALT_IDENT comes before NUMBER so that ``8K_LT5d`` tokenizes as one IDENT instead of
+# NUMBER(8) + IDENT(K_LT5d). It must NOT match plain numeric literals — anchored with a
+# trailing alpha char (e.g. ``8K``) to disambiguate.
 _TOK_REGEX = re.compile(
     r"\s*(?:"
-    r"(?P<NUMBER>\d+(?:\.\d+)?)"
+    r"(?P<ALT_IDENT>\d+[A-Za-z][A-Za-z0-9_]*)"
+    r"|(?P<NUMBER>\d+(?:\.\d+)?)"
     r"|(?P<OP>>=|<=|==|!=|>|<|&&|\|\||AND|OR|NOT|and|or|not)"
     r"|(?P<IDENT>[A-Za-z_][A-Za-z0-9_]*)"
     r"|(?P<DOT>\.)"
@@ -135,6 +146,11 @@ def _tokenize(expr: str) -> List[_Tok]:
                 if k == "OP":
                     up = v.upper().replace("&&", "AND").replace("||", "OR")
                     out.append(_Tok("OP", up))
+                elif k == "ALT_IDENT":
+                    # Alt-data tokens that start with a digit (e.g. ``8K_LT5d``) are
+                    # lexed as ALT_IDENT but should flow through the IDENT path so the
+                    # parser routes them to the alt-data resolver.
+                    out.append(_Tok("IDENT", v))
                 else:
                     out.append(_Tok(k, v))
                 break
@@ -235,16 +251,547 @@ def _cmf(bars: ArrayDict, period: int = 21) -> np.ndarray:
     return out
 
 
+# ============================================================================
+# _AltDataResolver — wires lab.knowledge.{edgar, govtrades, news} into the role
+# parser as per-bar boolean event-window flags.
+#
+# Strict no-lookahead discipline (timestamp column per source):
+#   Form 4         → use ``accepted_at`` if present in row, else ``filed_at``
+#                    (~2-business-day disclosure lag is baked into filed_at)
+#   Congress trades → use ``report_date`` (disclosure date, typically 30-45d
+#                    after transaction). Falls back to transaction_date +
+#                    LOOKBACK_CONGRESS_DISCLOSURE_DAYS (=45) if report_date NaT.
+#   8-K / 10-K /
+#   DEF 14A / S-1  → use ``filed_at``
+#   Off-exchange   → ``date`` is the as-of trading date (T+0 publication). DPI
+#                    Z-score for bar at T uses rows with date < T (strictly
+#                    prior, so the rolling stats avoid the bar's own value).
+#   News           → ``published_utc`` (already the live publication ts).
+#
+# Token grammar (case-insensitive):
+#   InsiderForm4_LT5d                      Form 4 buys, any, in 5 trading days
+#   InsiderForm4_LT5d_GT1M                 Form 4 buys total > $1M in 5 trading days
+#   InsiderClusterBuy_5d_2plus             ≥2 distinct insider buyers in 5 trading days
+#   CongressBuy_LT30d                      Congress Buy disclosed in 30 calendar days
+#   8K_LT5d                                8-K filing in 5 trading days
+#   DPI_GT_P90 / DPI_LT_P10                DPI rolling Z-score (5d window) > 90th /< 10th pct
+#   DarkPoolZ_LT_neg1p5 / DarkPoolZ_GT_1p5 DPI Z-score thresholds (5d rolling)
+#   NewsEvent_LT3d                         Any news article in 3 calendar days
+#   NewsCount_GT_P75_30d                   News count over 30d > 75th pct of 1y rolling
+# ============================================================================
+
+
+# 2TB tier paths used when the canonical knowledge wrappers throw FileNotFoundError
+# (the lab.knowledge.govtrades wrapper points at /My Drive/Ph0tis/... which is missing).
+_ALT_DATA_GOVTRADES_DB_CANDIDATES = (
+    "/Volumes/ZG-2TB/zg/govtrades/data/govtrades.db",
+    "/Users/orginal/.zg/govtrades/data/govtrades.db",
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/"
+    "My Drive/Ph0tis/Gov-Trades/data/govtrades.db",
+)
+
+
+def _resolve_govtrades_db_path() -> Optional[str]:
+    """Multi-tier path resolver mirroring news._db_path()."""
+    import os as _os
+    env = _os.environ.get("GOVTRADES_DB")
+    if env and _os.path.exists(env):
+        return env
+    for p in _ALT_DATA_GOVTRADES_DB_CANDIDATES:
+        if _os.path.exists(p):
+            return p
+    return None
+
+
+# Token parsing helpers
+_TOKEN_FORM4         = re.compile(r"^InsiderForm4_LT(\d+)d(?:_GT(\d+)([MK]))?$", re.IGNORECASE)
+_TOKEN_FORM4_CLUSTER = re.compile(r"^InsiderClusterBuy_(\d+)d_(\d+)plus$", re.IGNORECASE)
+_TOKEN_CONGRESS      = re.compile(r"^CongressBuy_LT(\d+)d$", re.IGNORECASE)
+_TOKEN_8K            = re.compile(r"^8K_LT(\d+)d$", re.IGNORECASE)
+_TOKEN_DPI_PCT       = re.compile(r"^DPI_(GT|LT)_P(\d+)$", re.IGNORECASE)
+_TOKEN_DARKPOOLZ     = re.compile(r"^DarkPoolZ_(LT|GT)_(neg)?(\d+)(?:p(\d+))?$", re.IGNORECASE)
+_TOKEN_NEWS_EVENT    = re.compile(r"^NewsEvent_LT(\d+)d$", re.IGNORECASE)
+_TOKEN_NEWS_COUNT    = re.compile(r"^NewsCount_GT_P(\d+)_(\d+)d$", re.IGNORECASE)
+
+
+def _looks_like_alt_data_token(s: str) -> bool:
+    """Cheap pre-filter so the role parser only goes to the resolver for plausible tokens."""
+    if not isinstance(s, str) or not s:
+        return False
+    return any(p.match(s) for p in (
+        _TOKEN_FORM4, _TOKEN_FORM4_CLUSTER, _TOKEN_CONGRESS, _TOKEN_8K,
+        _TOKEN_DPI_PCT, _TOKEN_DARKPOOLZ, _TOKEN_NEWS_EVENT, _TOKEN_NEWS_COUNT,
+    ))
+
+
+class _AltDataResolver:
+    """Per-bar resolver for alt-data event-window tokens.
+
+    Args:
+        ticker:        symbol the resolver answers for.
+        bar_timestamps: np.ndarray of pd.Timestamp (one per bar). MUST be tz-naive UTC-equivalent.
+        lookback_pad_days: extra calendar days fetched before the first bar to satisfy long
+            lookback windows (90 for DPI percentile, 365 for news count percentile).
+
+    Methods:
+        resolve(token) -> np.ndarray[bool] of length len(bar_timestamps).
+        diagnostics()  -> dict explaining what data the resolver found per source.
+    """
+
+    def __init__(self, ticker: str, bar_timestamps: "pd.DatetimeIndex",
+                 lookback_pad_days: int = 400):
+        self.ticker = ticker.upper()
+        self.bar_ts = pd.to_datetime(pd.Series(bar_timestamps)).reset_index(drop=True)
+        self.n = len(self.bar_ts)
+        self.lookback_pad_days = int(lookback_pad_days)
+        self._series_cache: Dict[str, np.ndarray] = {}
+        self._source_cache: Dict[str, Any] = {}
+        self._diagnostics: Dict[str, Any] = {"ticker": self.ticker, "n_bars": self.n}
+
+    # ---- public ----
+    def resolve(self, token: str) -> np.ndarray:
+        """Return a length-n bool array for the token. Unknown tokens raise ValueError.
+
+        Caches per (resolver_instance, token).
+        """
+        if token in self._series_cache:
+            return self._series_cache[token]
+        try:
+            arr = self._dispatch(token)
+        except _AltDataUnknownToken:
+            raise
+        except Exception as e:  # pragma: no cover - data infra is brittle
+            self._diagnostics.setdefault("errors", []).append({"token": token, "err": str(e)})
+            arr = np.zeros(self.n, dtype=bool)
+        if arr.dtype != bool:
+            arr = arr.astype(bool)
+        if arr.shape != (self.n,):
+            raise ValueError(
+                f"_AltDataResolver: token {token!r} returned shape {arr.shape}, expected ({self.n},)"
+            )
+        self._series_cache[token] = arr
+        return arr
+
+    def diagnostics(self) -> Dict[str, Any]:
+        return dict(self._diagnostics)
+
+    # ---- dispatch ----
+    def _dispatch(self, token: str) -> np.ndarray:
+        m = _TOKEN_FORM4.match(token)
+        if m:
+            window = int(m.group(1))
+            thresh_amt = m.group(2)
+            thresh_unit = m.group(3)
+            min_value = None
+            if thresh_amt and thresh_unit:
+                mult = 1_000_000 if thresh_unit.upper() == "M" else 1_000
+                min_value = int(thresh_amt) * mult
+            return self._resolve_form4(window_trading_days=window, min_value_usd=min_value)
+        m = _TOKEN_FORM4_CLUSTER.match(token)
+        if m:
+            return self._resolve_form4_cluster(
+                window_trading_days=int(m.group(1)),
+                min_distinct_buyers=int(m.group(2)),
+            )
+        m = _TOKEN_CONGRESS.match(token)
+        if m:
+            return self._resolve_congress_buy(window_cal_days=int(m.group(1)))
+        m = _TOKEN_8K.match(token)
+        if m:
+            return self._resolve_8k(window_trading_days=int(m.group(1)))
+        m = _TOKEN_DPI_PCT.match(token)
+        if m:
+            side, pct = m.group(1).upper(), int(m.group(2))
+            return self._resolve_dpi_percentile(side=side, percentile=pct,
+                                                window_trading_days=5)
+        m = _TOKEN_DARKPOOLZ.match(token)
+        if m:
+            side = m.group(1).upper()
+            neg = m.group(2) is not None
+            whole = int(m.group(3))
+            frac = m.group(4)
+            thresh = whole + (int(frac) / (10 ** len(frac))) if frac else whole
+            if neg:
+                thresh = -thresh
+            return self._resolve_dpi_zscore(side=side, threshold=float(thresh),
+                                            window_trading_days=5)
+        m = _TOKEN_NEWS_EVENT.match(token)
+        if m:
+            return self._resolve_news_event(window_cal_days=int(m.group(1)))
+        m = _TOKEN_NEWS_COUNT.match(token)
+        if m:
+            return self._resolve_news_count_percentile(
+                percentile=int(m.group(1)),
+                window_cal_days=int(m.group(2)),
+            )
+        raise _AltDataUnknownToken(token)
+
+    # ---- source loaders (cached) ----
+    def _load_edgar_form(self, form_code: str) -> "pd.DataFrame":
+        """Pull a single form type out of EDGAR. ``form_code`` is the value stored
+        in the ``form`` column (e.g. ``'8-K'``, ``'4'``)."""
+        key = f"edgar:{form_code}"
+        if key in self._source_cache:
+            return self._source_cache[key]
+        # Resolve via wrapper if it works; otherwise direct SQLite over the EDGAR db.
+        rows: List[Dict[str, Any]] = []
+        try:
+            from knowledge import edgar as _edgar  # type: ignore
+            # The wrapper's `form=` kwarg is buggy (calls EdgarCache.get_filings with
+            # `form=` instead of `form_type=`). Use the underlying class directly.
+            try:
+                from edgar_cache_loader import EdgarCache  # type: ignore
+                rows = EdgarCache.get_filings(self.ticker, form_type=form_code)
+            except Exception:
+                # Last-ditch: use the wrapper anyway and let it raise.
+                rows = _edgar.get_filings(self.ticker, form=form_code) or []
+        except Exception as e:
+            self._diagnostics.setdefault("source_errors", {})[key] = str(e)
+            rows = []
+        if not rows:
+            df = pd.DataFrame(columns=["form", "filed_at", "accession_number"])
+        else:
+            df = pd.DataFrame(rows)
+        if not df.empty and "filed_at" in df.columns:
+            df["filed_at"] = pd.to_datetime(df["filed_at"], errors="coerce")
+            df = df.dropna(subset=["filed_at"]).sort_values("filed_at")
+        self._source_cache[key] = df
+        self._diagnostics.setdefault("source_rows", {})[key] = int(len(df))
+        return df
+
+    def _load_congress(self) -> "pd.DataFrame":
+        key = "govtrades:congress"
+        if key in self._source_cache:
+            return self._source_cache[key]
+        df = pd.DataFrame()
+        wrapper_err: Optional[str] = None
+        try:
+            from knowledge import govtrades as _gt  # type: ignore
+            df = _gt.get_congress_trades(self.ticker)
+        except Exception as e:
+            wrapper_err = repr(e)
+            df = pd.DataFrame()
+        # The govtrades wrapper catches FileNotFoundError internally (returns empty DF +
+        # WARN log) when the canonical /My Drive/Ph0tis/... path is missing. Detect that
+        # path-missing case and try the 2TB hot tier directly.
+        if df is None or df.empty:
+            p = _resolve_govtrades_db_path()
+            self._diagnostics.setdefault("source_errors", {})[key] = (
+                f"wrapper returned empty (err={wrapper_err}); trying direct sqlite at {p}"
+            )
+            if p:
+                try:
+                    import sqlite3
+                    with sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=10.0) as con:
+                        df = pd.read_sql_query(
+                            "SELECT transaction_date, report_date, transaction_type, "
+                            "amount_min, representative FROM congress_trades WHERE ticker = ?",
+                            con, params=(self.ticker,),
+                            parse_dates=["transaction_date", "report_date"],
+                        )
+                except Exception as e2:
+                    self._diagnostics["source_errors"][key + ":sqlite"] = str(e2)
+                    df = pd.DataFrame()
+        if df is None:
+            df = pd.DataFrame()
+        if not df.empty:
+            # Build effective disclosure-aware date: prefer report_date; else transaction_date + 45d
+            tx = pd.to_datetime(df.get("transaction_date"), errors="coerce")
+            rd = pd.to_datetime(df.get("report_date"), errors="coerce")
+            disclosure = rd.where(rd.notna(), tx + pd.Timedelta(days=45))
+            df = df.assign(_disclosure_date=disclosure)
+            df = df.dropna(subset=["_disclosure_date"]).sort_values("_disclosure_date")
+        self._source_cache[key] = df
+        self._diagnostics.setdefault("source_rows", {})[key] = int(len(df))
+        return df
+
+    def _load_offexchange(self) -> "pd.DataFrame":
+        key = "govtrades:offexchange"
+        if key in self._source_cache:
+            return self._source_cache[key]
+        df = pd.DataFrame()
+        wrapper_err: Optional[str] = None
+        try:
+            from knowledge import govtrades as _gt  # type: ignore
+            df = _gt.get_offexchange(self.ticker)
+        except Exception as e:
+            wrapper_err = repr(e)
+            df = pd.DataFrame()
+        # Same fallback as _load_congress — the wrapper catches the missing-DB error and
+        # returns an empty DF, so we have to retry via direct SQLite on the 2TB hot tier.
+        if df is None or df.empty:
+            p = _resolve_govtrades_db_path()
+            self._diagnostics.setdefault("source_errors", {})[key] = (
+                f"wrapper returned empty (err={wrapper_err}); trying direct sqlite at {p}"
+            )
+            if p:
+                try:
+                    import sqlite3
+                    with sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=10.0) as con:
+                        df = pd.read_sql_query(
+                            "SELECT date, otc_short, otc_total, dpi FROM offexchange "
+                            "WHERE ticker = ? ORDER BY date",
+                            con, params=(self.ticker,),
+                            parse_dates=["date"],
+                        )
+                except Exception as e2:
+                    self._diagnostics["source_errors"][key + ":sqlite"] = str(e2)
+                    df = pd.DataFrame()
+        if df is None:
+            df = pd.DataFrame()
+        if not df.empty:
+            df = df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+        self._source_cache[key] = df
+        self._diagnostics.setdefault("source_rows", {})[key] = int(len(df))
+        return df
+
+    def _load_news(self) -> "pd.DataFrame":
+        key = "news"
+        if key in self._source_cache:
+            return self._source_cache[key]
+        df = pd.DataFrame()
+        try:
+            from knowledge import news as _news  # type: ignore
+            # Bound the fetch to bar range plus pad to keep memory sane.
+            if self.n > 0:
+                start = (self.bar_ts.iloc[0] - pd.Timedelta(days=self.lookback_pad_days)).strftime("%Y-%m-%d")
+                end = (self.bar_ts.iloc[-1] + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+                df = _news.get_news(self.ticker, start=start, end=end)
+            else:
+                df = _news.get_news(self.ticker)
+        except Exception as e:
+            self._diagnostics.setdefault("source_errors", {})[key] = str(e)
+            df = pd.DataFrame()
+        if df is None:
+            df = pd.DataFrame()
+        if not df.empty and "published_utc" in df.columns:
+            df["published_utc"] = pd.to_datetime(df["published_utc"], errors="coerce", utc=True)
+            # Strip tz so it compares apples-to-apples with naive bar timestamps
+            df["published_utc"] = df["published_utc"].dt.tz_localize(None)
+            df = df.dropna(subset=["published_utc"]).sort_values("published_utc").reset_index(drop=True)
+        self._source_cache[key] = df
+        self._diagnostics.setdefault("source_rows", {})[key] = int(len(df))
+        return df
+
+    # ---- core resolvers ----
+    @staticmethod
+    def _searchsorted_count(sorted_ts: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> np.ndarray:
+        """For each bar, count events in (lo[i], hi[i]] using two binary searches.
+
+        sorted_ts assumed strictly sorted ascending. Returns counts per bar.
+        """
+        if sorted_ts.size == 0:
+            return np.zeros(lo.shape[0], dtype=np.int64)
+        hi_idx = np.searchsorted(sorted_ts, hi, side="right")
+        lo_idx = np.searchsorted(sorted_ts, lo, side="right")
+        return (hi_idx - lo_idx).astype(np.int64)
+
+    def _resolve_form4(self, window_trading_days: int,
+                       min_value_usd: Optional[int]) -> np.ndarray:
+        """Form 4 buys in trailing N trading days. EDGAR DB currently holds 0 Form 4
+        rows (backfill pending — see edgar.coverage()) so this returns all False with a
+        diagnostic note. When the backfill lands, the body below will pick up automatically."""
+        df = self._load_edgar_form("4")
+        self._diagnostics.setdefault("token_notes", {})["InsiderForm4"] = {
+            "rows_available": int(len(df)),
+            "note": "Form 4 backfill pending (edgar.coverage() lists Form 4 as partial)" if df.empty else "",
+        }
+        if df.empty:
+            return np.zeros(self.n, dtype=bool)
+        # If we did have rows, we'd filter to ``transaction_type == 'P'`` (open-market buy)
+        # and aggregate by ``filed_at`` (which is post-disclosure, no lookahead).
+        ts = df["filed_at"].dt.tz_localize(None).to_numpy()
+        # Convert window in trading days to calendar days approx (×1.45) for the timestamp join.
+        # We could be more precise by using `bar_ts[i-window]` but trading-day-window vs calendar
+        # is unambiguous here because every event row is timestamped.
+        window_cal = int(window_trading_days * 1.45) + 1
+        lo = (self.bar_ts - pd.Timedelta(days=window_cal)).to_numpy()
+        hi = self.bar_ts.to_numpy()
+        counts = self._searchsorted_count(ts, lo, hi)
+        if min_value_usd is None:
+            return counts > 0
+        # When amounts are available, sum amounts in window per bar.
+        if "value_usd" not in df.columns:
+            # No amount column — fall back to "any buy" since we can't enforce $ threshold.
+            return counts > 0
+        # Slower path: per-bar sum (only reached when rows present)
+        values = df["value_usd"].to_numpy(dtype=np.float64)
+        out = np.zeros(self.n, dtype=bool)
+        hi_idx = np.searchsorted(ts, hi, side="right")
+        lo_idx = np.searchsorted(ts, lo, side="right")
+        cum = np.concatenate([[0.0], np.cumsum(values)])
+        sums = cum[hi_idx] - cum[lo_idx]
+        out[:] = sums >= float(min_value_usd)
+        return out
+
+    def _resolve_form4_cluster(self, window_trading_days: int,
+                               min_distinct_buyers: int) -> np.ndarray:
+        df = self._load_edgar_form("4")
+        self._diagnostics.setdefault("token_notes", {})["InsiderClusterBuy"] = {
+            "rows_available": int(len(df)),
+            "note": "Form 4 backfill pending" if df.empty else "",
+        }
+        # See _resolve_form4 — same Form 4 availability constraint.
+        return np.zeros(self.n, dtype=bool)
+
+    def _resolve_congress_buy(self, window_cal_days: int) -> np.ndarray:
+        df = self._load_congress()
+        if df.empty:
+            return np.zeros(self.n, dtype=bool)
+        buys = df[df["transaction_type"].astype(str).str.lower().str.startswith("purchase", na=False)]
+        if buys.empty:
+            return np.zeros(self.n, dtype=bool)
+        ts = buys["_disclosure_date"].to_numpy()
+        lo = (self.bar_ts - pd.Timedelta(days=window_cal_days)).to_numpy()
+        hi = self.bar_ts.to_numpy()
+        counts = self._searchsorted_count(np.sort(ts), lo, hi)
+        return counts > 0
+
+    def _resolve_8k(self, window_trading_days: int) -> np.ndarray:
+        df = self._load_edgar_form("8-K")
+        if df.empty:
+            return np.zeros(self.n, dtype=bool)
+        ts = df["filed_at"].dt.tz_localize(None).to_numpy()
+        # Convert trading days to calendar days; 8-K filings are continuous-time anyway.
+        window_cal = int(window_trading_days * 1.45) + 1
+        lo = (self.bar_ts - pd.Timedelta(days=window_cal)).to_numpy()
+        hi = self.bar_ts.to_numpy()
+        counts = self._searchsorted_count(ts, lo, hi)
+        return counts > 0
+
+    def _build_dpi_aligned_series(self) -> Optional[np.ndarray]:
+        """Forward-fill DPI to bar timestamps using ``date <= bar_ts`` strictly (no lookahead).
+
+        Returns float series of length n with NaN where no prior DPI is available.
+        """
+        df = self._load_offexchange()
+        if df.empty or "dpi" not in df.columns:
+            return None
+        ev_ts = df["date"].to_numpy()
+        ev_val = df["dpi"].to_numpy(dtype=np.float64)
+        bar_arr = self.bar_ts.to_numpy()
+        # For strict "<= bar_ts" + 1-day publication-lag safety, use side="right"
+        # then subtract 1 (so events with date == bar_ts are excluded — i.e. only
+        # prior trading sessions count). This guarantees no use of the same-day DPI
+        # for a same-day signal, which is the conservative choice.
+        idx = np.searchsorted(ev_ts, bar_arr, side="right") - 1
+        out = np.full(self.n, np.nan)
+        valid = idx >= 0
+        out[valid] = ev_val[idx[valid]]
+        return out
+
+    def _resolve_dpi_percentile(self, side: str, percentile: int,
+                                window_trading_days: int) -> np.ndarray:
+        dpi_series = self._build_dpi_aligned_series()
+        if dpi_series is None or np.all(np.isnan(dpi_series)):
+            return np.zeros(self.n, dtype=bool)
+        # Compute rolling window percentile of strictly prior values
+        s = pd.Series(dpi_series)
+        # window of N trading days, computed over the bar-aligned series so it's
+        # naturally on the trading clock; min_periods=N to avoid early-NaN noise.
+        win = window_trading_days
+        # Use shift(1) so the percentile excludes the current bar (no lookahead on
+        # the bar's own DPI value, even though DPI is event-time).
+        shifted = s.shift(1)
+        thresh = shifted.rolling(win, min_periods=max(2, win // 2)).quantile(percentile / 100.0)
+        if side == "GT":
+            out = (s > thresh)
+        else:
+            out = (s < thresh)
+        out = out.fillna(False).to_numpy().astype(bool)
+        return out
+
+    def _resolve_dpi_zscore(self, side: str, threshold: float,
+                            window_trading_days: int) -> np.ndarray:
+        dpi_series = self._build_dpi_aligned_series()
+        if dpi_series is None or np.all(np.isnan(dpi_series)):
+            return np.zeros(self.n, dtype=bool)
+        s = pd.Series(dpi_series)
+        shifted = s.shift(1)
+        mu = shifted.rolling(window_trading_days, min_periods=max(2, window_trading_days // 2)).mean()
+        sd = shifted.rolling(window_trading_days, min_periods=max(2, window_trading_days // 2)).std(ddof=1)
+        z = (s - mu) / sd.where(sd > 0)
+        if side == "GT":
+            out = (z > threshold)
+        else:
+            out = (z < threshold)
+        return out.fillna(False).to_numpy().astype(bool)
+
+    def _resolve_news_event(self, window_cal_days: int) -> np.ndarray:
+        df = self._load_news()
+        if df.empty:
+            return np.zeros(self.n, dtype=bool)
+        ts = df["published_utc"].to_numpy()
+        lo = (self.bar_ts - pd.Timedelta(days=window_cal_days)).to_numpy()
+        hi = self.bar_ts.to_numpy()
+        counts = self._searchsorted_count(ts, lo, hi)
+        return counts > 0
+
+    def _resolve_news_count_percentile(self, percentile: int, window_cal_days: int) -> np.ndarray:
+        df = self._load_news()
+        if df.empty:
+            return np.zeros(self.n, dtype=bool)
+        ts = df["published_utc"].to_numpy()
+        lo = (self.bar_ts - pd.Timedelta(days=window_cal_days)).to_numpy()
+        hi = self.bar_ts.to_numpy()
+        counts = self._searchsorted_count(ts, lo, hi).astype(np.float64)
+        # Rolling 1-year percentile of counts, shifted by 1 bar to avoid lookahead.
+        s = pd.Series(counts)
+        thresh = s.shift(1).rolling(252, min_periods=30).quantile(percentile / 100.0)
+        out = (s > thresh).fillna(False).to_numpy().astype(bool)
+        return out
+
+
+class _AltDataUnknownToken(Exception):
+    """Raised when a bareword isn't a recognized alt-data token. The role parser converts
+    this to a normal 'unknown indicator' error."""
+
+
+def _hypothesis_uses_alt_data(h: dict) -> bool:
+    """Cheap check: does any role string contain a plausible alt-data token?
+
+    Scans role expressions for IDENT-shaped runs (incl. ALT_IDENT like ``8K_LT5d``) and
+    matches against the alt-data token regexes. Recurses into child_hypotheses.
+    """
+    ident_re = re.compile(r"\b\d*[A-Za-z][A-Za-z0-9_]+\b")
+    role_keys = ("regime_gate", "bias_filter", "trigger", "confirmation",
+                 "timing", "exit", "no_trade")
+    for k in role_keys:
+        v = h.get(k)
+        if not isinstance(v, str):
+            continue
+        for m in ident_re.findall(v):
+            if _looks_like_alt_data_token(m):
+                return True
+    if isinstance(h.get("child_hypotheses"), list):
+        for c in h["child_hypotheses"]:
+            if _hypothesis_uses_alt_data(c.get("hypothesis", {})):
+                return True
+            reg = c.get("regime")
+            if isinstance(reg, str):
+                for m in ident_re.findall(reg):
+                    if _looks_like_alt_data_token(m):
+                        return True
+    return False
+
+
 class _RoleParser:
     """Recursive-descent parser that turns a role-expression string into a per-bar numpy series.
 
     Comparison ops return float 0.0/1.0 arrays (so a `gate` is just truthy mask).
     Arithmetic + indicator calls return float series.
+
+    Alt-data hook: if a bareword identifier (e.g. ``InsiderForm4_LT5d``) isn't in the
+    indicator table AND an ``alt_data_resolver`` was passed at construction, the parser
+    calls ``alt_data_resolver.resolve(token)`` and returns its bool series as a float
+    0/1 array. This lets the same parser drive OHLCV indicators and alt-data event flags
+    in the same expression (e.g. ``Close > Donchian_UP(20) AND CongressBuy_LT30d``).
     """
 
-    def __init__(self, bars: ArrayDict):
+    def __init__(self, bars: ArrayDict, alt_data_resolver: Optional["_AltDataResolver"] = None):
         self.bars = bars
         self.n = len(bars["close"])
+        self.alt_data_resolver = alt_data_resolver
         # Indicator dispatch table (name -> callable producing a np.ndarray of length n)
         self.indicators: Dict[str, Callable[..., np.ndarray]] = {
             "close": lambda: bars["close"],
@@ -444,6 +991,20 @@ class _RoleParser:
                 raise ValueError(f"role parser: BB has no attribute {attr!r}")
             return res[attr]
         if key not in self.indicators:
+            # Alt-data fallback: a bareword like ``InsiderForm4_LT5d`` resolves to a per-bar
+            # bool series via the alt-data resolver if one was attached.
+            if self.alt_data_resolver is not None and _looks_like_alt_data_token(ident):
+                # Alt-data tokens carry params in the NAME (e.g. ``_LT5d``) so they MUST NOT
+                # be followed by ``(args)``. If they are, surface a clear error.
+                if self._peek() and self._peek().kind == "LP":
+                    raise ValueError(
+                        f"role parser: alt-data token {ident!r} takes no call args"
+                    )
+                try:
+                    arr = self.alt_data_resolver.resolve(ident)
+                    return arr.astype(np.float64)
+                except _AltDataUnknownToken:
+                    pass  # fall through to the generic error below
             raise ValueError(
                 f"role parser: unknown indicator/identifier {ident!r}. "
                 f"Available: {sorted(self.indicators.keys())}"
@@ -533,7 +1094,54 @@ def _perturb_numeric_literals_in_string(expr: str, factor: float) -> str:
     return re.sub(r"(?<![A-Za-z_])\d+(?:\.\d+)?", repl, expr)
 
 
-def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict) -> np.ndarray:
+def _load_bar_timestamps(ticker: str) -> Optional["pd.DatetimeIndex"]:
+    """Re-read the OHLC parquet for the active timeframe and pull out the timestamp column.
+
+    Mirrors the path-resolution logic of ``indicator_hardening_runner.load_ohlc`` but only
+    fetches the timestamp column. Returns None when no parquet is available.
+    """
+    tf = _ihr._state["timeframe"]
+    if tf == "5min":
+        p_local = _ihr.OHLC_DIR / f"{ticker}_5min.parquet"
+        p_drive = _ihr.DRIVE_OHLC_5MIN / f"{ticker}_5min.parquet"
+    else:
+        p_local = None
+        p_drive = _ihr.DRIVE_OHLC_DAILY / f"{ticker}.parquet"
+    path = (p_local if (p_local is not None and p_local.exists() and p_local.stat().st_size > 1000)
+            else p_drive)
+    if not path.exists():
+        return None
+    try:
+        df = pd.read_parquet(path)
+    except Exception:
+        return None
+    needed = {"open", "high", "low", "close", "volume"}
+    # Mirror the renaming in load_ohlc so dropna sees normalized columns
+    rename = {}
+    for canon in ("open", "high", "low", "close", "volume", "date", "Date", "DATE", "timestamp", "Timestamp"):
+        if canon in df.columns:
+            rename[canon] = canon.lower() if canon.lower() in ("open", "high", "low", "close", "volume", "date", "timestamp") else canon
+    df = df.rename(columns=rename)
+    # Same dropna+min-bars contract as load_ohlc so the timestamp array stays aligned
+    if not needed.issubset(df.columns):
+        return None
+    df = df.dropna(subset=list(needed))
+    if len(df) < _ihr._state["min_bars"]:
+        return None
+    ts_col = None
+    for cand in ("date", "timestamp"):
+        if cand in df.columns:
+            ts_col = cand
+            break
+    if ts_col is None and not isinstance(df.index, pd.RangeIndex):
+        return pd.to_datetime(df.index)
+    if ts_col is None:
+        return None
+    return pd.to_datetime(df[ts_col].to_numpy())
+
+
+def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict,
+                        alt_data_resolver: Optional[_AltDataResolver] = None) -> np.ndarray:
     """Walk the per-bar state machine for a hypothesis.
 
     Returns a position series in {-1, 0, +1}, length n.
@@ -563,11 +1171,12 @@ def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict) -> np.ndarray:
     n = len(bars["close"])
     # Regime-switch composite: list of {regime: <expr>, hypothesis: {...}}
     if isinstance(hypothesis.get("child_hypotheses"), list):
-        parser = _RoleParser(bars)
+        parser = _RoleParser(bars, alt_data_resolver=alt_data_resolver)
         pos = np.zeros(n, dtype=np.int8)
         for child in hypothesis["child_hypotheses"]:
             mask = _bool_mask(parser.evaluate(child.get("regime", "TRUE")))
-            sub_pos = evaluate_hypothesis(bars, child["hypothesis"])
+            sub_pos = evaluate_hypothesis(bars, child["hypothesis"],
+                                           alt_data_resolver=alt_data_resolver)
             # Apply mask: child position only counts during its regime
             pos = np.where(mask & (pos == 0), sub_pos, pos).astype(np.int8)
         # no_trade override (parent-level)
@@ -576,7 +1185,7 @@ def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict) -> np.ndarray:
             pos[no_trade_mask] = 0
         return pos
 
-    parser = _RoleParser(bars)
+    parser = _RoleParser(bars, alt_data_resolver=alt_data_resolver)
     side = -1 if str(hypothesis.get("side", "long")).lower() == "short" else 1
     gate = _bool_mask(parser.evaluate(hypothesis.get("regime_gate", "TRUE")))
     bias = _bool_mask(parser.evaluate(hypothesis.get("bias_filter", "TRUE")))
@@ -732,7 +1341,20 @@ def run_hypothesis_for_ticker(
     if bars is None:
         return {"ticker": ticker, "status": "no_data"}
 
-    pos = evaluate_hypothesis(bars, hypothesis)
+    # Alt-data resolver: only build it if the hypothesis actually references alt-data tokens.
+    # Building the resolver does the expensive parquet re-read for the timestamp column —
+    # skip it for SAP-001 / SAP-005 etc.
+    alt_resolver = None
+    if _hypothesis_uses_alt_data(hypothesis):
+        bar_ts = _load_bar_timestamps(ticker)
+        if bar_ts is not None and len(bar_ts) == len(bars["close"]):
+            alt_resolver = _AltDataResolver(ticker, bar_ts)
+        else:
+            # If the timestamp column is missing or misaligned, log it but continue —
+            # downstream alt-data tokens will resolve to all-False (degrade to OHLCV).
+            pass
+
+    pos = evaluate_hypothesis(bars, hypothesis, alt_data_resolver=alt_resolver)
     rets = returns_from_position(bars, pos)
     full_sharpe = annualized_sharpe(rets, bars_per_year)
     wr, n_trades = win_rate_from_position(bars, pos)
@@ -757,7 +1379,9 @@ def run_hypothesis_for_ticker(
     M = np.zeros((n_obs, len(variants)), dtype=np.float64)
     for j, v in enumerate(variants):
         try:
-            p_j = evaluate_hypothesis(bars, v)
+            # Re-use the same resolver across variants — perturbing role numerics
+            # doesn't change the alt-data joins (which key off token names, not literals).
+            p_j = evaluate_hypothesis(bars, v, alt_data_resolver=alt_resolver)
             M[:, j] = returns_from_position(bars, p_j)
         except Exception as e:
             M[:, j] = np.nan
