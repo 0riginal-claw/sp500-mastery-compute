@@ -1891,14 +1891,32 @@ def run_hypothesis_for_ticker(
         # Multi-TF path: load each timeframe's bars.
         bars_by_tf, ts_by_tf, load_notes = _load_bars_by_tf(ticker, tf_stack)
         if primary_tf not in bars_by_tf:
-            return {
-                "ticker": ticker, "status": "no_data",
-                "load_notes": load_notes,
-                "missing_primary_tf": primary_tf,
-            }
-        bars = bars_by_tf[primary_tf]
-        # Adjust bars_per_year for the primary TF so Sharpe / fold sizing is right.
-        bars_per_year = _bars_per_year_for_tf(primary_tf)
+            # Primary TF unavailable (most commonly: 5min cache is sparse for
+            # this ticker — only ~30 of 502 have full 5yr 5min coverage in the
+            # local alpaca_5yr mirror; rest have <1 month). Gracefully degrade
+            # to daily-only by mapping the primary TF to 1d if 1d is loaded.
+            # Cross-TF tokens (1d.X) on the 1d primary become same-TF and
+            # evaluate correctly; sub-day tokens (5min.X, 15min.X) return NaN
+            # via _eval_cross_tf_token's missing-TF branch and naturally never
+            # fire (signal degrades to "false" — strictly conservative).
+            if "1d" in bars_by_tf:
+                primary_tf = "1d"
+                bars = bars_by_tf[primary_tf]
+                bars_per_year = _bars_per_year_for_tf(primary_tf)
+                load_notes["fallback"] = (
+                    f"primary {tf_stack[0]} unavailable for {ticker}; "
+                    f"degraded to 1d primary with sub-day tokens returning NaN"
+                )
+            else:
+                return {
+                    "ticker": ticker, "status": "no_data",
+                    "load_notes": load_notes,
+                    "missing_primary_tf": primary_tf,
+                }
+        else:
+            bars = bars_by_tf[primary_tf]
+            # Adjust bars_per_year for the primary TF so Sharpe / fold sizing is right.
+            bars_per_year = _bars_per_year_for_tf(primary_tf)
     else:
         # Legacy single-TF path: use indicator_hardening_runner's loader so the
         # existing daily cache + min_bars contract are preserved.
