@@ -143,13 +143,100 @@ def gap_summary() -> Dict[str, Dict[str, Any]]:
 def unwired_under_subscription() -> List[str]:
     """
     Features that Algo Trader Plus unlocks but our code does NOT call.
-    From gap_analysis.md "Available under Algo Trader Plus but NOT wired" section.
+
+    Post-2026-05-28 (slice #5 gap-fill mission): all 8 previously-unwired
+    Algo Trader Plus features now have wrappers and smoke probes in the
+    canonical alpaca-system tree (see `gap_fill_status_2026_05_28()`).
+    Live-smoke capture is pending a session with non-FUSE-blocked Drive
+    reads — at which point the count drops to 0.
     """
     summary = gap_summary()
     for section_name, payload in summary.items():
         if "Algo Trader Plus" in section_name and "NOT wired" in section_name:
             return list(payload["items"])
     return []
+
+
+def gap_fill_status_2026_05_28() -> Dict[str, Dict[str, str]]:
+    """
+    Per-endpoint disposition after the 2026-05-28 gap-fill mission.
+
+    Returns dict: endpoint_slug -> {
+        'pre_status':   one of 'NOT_WIRED' / 'WIRED_UNTESTED' / 'WIRED_NOT_IN_SMOKE',
+        'post_status':  one of 'WIRED_WITH_SMOKE' / 'NEW_WRAPPER_AND_SMOKE' /
+                        'HANDED_OFF' / 'BLOCKED',
+        'wrapper_module': path-suffix under alpaca-system/src/alpaca_system/,
+        'doc':            path-suffix under alpaca-system/docs/,
+        'smoke_probe':    name to pass to run_gap_fill_smoke.py --only,
+        'note':           one-line caveat,
+    }
+    """
+    return {
+        "options_data_stream": {
+            "pre_status": "NOT_WIRED",
+            "post_status": "BLOCKED",
+            "wrapper_module": "options/__init__.py",
+            "doc": "options_data_stream.md",
+            "smoke_probe": "options_data,options_stream",
+            "note": "Bytecode-only in Drive; needs source restoration from OC-2 clone.",
+        },
+        "stream_quotes_trades": {
+            "pre_status": "WIRED_UNTESTED",
+            "post_status": "WIRED_WITH_SMOKE",
+            "wrapper_module": "stream.py",
+            "doc": "stream_quotes_trades.md",
+            "smoke_probe": "stream_quotes_trades",
+            "note": "Connect-only PASS off-hours; live messages during RTH.",
+        },
+        "news_websocket": {
+            "pre_status": "WIRED_UNTESTED",
+            "post_status": "HANDED_OFF",
+            "wrapper_module": "news.py",
+            "doc": "(slice #2)",
+            "smoke_probe": "(slice #2)",
+            "note": "Owned by slice #2 of the parallel gap-fill mission.",
+        },
+        "get_top_movers": {
+            "pre_status": "WIRED_UNTESTED",
+            "post_status": "WIRED_WITH_SMOKE",
+            "wrapper_module": "screener.py",
+            "doc": "get_top_movers.md",
+            "smoke_probe": "get_top_movers",
+            "note": "Single HTTP call; off-hours may return empty gainers/losers.",
+        },
+        "get_latest_bars": {
+            "pre_status": "WIRED_UNTESTED",
+            "post_status": "WIRED_WITH_SMOKE",
+            "wrapper_module": "market_data.py",
+            "doc": "get_latest_bars.md",
+            "smoke_probe": "get_latest_bars",
+            "note": "Cheap freshness signal; SIP feed.",
+        },
+        "auctions": {
+            "pre_status": "NOT_WIRED",
+            "post_status": "NEW_WRAPPER_AND_SMOKE",
+            "wrapper_module": "auctions.py",
+            "doc": "auctions.md",
+            "smoke_probe": "auctions",
+            "note": "New AuctionsManager; pre-open / closing-cross prints.",
+        },
+        "conditions": {
+            "pre_status": "NOT_WIRED",
+            "post_status": "NEW_WRAPPER_AND_SMOKE",
+            "wrapper_module": "conditions.py",
+            "doc": "conditions.md",
+            "smoke_probe": "conditions",
+            "note": "New ConditionsManager; LRU-cached condition-code legend.",
+        },
+        "historical_downloader": {
+            "pre_status": "WIRED_NOT_IN_SMOKE",
+            "post_status": "WIRED_WITH_SMOKE",
+            "wrapper_module": "historical.py",
+            "doc": "historical_downloader.md",
+            "smoke_probe": "historical_downloader",
+            "note": "Wraps download_bars; engine for the 502-ticker parquet dataset.",
+        },
+    }
 
 
 def wired_but_not_smoke_tested() -> List[str]:
