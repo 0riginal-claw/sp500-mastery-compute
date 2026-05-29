@@ -75,7 +75,12 @@ POSTERIOR_DIR = _cs.POSTERIOR_DIR
 DAILY_CACHE = _ihr.DRIVE_OHLC_DAILY
 
 # Constants
-HOLDOUT_CUTOFF = "2025-01-01"
+# Holdout definition mirrors run_hypothesis_for_ticker EXACTLY: last 10% of bars
+# (cut = int(0.9 * n_obs)). NOT a calendar-based cutoff.
+# We support a calendar cutoff option for compatibility with the council brief, but the
+# DEFAULT matches the live dispatcher so live HoldSR exactly reproduces.
+HOLDOUT_FRACTION = 0.10  # last 10% of bars (matches hypothesis_runner cut = int(0.9 * n_obs))
+HOLDOUT_CUTOFF_CALENDAR = "2025-01-01"  # alternative — not used by default
 HOLDSR_THRESHOLD = 1.5  # council's "live result is real" bar
 BLOCK_SIZE_DAYS = 20
 BARS_PER_YEAR = 252
@@ -215,8 +220,16 @@ def load_ohlc_dataframe(ticker: str) -> Optional[pd.DataFrame]:
     return df.sort_values("date").reset_index(drop=True)
 
 
-def holdout_start_index(df: pd.DataFrame, cutoff: str = HOLDOUT_CUTOFF) -> int:
-    """Return the index of the first bar >= cutoff date."""
+def holdout_start_index_fraction(n: int, frac: float = HOLDOUT_FRACTION) -> int:
+    """Mirror hypothesis_runner: cut = int((1 - frac) * n).
+
+    For frac=0.10, this is the last 10% of bars.
+    """
+    return int((1.0 - frac) * n)
+
+
+def holdout_start_index_calendar(df: pd.DataFrame, cutoff: str = HOLDOUT_CUTOFF_CALENDAR) -> int:
+    """Return the index of the first bar >= cutoff date (calendar-based alternative)."""
     cut = pd.Timestamp(cutoff)
     mask = df["date"] >= cut
     if not mask.any():
@@ -338,12 +351,17 @@ def _bars_dict_from_df(df: pd.DataFrame) -> Dict[str, np.ndarray]:
 
 
 def _annualized_sharpe(rets: np.ndarray) -> float:
+    """Annualized Sharpe; returns NaN if too few non-NaN obs, 0.0 if std==0 (no variance,
+    e.g. strategy didn't trade in this window — realized HoldSR is zero, not undefined)."""
     rets = rets[~np.isnan(rets)]
     if rets.size < 50:
         return float("nan")
     sd = np.std(rets, ddof=1)
     if sd == 0:
-        return float("nan")
+        # Strategy did not trade in this window — realized HoldSR is 0 (no edge,
+        # no losses). This is the correct null value for permutation testing:
+        # a "no-trade" outcome is NOT a positive HoldSR and must not be excluded.
+        return 0.0
     return float(np.mean(rets) / sd * np.sqrt(BARS_PER_YEAR))
 
 
@@ -422,7 +440,8 @@ def run_permutation_test(
     if df is None or len(df) < 300:
         return {"ticker": ticker, "sap_id": sap_id, "status": "no_bars",
                 "verdict": "UNAVAILABLE", "wall_clock_s": 0.0}
-    holdout_idx = holdout_start_index(df, HOLDOUT_CUTOFF)
+    # Mirror live dispatcher's holdout = last 10% of bars (see hypothesis_runner.py L2020)
+    holdout_idx = holdout_start_index_fraction(len(df), HOLDOUT_FRACTION)
     if holdout_idx >= len(df):
         return {"ticker": ticker, "sap_id": sap_id, "status": "no_holdout",
                 "verdict": "UNAVAILABLE", "wall_clock_s": 0.0}
@@ -505,7 +524,9 @@ def run_permutation_test(
         "n_permutations": n_permutations,
         "n_valid_permutations": n_valid,
         "block_size_days": block_size_days,
-        "holdout_cutoff": HOLDOUT_CUTOFF,
+        "holdout_cutoff": f"last {int(HOLDOUT_FRACTION*100)}% of bars",
+        "holdout_idx_used": holdout_idx,
+        "total_bars": len(df),
         "perm_holdsr_mean": perm_holdsr_mean,
         "perm_holdsr_std": perm_holdsr_std,
         "perm_holdsr_p95": perm_holdsr_p95,
@@ -596,7 +617,8 @@ def write_markdown(results: List[Dict[str, Any]], path: Path,
     lines.append(f"_Generated: {datetime.now(timezone.utc).isoformat()}_")
     lines.append(f"_Block bootstrap: {meta['block_size_days']}-day blocks, "
                  f"{meta['n_permutations']} permutations per ticker_")
-    lines.append(f"_Holdout cutoff: {HOLDOUT_CUTOFF}_")
+    lines.append(f"_Holdout cutoff: last {int(HOLDOUT_FRACTION*100)}% of bars "
+                 f"(mirrors live `hypothesis_runner.run_hypothesis_for_ticker` cut)_")
     lines.append("")
     lines.append("## Overall Verdict")
     lines.append("")
@@ -669,7 +691,10 @@ def write_markdown(results: List[Dict[str, Any]], path: Path,
         f"structure). The calendar (date column, holdout cutoff) is preserved."
     )
     lines.append(
-        f"- HoldSR is computed on bars from {HOLDOUT_CUTOFF} onward of the PERMUTED series."
+        f"- HoldSR is computed on the LAST {int(HOLDOUT_FRACTION*100)}% of bars of the "
+        f"PERMUTED series — this exactly mirrors `hypothesis_runner.run_hypothesis_for_ticker` "
+        f"(`cut = int(0.9 * n_obs)`), so the live HoldSR is the reference distribution we're "
+        f"testing against."
     )
     lines.append(
         f"- The block size (20) preserves autocorrelation up to lag 19; longer-horizon "
