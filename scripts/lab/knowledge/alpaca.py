@@ -31,8 +31,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 DRIVE_BASE = "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive"
-DRIVE_AUDIT = f"{DRIVE_BASE}/Tech0/Code Master/system/broker/_alpaca_audit"
+# Canonical audit location (slice #5 gap-fill mission, 2026-05-28: the
+# Tech0/Code Master/... path the original loader expected does not exist
+# on disk; the real audit has always lived under research-lab/).
 LAB_AUDIT = f"{DRIVE_BASE}/AI-Tools/research-lab/data_inventory/alpaca_audit"
+# Mirror at reports/ (writable, smoke-runner reads from here too)
+REPORTS_AUDIT = f"{DRIVE_BASE}/AI-Tools/reports/alpaca_audit"
+# Legacy fallback — only used if the two above are missing
+DRIVE_AUDIT = f"{DRIVE_BASE}/Tech0/Code Master/system/broker/_alpaca_audit"
 
 # File slugs (also the keys for audit_doc_path)
 _AUDIT_FILES = {
@@ -53,7 +59,8 @@ def _resolve(slug: str) -> Optional[Path]:
     fname = _AUDIT_FILES.get(slug)
     if not fname:
         return None
-    for base in (DRIVE_AUDIT, LAB_AUDIT):
+    # Order: canonical research-lab first, reports mirror second, legacy last.
+    for base in (LAB_AUDIT, REPORTS_AUDIT, DRIVE_AUDIT):
         p = Path(base) / fname
         if p.exists():
             return p
