@@ -69,6 +69,285 @@ DRIVE_RESULTS = Path(
     "/My Drive/AI-Tools/s&p500-ticker-mastery/data/hypothesis_validation"
 )
 
+# ============================================================================
+# Multi-timeframe data loading (added 2026-05-29, task #53).
+#
+# Mission 12 seeds (PURE_TECH, ORB_MORNING, VWAP_MTF, GOV_AWARE, HYBRID_REGIME)
+# were originally designed as multi-timeframe (1D thesis + 15min structure +
+# 5min entry, etc.) but the task #41 dispatch flattened them to single-TF. This
+# section wires the multi-TF data path:
+#
+#   * Local alpaca_5yr cache at /Volumes/ZG-2TB/zg/cache/alpaca_5yr/{1Day,5Min}
+#     (502 tickers, ~100MB each, fast — pyarrow read in ~1s vs FUSE >60s).
+#   * 15min and 1H are RESAMPLED from 5min on-the-fly (cached per call).
+#     The alpaca Drive tree DOES contain 15Min/1Hour parquet, but FUSE under
+#     load (load_avg 21+ at refactor time) reads them in >60s — resampling
+#     from local 5min costs <100ms.
+#   * 1d uses the existing yfinance_daily_5yr cache (already wired via
+#     ``indicator_hardening_runner.DRIVE_OHLC_DAILY``).
+#
+# Honest gap (documented in the GOV_AWARE/ORB_MORNING data_sources field):
+# 1Min data is NOT used in this pass. The 1Min Drive tree is huge and FUSE-
+# blind under load; resampling from 5min gives no extra signal. The ORB
+# trigger therefore uses the first 5min bar of the session as a proxy for
+# the "1min break of opening range" trigger. When 1Min is needed (e.g. live
+# trading), the loader can be extended to read 1Min directly — left as
+# future work.
+#
+# Alignment policy (no lookahead, MANDATORY):
+#   higher-TF value on a lower-TF bar at timestamp T uses ONLY the higher-TF
+#   bar whose close timestamp t_higher <= T - 1_higher_bar. This means
+#   "yesterday's daily close on today's 5min bars" — today's daily bar is
+#   still incomplete during today's session and using it would be lookahead.
+# ============================================================================
+
+# Local OHLC cache roots (fast SSD, populated by prior backfills).
+_ALPACA_5YR_LOCAL = Path("/Volumes/ZG-2TB/zg/cache/alpaca_5yr")  # has 1Day + 5Min
+# Drive minute/hour fallback (slow on FUSE; only used when local is missing).
+_ALPACA_5YR_DRIVE = Path(
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com"
+    "/My Drive/version_3 - Gabriel/Gabriel_Alpaca TimeFrames"
+)
+# Canonical TF aliases — lowercase keys map to a single normalized name.
+_TF_ALIASES = {
+    "1d": "1d", "1day": "1d", "day": "1d", "d": "1d", "daily": "1d",
+    "5min": "5min", "5m": "5min", "5": "5min",
+    "15min": "15min", "15m": "15min",
+    "1h": "1h", "1hour": "1h", "h": "1h", "60min": "1h",
+    "1min": "1min", "1m": "1min",  # not loaded in this pass — see module docstring
+}
+
+# Resample rules for downsampling from 5min.
+_RESAMPLE_FROM_5MIN = {
+    "15min": "15min",   # pandas resample rule
+    "1h": "1h",
+}
+
+
+def _normalize_tf(tf: str) -> str:
+    """Normalize a timeframe string. Raises if unknown."""
+    if tf is None:
+        return "1d"
+    k = str(tf).strip().lower()
+    if k not in _TF_ALIASES:
+        raise ValueError(f"unknown timeframe {tf!r}; supported: {sorted(set(_TF_ALIASES.values()))}")
+    return _TF_ALIASES[k]
+
+
+def _load_alpaca_5min_concat(ticker: str) -> Optional["pd.DataFrame"]:
+    """Concat all monthly 5min parquet files for a ticker into one DataFrame.
+
+    Returns a DataFrame with columns [timestamp(tz-naive UTC), open, high, low,
+    close, volume]. Schema mirrors the alpaca alpaca_5yr cache (timestamp tz-aware
+    UTC — stripped to tz-naive for downstream join-friendliness).
+
+    Returns None if no parquets exist.
+    """
+    base_local = _ALPACA_5YR_LOCAL / "5Min" / ticker.upper()
+    base_drive = _ALPACA_5YR_DRIVE / "Minutes TimeFrames" / "5Min" / ticker.upper()
+    base = base_local if base_local.is_dir() else base_drive
+    if not base.is_dir():
+        return None
+    parquets = sorted(base.glob("*.parquet"))
+    if not parquets:
+        return None
+    frames = []
+    for p in parquets:
+        try:
+            frames.append(pd.read_parquet(p))
+        except OSError:
+            continue
+    if not frames:
+        return None
+    df = pd.concat(frames, ignore_index=True)
+    # Schema: timestamp may be tz-aware UTC or in an index.
+    if "timestamp" not in df.columns:
+        # Some parquets place ts in the index — recover.
+        if df.index.name == "timestamp":
+            df = df.reset_index()
+        else:
+            return None
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+    df = df.dropna(subset=["timestamp"]).drop_duplicates(subset=["timestamp"]).sort_values("timestamp")
+    df["timestamp"] = df["timestamp"].dt.tz_convert("UTC").dt.tz_localize(None)
+    # Restrict to RTH-only window (14:30-21:00 UTC ≈ 9:30-16:00 ET) to keep
+    # cross-TF joins meaningful — pre/post-market vol is light and confuses VWAP.
+    # Note: this also drops the 09:30 first bar in DST shoulder months; we keep
+    # it intentionally because the ORB proxy uses session open.
+    h = df["timestamp"].dt.hour
+    m = df["timestamp"].dt.minute
+    in_rth = ((h > 14) | ((h == 14) & (m >= 30))) & (h < 21)
+    df = df.loc[in_rth].reset_index(drop=True)
+    needed = {"open", "high", "low", "close", "volume"}
+    if not needed.issubset(df.columns):
+        return None
+    df = df.dropna(subset=list(needed))
+    return df[["timestamp", "open", "high", "low", "close", "volume"]]
+
+
+def _resample_ohlcv_from_5min(df_5min: "pd.DataFrame", rule: str) -> "pd.DataFrame":
+    """Resample a 5min OHLCV DataFrame to a coarser TF.
+
+    rule: pandas resample rule, e.g. '15min' or '1h'.
+
+    OHLC aggregation: open=first, high=max, low=min, close=last, volume=sum.
+    Returns a DataFrame with the same column layout as the 5min source.
+    """
+    if df_5min is None or df_5min.empty:
+        return df_5min
+    g = df_5min.set_index("timestamp")
+    out = g.resample(rule, label="right", closed="right").agg({
+        "open": "first", "high": "max", "low": "min",
+        "close": "last", "volume": "sum",
+    }).dropna(subset=["close"]).reset_index()
+    return out
+
+
+def _load_bars_by_tf(ticker: str, tfs: List[str]) -> Tuple[
+    Dict[str, ArrayDict], Dict[str, "pd.DatetimeIndex"], Dict[str, str]
+]:
+    """Load OHLCV bars for each timeframe in ``tfs``.
+
+    Returns:
+      bars_by_tf: {tf_canonical: {open, high, low, close, volume} as np.ndarray}
+      ts_by_tf:   {tf_canonical: pd.DatetimeIndex of bar timestamps (tz-naive UTC)}
+      notes:      {tf_canonical: human-readable provenance note}
+
+    Tfs not loaded (e.g. 1min which is currently skipped on this Mac) are simply
+    omitted from the returned dicts — callers must check membership before use.
+    """
+    bars_by_tf: Dict[str, ArrayDict] = {}
+    ts_by_tf: Dict[str, "pd.DatetimeIndex"] = {}
+    notes: Dict[str, str] = {}
+    # Canonicalize + dedupe
+    tfs_norm = []
+    for t in tfs:
+        try:
+            n = _normalize_tf(t)
+        except ValueError:
+            continue
+        if n not in tfs_norm:
+            tfs_norm.append(n)
+
+    # Always load 5min first if any sub-day TF is requested (needed for resample).
+    needs_5min = any(t in ("5min", "15min", "1h") for t in tfs_norm)
+    df_5min = None
+    if needs_5min:
+        df_5min = _load_alpaca_5min_concat(ticker)
+        if df_5min is not None and len(df_5min) >= 200:
+            notes["5min"] = f"alpaca_5yr local 5Min cache ({len(df_5min)} bars)"
+        else:
+            df_5min = None  # treat too-small as missing
+
+    for tf in tfs_norm:
+        if tf == "1d":
+            # Use existing daily loader from indicator_hardening_runner; it has
+            # the standard yfinance_daily_5yr cache layout. Also need timestamps —
+            # _load_bar_timestamps does that lazily.
+            saved_tf = _ihr._state["timeframe"]
+            try:
+                _ihr.set_timeframe("1d")
+                bars = _ihr.load_ohlc(ticker)
+                ts = _load_bar_timestamps(ticker)
+            finally:
+                _ihr.set_timeframe(saved_tf)
+            if bars is not None and ts is not None and len(ts) == len(bars["close"]):
+                bars_by_tf[tf] = bars
+                ts_by_tf[tf] = pd.DatetimeIndex(pd.to_datetime(ts).tz_localize(None) if getattr(ts, "tz", None) else pd.to_datetime(ts))
+                notes[tf] = f"yfinance_daily_5yr cache ({len(bars['close'])} bars)"
+            continue
+        if tf == "5min":
+            if df_5min is None:
+                continue
+            bars_by_tf[tf] = {k: df_5min[k].to_numpy(dtype=np.float64)
+                              for k in ("open", "high", "low", "close", "volume")}
+            ts_by_tf[tf] = pd.DatetimeIndex(df_5min["timestamp"].to_numpy())
+            continue
+        if tf in ("15min", "1h"):
+            if df_5min is None:
+                continue
+            rule = _RESAMPLE_FROM_5MIN[tf]
+            df_r = _resample_ohlcv_from_5min(df_5min, rule)
+            if df_r is None or len(df_r) < 100:
+                continue
+            bars_by_tf[tf] = {k: df_r[k].to_numpy(dtype=np.float64)
+                              for k in ("open", "high", "low", "close", "volume")}
+            ts_by_tf[tf] = pd.DatetimeIndex(df_r["timestamp"].to_numpy())
+            notes[tf] = f"resampled from 5min ({len(df_r)} bars, rule={rule})"
+            continue
+        # 1min not loaded in this pass (documented in module docstring).
+        notes[tf] = "NOT LOADED — see module docstring §multi-timeframe"
+    return bars_by_tf, ts_by_tf, notes
+
+
+def _align_higher_tf_to_lower(
+    values_high: np.ndarray,
+    ts_high: "pd.DatetimeIndex",
+    ts_low: "pd.DatetimeIndex",
+) -> np.ndarray:
+    """Forward-fill a higher-TF series onto a lower-TF timestamp grid.
+
+    MANDATORY no-lookahead: the value at low-TF bar t_low is the higher-TF value
+    from the most recent higher-TF bar whose close time is STRICTLY BEFORE t_low.
+    For daily-on-5min: the 1d bar with date == 2026-05-28 has close_ts treated
+    as end-of-day; on the next 5min bar (e.g. 2026-05-29 14:30) the alignment
+    correctly picks up the 2026-05-28 value. On 2026-05-28 14:30 the alignment
+    picks up 2026-05-27 (yesterday).
+
+    Implementation: searchsorted with side='left' then subtract 1 gives the
+    "last bar strictly before". Values before the first higher-TF bar are NaN.
+    """
+    ts_high_arr = ts_high.to_numpy()
+    ts_low_arr = ts_low.to_numpy()
+    # Search left so values_high[idx-1] is the most recent bar STRICTLY before
+    # the lower-TF timestamp. For daily bars whose timestamp is conventionally
+    # midnight or end-of-day, this is the right call: on a 5min bar at
+    # 2026-05-29 14:30, the 2026-05-29 daily bar (if it exists at all in the
+    # cache) is incomplete and would be lookahead. We always look one back.
+    idx = np.searchsorted(ts_high_arr, ts_low_arr, side="left") - 1
+    out = np.full(len(ts_low_arr), np.nan, dtype=np.float64)
+    valid = idx >= 0
+    out[valid] = values_high[idx[valid]]
+    return out
+
+
+# Cross-TF prefix regex. Matches `<TF>.<TOKEN>` at IDENT boundaries; TF is one
+# of the canonical aliases. The replacement is a TF-suffixed bareword which the
+# parser dispatches via the multi-TF indicator table.
+#
+# Examples of accepted prefixes:
+#   1d.ADX(14)         → __TF1D_ADX(14)
+#   1D.Close           → __TF1D_Close
+#   5min.VWAP          → __TF5MIN_VWAP
+#   15MIN.Donchian_UP(20) → __TF15MIN_Donchian_UP(20)
+#   1H.RSI(14)         → __TF1H_RSI(14)
+#
+# Tokens already starting with __TF (already rewritten) are left alone.
+_TF_PREFIX_REGEX = re.compile(
+    r"(?<![A-Za-z0-9_])(1d|1D|5min|5MIN|5Min|15min|15MIN|15Min|1h|1H|1Hour|1Min|1min)\.([A-Za-z_][A-Za-z0-9_]*)",
+)
+
+
+def _rewrite_tf_prefixes(expr: str) -> str:
+    """Pre-process a role expression: rewrite ``<TF>.<TOKEN>`` to ``__TF<NORM>_<TOKEN>``.
+
+    Backward compat: expressions without TF prefixes pass through unchanged.
+    """
+    if not isinstance(expr, str) or "." not in expr:
+        return expr
+
+    def repl(m):
+        tf_raw, tok = m.group(1), m.group(2)
+        try:
+            tf_norm = _normalize_tf(tf_raw)
+        except ValueError:
+            return m.group(0)
+        # Canonical uppercase suffix for the rewritten ident
+        tf_suffix = tf_norm.upper().replace("MIN", "MIN").replace("H", "H")
+        return f"__TF{tf_suffix}_{tok}"
+
+    return _TF_PREFIX_REGEX.sub(repl, expr)
+
 
 # ============================================================================
 # Role expression parser  --  grammar (informal):
@@ -786,12 +1065,44 @@ class _RoleParser:
     calls ``alt_data_resolver.resolve(token)`` and returns its bool series as a float
     0/1 array. This lets the same parser drive OHLCV indicators and alt-data event flags
     in the same expression (e.g. ``Close > Donchian_UP(20) AND CongressBuy_LT30d``).
+
+    Multi-timeframe hook (task #53, 2026-05-29): bareword identifiers prefixed with
+    ``__TF<NORM>_`` (rewritten from the user-facing ``<TF>.<TOKEN>`` syntax — see
+    ``_rewrite_tf_prefixes``) are resolved against the corresponding higher-TF bars in
+    ``bars_by_tf`` and aligned forward (no-lookahead) to the primary TF's timestamps.
+    The legacy single-TF constructor signature is preserved for backward compat: when
+    ``bars_by_tf`` is None, the parser auto-wraps ``bars`` as ``{primary_tf: bars}``.
     """
 
-    def __init__(self, bars: ArrayDict, alt_data_resolver: Optional["_AltDataResolver"] = None):
+    def __init__(
+        self,
+        bars: ArrayDict,
+        alt_data_resolver: Optional["_AltDataResolver"] = None,
+        *,
+        bars_by_tf: Optional[Dict[str, ArrayDict]] = None,
+        ts_by_tf: Optional[Dict[str, "pd.DatetimeIndex"]] = None,
+        primary_tf: str = "1d",
+    ):
         self.bars = bars
         self.n = len(bars["close"])
         self.alt_data_resolver = alt_data_resolver
+        # Multi-TF state. Default: wrap single-TF input as a one-entry map so the
+        # cross-TF lookup path can ALWAYS go through bars_by_tf — keeps the code
+        # uniform without bifurcating eval logic.
+        self.primary_tf = _normalize_tf(primary_tf) if primary_tf else "1d"
+        if bars_by_tf is None:
+            self.bars_by_tf = {self.primary_tf: bars}
+            self.ts_by_tf = ts_by_tf or {}
+        else:
+            self.bars_by_tf = dict(bars_by_tf)
+            # The primary entry MUST be the same dict the legacy `bars` points at,
+            # so legacy indicator calls (Close, ADX, etc.) operate on the right grid.
+            self.bars_by_tf.setdefault(self.primary_tf, bars)
+            self.ts_by_tf = dict(ts_by_tf or {})
+        # Cache for cross-TF aligned indicator arrays: {(tf, token, args_key) → ndarray}.
+        # Keyed so that ``1d.ADX(14)`` evaluated multiple times in the same role expr
+        # (or across roles within one evaluate_hypothesis call) re-uses the same array.
+        self._xtf_cache: Dict[Tuple[str, str, str], np.ndarray] = {}
         # Indicator dispatch table (name -> callable producing a np.ndarray of length n)
         self.indicators: Dict[str, Callable[..., np.ndarray]] = {
             "close": lambda: bars["close"],
@@ -853,7 +1164,11 @@ class _RoleParser:
             return np.ones(self.n) if expr else np.zeros(self.n)
         if not isinstance(expr, str) or not expr.strip():
             return np.ones(self.n)
-        self.toks = _tokenize(expr)
+        # Multi-TF prefix rewrite: ``1d.ADX(14)`` → ``__TF1D_ADX(14)`` so it tokenizes
+        # as a single bareword the parser can dispatch to the cross-TF resolver.
+        # This is a no-op if the expression contains no TF prefixes.
+        rewritten = _rewrite_tf_prefixes(expr)
+        self.toks = _tokenize(rewritten)
         self.pos = 0
         result = self._parse_or()
         if self.pos != len(self.toks):
@@ -977,8 +1292,131 @@ class _RoleParser:
             return self._parse_indicator_call()
         raise ValueError(f"role parser: unexpected token {t}")
 
+    # --------- cross-TF helpers ---------
+    @staticmethod
+    def _parse_xtf_ident(ident: str) -> Optional[Tuple[str, str]]:
+        """If ident is ``__TF<NORM>_<TOKEN>``, return (tf_canonical, token).
+        Else return None.
+
+        Canonical normalization (uppercase suffix → lowercase canonical):
+          __TF1D_X       → ("1d", "X")
+          __TF5MIN_X     → ("5min", "X")
+          __TF15MIN_X    → ("15min", "X")
+          __TF1H_X       → ("1h", "X")
+          __TF1MIN_X     → ("1min", "X")
+        """
+        if not ident.startswith("__TF"):
+            return None
+        rest = ident[len("__TF"):]
+        # Greedy match on the known TF suffixes, longest first to avoid 1MIN→1M ambig.
+        for tf_upper, tf_canon in (
+            ("15MIN", "15min"),
+            ("5MIN",  "5min"),
+            ("1MIN",  "1min"),
+            ("1H",    "1h"),
+            ("1D",    "1d"),
+        ):
+            if rest.startswith(tf_upper + "_"):
+                return tf_canon, rest[len(tf_upper) + 1:]
+        return None
+
+    def _eval_cross_tf_token(
+        self, tf: str, token: str, args: List[float], kwargs: Dict[str, Any],
+        dotted_attr: Optional[str] = None,
+    ) -> np.ndarray:
+        """Compute ``token(*args, **kwargs)`` on the higher-TF bars, then align
+        forward (no-lookahead) to the primary TF's timestamps.
+
+        ``dotted_attr`` is set for BB.upper / BB.lower / BB.mid / BB.pctb forms.
+
+        Caches the aligned result per (tf, token, args_key) so repeated references
+        in the same role-expression set don't recompute.
+        """
+        tf = _normalize_tf(tf)
+        # Same-TF reference (e.g. 5min.Close inside a 5min-primary role) is just
+        # the regular indicator on the primary bars — no alignment needed.
+        if tf == self.primary_tf:
+            return self._eval_indicator_on_bars(self.bars, token, args, kwargs, dotted_attr=dotted_attr)
+        if tf not in self.bars_by_tf:
+            # Higher TF not loaded. Honest degradation: emit NaN so any downstream
+            # comparison evaluates False (per _parse_cmp's NaN-handling), and the
+            # signal effectively never fires. Better than silently substituting
+            # the primary-TF value (which would be a lookahead-flavored bug).
+            return np.full(self.n, np.nan, dtype=np.float64)
+        args_key = f"{token}|{args}|{kwargs}|{dotted_attr}"
+        cache_key = (tf, token, args_key)
+        if cache_key in self._xtf_cache:
+            return self._xtf_cache[cache_key]
+        bars_high = self.bars_by_tf[tf]
+        ts_high = self.ts_by_tf.get(tf)
+        ts_primary = self.ts_by_tf.get(self.primary_tf)
+        # Compute the indicator on the higher-TF bars.
+        try:
+            arr_high = self._eval_indicator_on_bars(
+                bars_high, token, args, kwargs, dotted_attr=dotted_attr,
+            )
+        except ValueError:
+            # Token isn't in the indicator table for the higher TF; surface NaN.
+            self._xtf_cache[cache_key] = np.full(self.n, np.nan, dtype=np.float64)
+            return self._xtf_cache[cache_key]
+        if ts_high is None or ts_primary is None or len(ts_primary) != self.n:
+            # Without aligned timestamps we cannot do no-lookahead forward fill;
+            # the legacy single-TF code path already lacked timestamps for the
+            # primary TF when called from non-multi-TF entrypoints. In that case
+            # the safe fallback is to emit NaN (signal never fires) and log via
+            # the result row. The multi-TF entrypoint always supplies both.
+            self._xtf_cache[cache_key] = np.full(self.n, np.nan, dtype=np.float64)
+            return self._xtf_cache[cache_key]
+        aligned = _align_higher_tf_to_lower(arr_high, ts_high, ts_primary)
+        self._xtf_cache[cache_key] = aligned
+        return aligned
+
+    def _eval_indicator_on_bars(
+        self, bars: ArrayDict, token: str, args: List[float], kwargs: Dict[str, Any],
+        dotted_attr: Optional[str] = None,
+    ) -> np.ndarray:
+        """Evaluate ``token(*args, **kwargs)[.dotted_attr]`` on a specific bars dict.
+
+        Reuses the indicator table by building a one-off mini-_RoleParser bound to
+        the alternate bars. (Lighter than refactoring every callable to take a
+        ``bars`` arg; we sidestep by spinning up a transient parser instance.)
+        """
+        # Create a transient parser bound to the alternate bars. We DO NOT pass
+        # an alt_data_resolver — alt-data is bar-timestamp-keyed and aligns at
+        # the resolver layer; cross-TF alt-data tokens are out of scope for v1.
+        transient = _RoleParser(bars, alt_data_resolver=None, primary_tf=self.primary_tf)
+        key = token.lower()
+        if dotted_attr is not None:
+            if key != "bb":
+                raise ValueError(f"role parser: dotted attr only supported on BB, got {token!r}.{dotted_attr!r}")
+            res = transient.indicators["bb"](*args, **kwargs)
+            if dotted_attr not in res:
+                raise ValueError(f"role parser: BB has no attribute {dotted_attr!r}")
+            return res[dotted_attr]
+        if key not in transient.indicators:
+            raise ValueError(f"role parser: unknown cross-TF indicator {token!r}")
+        out = transient.indicators[key](*args, **kwargs)
+        if isinstance(out, dict):
+            raise ValueError(f"role parser: cross-TF {token}(...) returned dict; use {token}.attr form")
+        return out
+
     def _parse_indicator_call(self):
         ident = self._eat().val
+        # Cross-TF dispatch: ``__TF<NORM>_<TOKEN>`` was rewritten upstream from
+        # the user-facing ``<TF>.<TOKEN>`` syntax. Strip the prefix, dispatch to
+        # the higher-TF bars, and forward-fill onto the primary TF's grid.
+        xtf = self._parse_xtf_ident(ident)
+        if xtf is not None:
+            tf_canon, raw_token = xtf
+            # Handle BB.upper-style dotted attribute on cross-TF too:
+            # ``1d.BB.upper(20, 2)`` rewrites to ``__TF1D_BB.upper(20, 2)``
+            # which leaves the dotted attr accessible at parse time.
+            dotted_attr = None
+            if raw_token.lower() == "bb" and self._accept("DOT"):
+                attr_tok = self._expect("IDENT")
+                dotted_attr = attr_tok.val.lower()
+            args, kwargs = self._parse_call_args_if_any()
+            return self._eval_cross_tf_token(tf_canon, raw_token, args, kwargs, dotted_attr=dotted_attr)
         key = ident.lower()
         # Special boolean keywords already in indicators table
         # Handle "BB.upper(20, 2)" style dotted attribute calls
@@ -1094,6 +1532,21 @@ def _perturb_numeric_literals_in_string(expr: str, factor: float) -> str:
     return re.sub(r"(?<![A-Za-z_])\d+(?:\.\d+)?", repl, expr)
 
 
+def _bars_per_year_for_tf(tf: str) -> int:
+    """Annualization factor (bars/year) for a given canonical timeframe.
+
+    Used to scale Sharpe; numbers reflect ~6.5h RTH sessions × 252 trading days.
+    """
+    tf = _normalize_tf(tf)
+    return {
+        "1d":    252,
+        "1h":    252 * 7,   # ~7 hourly bars per RTH session (rounded)
+        "15min": 252 * 26,
+        "5min":  252 * 78,
+        "1min":  252 * 390,
+    }.get(tf, 252)
+
+
 def _load_bar_timestamps(ticker: str) -> Optional["pd.DatetimeIndex"]:
     """Re-read the OHLC parquet for the active timeframe and pull out the timestamp column.
 
@@ -1141,10 +1594,20 @@ def _load_bar_timestamps(ticker: str) -> Optional["pd.DatetimeIndex"]:
 
 
 def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict,
-                        alt_data_resolver: Optional[_AltDataResolver] = None) -> np.ndarray:
+                        alt_data_resolver: Optional[_AltDataResolver] = None,
+                        *,
+                        bars_by_tf: Optional[Dict[str, ArrayDict]] = None,
+                        ts_by_tf: Optional[Dict[str, "pd.DatetimeIndex"]] = None,
+                        primary_tf: str = "1d") -> np.ndarray:
     """Walk the per-bar state machine for a hypothesis.
 
     Returns a position series in {-1, 0, +1}, length n.
+
+    Multi-TF (task #53): when ``bars_by_tf`` is provided, cross-TF tokens of the
+    form ``<TF>.<TOKEN>`` in any role expression resolve against the corresponding
+    bars in ``bars_by_tf``, forward-filled (no-lookahead) to the primary TF's
+    timestamp grid. ``bars`` MUST be ``bars_by_tf[primary_tf]`` — the position
+    series fires on the primary timeframe; higher TFs are regime/bias gates only.
 
     State machine rules:
       • regime_gate False → flat for this bar (no entry, but exits on existing position
@@ -1171,12 +1634,18 @@ def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict,
     n = len(bars["close"])
     # Regime-switch composite: list of {regime: <expr>, hypothesis: {...}}
     if isinstance(hypothesis.get("child_hypotheses"), list):
-        parser = _RoleParser(bars, alt_data_resolver=alt_data_resolver)
+        parser = _RoleParser(
+            bars, alt_data_resolver=alt_data_resolver,
+            bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+        )
         pos = np.zeros(n, dtype=np.int8)
         for child in hypothesis["child_hypotheses"]:
             mask = _bool_mask(parser.evaluate(child.get("regime", "TRUE")))
-            sub_pos = evaluate_hypothesis(bars, child["hypothesis"],
-                                           alt_data_resolver=alt_data_resolver)
+            sub_pos = evaluate_hypothesis(
+                bars, child["hypothesis"],
+                alt_data_resolver=alt_data_resolver,
+                bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+            )
             # Apply mask: child position only counts during its regime
             pos = np.where(mask & (pos == 0), sub_pos, pos).astype(np.int8)
         # no_trade override (parent-level)
@@ -1185,7 +1654,10 @@ def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict,
             pos[no_trade_mask] = 0
         return pos
 
-    parser = _RoleParser(bars, alt_data_resolver=alt_data_resolver)
+    parser = _RoleParser(
+        bars, alt_data_resolver=alt_data_resolver,
+        bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+    )
     side = -1 if str(hypothesis.get("side", "long")).lower() == "short" else 1
     gate = _bool_mask(parser.evaluate(hypothesis.get("regime_gate", "TRUE")))
     bias = _bool_mask(parser.evaluate(hypothesis.get("bias_filter", "TRUE")))
@@ -1336,17 +1808,67 @@ def _generate_perturbed_hypotheses(hypothesis: dict, perturb_pcts=(-10, 0, 10)) 
 def run_hypothesis_for_ticker(
     hypothesis: dict, ticker: str, bars_per_year: int, n_folds: int = 12,
 ) -> dict:
-    """Run a hypothesis on one ticker. Mirrors run_indicator_for_ticker but for a hypothesis."""
-    bars = _ihr.load_ohlc(ticker)
-    if bars is None:
-        return {"ticker": ticker, "status": "no_data"}
+    """Run a hypothesis on one ticker. Mirrors run_indicator_for_ticker but for a hypothesis.
+
+    Multi-TF behavior (task #53, 2026-05-29):
+      * If the hypothesis has a ``timeframe_stack`` (list of TF strings, e.g.
+        ``["5min", "15min", "1d"]``) the runner loads bars for each TF and wires
+        them into the parser so cross-TF tokens like ``1d.ADX(14)`` resolve.
+        The first entry is the primary (entry/exit) TF.
+      * If only ``timeframe`` is set (legacy single-TF), the runner falls back to
+        the single-TF path — fully back-compatible with task #41 dispatch.
+    """
+    # Pull the TF stack from the hypothesis. Back-compat: when only `timeframe`
+    # is set, treat it as a single-element stack.
+    tf_stack_raw = hypothesis.get("timeframe_stack")
+    primary_tf_raw = hypothesis.get("timeframe", "1d")
+    if isinstance(tf_stack_raw, (list, tuple)) and tf_stack_raw:
+        tf_stack = [str(t) for t in tf_stack_raw]
+        primary_tf = _normalize_tf(tf_stack[0])
+    else:
+        tf_stack = [str(primary_tf_raw)]
+        primary_tf = _normalize_tf(primary_tf_raw)
+
+    bars_by_tf: Optional[Dict[str, ArrayDict]] = None
+    ts_by_tf: Optional[Dict[str, "pd.DatetimeIndex"]] = None
+    load_notes: Dict[str, str] = {}
+
+    if len(tf_stack) > 1:
+        # Multi-TF path: load each timeframe's bars.
+        bars_by_tf, ts_by_tf, load_notes = _load_bars_by_tf(ticker, tf_stack)
+        if primary_tf not in bars_by_tf:
+            return {
+                "ticker": ticker, "status": "no_data",
+                "load_notes": load_notes,
+                "missing_primary_tf": primary_tf,
+            }
+        bars = bars_by_tf[primary_tf]
+        # Adjust bars_per_year for the primary TF so Sharpe / fold sizing is right.
+        bars_per_year = _bars_per_year_for_tf(primary_tf)
+    else:
+        # Legacy single-TF path: use indicator_hardening_runner's loader so the
+        # existing daily cache + min_bars contract are preserved.
+        saved_tf = _ihr._state["timeframe"]
+        try:
+            _ihr.set_timeframe(primary_tf if primary_tf in ("1d", "5min") else "1d")
+            bars = _ihr.load_ohlc(ticker)
+            bars_per_year = _ihr._state["bars_per_year"]
+        finally:
+            _ihr.set_timeframe(saved_tf)
+        if bars is None:
+            return {"ticker": ticker, "status": "no_data"}
+        # Lazy: skip building ts_by_tf — alt_resolver and cross-TF are
+        # gated below.
 
     # Alt-data resolver: only build it if the hypothesis actually references alt-data tokens.
     # Building the resolver does the expensive parquet re-read for the timestamp column —
     # skip it for SAP-001 / SAP-005 etc.
     alt_resolver = None
     if _hypothesis_uses_alt_data(hypothesis):
-        bar_ts = _load_bar_timestamps(ticker)
+        if ts_by_tf is not None and primary_tf in ts_by_tf:
+            bar_ts = ts_by_tf[primary_tf]
+        else:
+            bar_ts = _load_bar_timestamps(ticker)
         if bar_ts is not None and len(bar_ts) == len(bars["close"]):
             alt_resolver = _AltDataResolver(ticker, bar_ts)
         else:
@@ -1354,7 +1876,10 @@ def run_hypothesis_for_ticker(
             # downstream alt-data tokens will resolve to all-False (degrade to OHLCV).
             pass
 
-    pos = evaluate_hypothesis(bars, hypothesis, alt_data_resolver=alt_resolver)
+    pos = evaluate_hypothesis(
+        bars, hypothesis, alt_data_resolver=alt_resolver,
+        bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+    )
     rets = returns_from_position(bars, pos)
     full_sharpe = annualized_sharpe(rets, bars_per_year)
     wr, n_trades = win_rate_from_position(bars, pos)
