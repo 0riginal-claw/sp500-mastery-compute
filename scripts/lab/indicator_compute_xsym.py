@@ -416,7 +416,8 @@ def _try_load_real_xsym() -> Optional[dict[str, pd.DataFrame]]:
 
 
 if __name__ == "__main__":
-    real = _try_load_real_xsym()
+    import os
+    real = None if os.environ.get("XSYM_SYNTHETIC_ONLY") == "1" else _try_load_real_xsym()
     if real:
         bars_by_symbol = real
         src = "real"
