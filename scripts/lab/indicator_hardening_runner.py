@@ -38,19 +38,45 @@ from indicator_compute import REGISTRY  # noqa: E402
 from indicator_pbo_dsr import cscv_pbo, deflated_sharpe, rolling_walkforward_folds, walk_forward_efficiency, _sharpe  # noqa: E402
 
 OHLC_DIR = Path("/Volumes/ZG-2TB/zg/indicator_backtest/ohlc_5min")
-DRIVE_OHLC_DIR = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/claudes test/archive_dead/version_3_2026-05-05/S&P500 5 Year Historical Data")
+DRIVE_OHLC_5MIN = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/claudes test/archive_dead/version_3_2026-05-05/S&P500 5 Year Historical Data")
+# DAILY fallback — 5-year yfinance cache, works reliably even when 5min Drive path is FUSE-broken
+DRIVE_OHLC_DAILY = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery/cache/yfinance_5yr")
 RESULTS_LOCAL = Path("/Volumes/ZG-2TB/zg/indicator_backtest/results")
 DRIVE_RESULTS = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery/data/indicator_validation")
 
 COST_PER_SIDE = 5e-4  # 5 bps
-BARS_PER_YEAR = 252 * 78  # 5-min bars ≈ 78 per session
+# Timeframe-conditional ann factor. Set at runtime per --timeframe.
+BARS_PER_YEAR_DEFAULT = 252  # daily — overridden via set_timeframe()
+_state = {"bars_per_year": BARS_PER_YEAR_DEFAULT, "timeframe": "1d", "min_bars": 300}
+
+
+def set_timeframe(tf: str):
+    """tf in {'1d', '5min'}."""
+    if tf == "1d":
+        _state["bars_per_year"] = 252
+        _state["timeframe"] = "1d"
+        _state["min_bars"] = 300
+    elif tf == "5min":
+        _state["bars_per_year"] = 252 * 78
+        _state["timeframe"] = "5min"
+        _state["min_bars"] = 5000
+    else:
+        raise ValueError(f"unknown timeframe {tf}")
 
 
 def load_ohlc(ticker: str) -> dict[str, np.ndarray] | None:
-    """Read parquet from local stage or fall back to Drive with retry."""
-    p_local = OHLC_DIR / f"{ticker}_5min.parquet"
-    p_drive = DRIVE_OHLC_DIR / f"{ticker}_5min.parquet"
-    path = p_local if p_local.exists() and p_local.stat().st_size > 1000 else p_drive
+    """Read parquet from local stage or fall back to Drive with retry.
+
+    Resolves the path based on _state["timeframe"].
+    """
+    tf = _state["timeframe"]
+    if tf == "5min":
+        p_local = OHLC_DIR / f"{ticker}_5min.parquet"
+        p_drive = DRIVE_OHLC_5MIN / f"{ticker}_5min.parquet"
+    else:
+        p_local = None
+        p_drive = DRIVE_OHLC_DAILY / f"{ticker}.parquet"
+    path = p_local if (p_local is not None and p_local.exists() and p_local.stat().st_size > 1000) else p_drive
     for attempt in range(3):
         try:
             df = pd.read_parquet(path)
@@ -60,21 +86,20 @@ def load_ohlc(ticker: str) -> dict[str, np.ndarray] | None:
                 print(f"  [load_ohlc] FAILED {ticker}: {e}", flush=True)
                 return None
             time.sleep(1)
-    # Normalize columns
-    cols = {c.lower(): c for c in df.columns}
+    # Normalize columns (handles both lower- and Title-case)
     rename = {}
     for canon in ("open", "high", "low", "close", "volume"):
-        if canon in cols:
-            rename[cols[canon]] = canon
-        elif canon[0].upper() + canon[1:] in df.columns:
-            rename[canon[0].upper() + canon[1:]] = canon
+        for src in (canon, canon[0].upper() + canon[1:], canon.upper()):
+            if src in df.columns:
+                rename[src] = canon
+                break
     df = df.rename(columns=rename)
     needed = {"open", "high", "low", "close", "volume"}
     if not needed.issubset(df.columns):
         print(f"  [load_ohlc] {ticker} missing cols. have={list(df.columns)}", flush=True)
         return None
     df = df.dropna(subset=list(needed))
-    if len(df) < 5000:
+    if len(df) < _state["min_bars"]:
         return None
     return {k: df[k].to_numpy(dtype=np.float64) for k in needed}
 
@@ -99,7 +124,7 @@ def annualized_sharpe(rets: np.ndarray) -> float:
     rets = rets[~np.isnan(rets)]
     if rets.size < 50 or np.std(rets, ddof=1) == 0:
         return float("nan")
-    return float(np.mean(rets) / np.std(rets, ddof=1) * np.sqrt(BARS_PER_YEAR))
+    return float(np.mean(rets) / np.std(rets, ddof=1) * np.sqrt(_state["bars_per_year"]))
 
 
 def win_rate_from_signal(bars: dict, signal: np.ndarray) -> tuple[float, int]:
@@ -143,7 +168,9 @@ def run_indicator_for_ticker(name: str, ticker: str, n_folds: int = 12) -> dict:
     # ---- Step 1: walk-forward on default params
     sig = fn(bars, **default_params)
     rets = returns_from_signal(bars, sig)
-    folds = rolling_walkforward_folds(len(rets), n_folds=n_folds, train_frac=0.8, embargo_frac=0.005)
+    # Adapt fold count to series length — daily ~1262 bars supports 6 folds; 5min ~30k supports 12
+    eff_folds = n_folds if len(rets) >= n_folds * 60 else max(4, min(n_folds, len(rets) // 60))
+    folds = rolling_walkforward_folds(len(rets), n_folds=eff_folds, train_frac=0.8, embargo_frac=0.005)
     is_sharpes = []
     oos_sharpes = []
     for f in folds:
@@ -230,13 +257,13 @@ def classify_status(cohort_rows: list[dict], pbo: float, dsr: float) -> str:
     return "TESTED_PRELIMINARY"
 
 
-def run_one_indicator(name: str, tickers: list[str], utc_tag: str) -> dict:
+def run_one_indicator(name: str, tickers: list[str], utc_tag: str, n_folds: int = 12) -> dict:
     print(f"\n=== {name} === tickers={tickers}", flush=True)
     rows = []
     t0 = time.time()
     for t in tickers:
         try:
-            r = run_indicator_for_ticker(name, t)
+            r = run_indicator_for_ticker(name, t, n_folds=n_folds)
             r["indicator"] = name
             rows.append(r)
             if r["status"] == "ok":
@@ -325,14 +352,18 @@ def main():
     ap.add_argument("--tickers", nargs="+", default=["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "JPM", "XOM", "JNJ"])
     ap.add_argument("--output-jsonl", default="/Volumes/ZG-2TB/zg/indicator_backtest/results/summary_all.jsonl")
     ap.add_argument("--utc-tag", default=None)
+    ap.add_argument("--timeframe", default="1d", choices=["1d", "5min"], help="OHLC timeframe")
+    ap.add_argument("--n-folds", type=int, default=12)
     args = ap.parse_args()
 
+    set_timeframe(args.timeframe)
     utc_tag = args.utc_tag or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out_jsonl = Path(args.output_jsonl)
     out_jsonl.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Indicators: {args.indicators}", flush=True)
     print(f"Tickers:    {args.tickers}", flush=True)
+    print(f"Timeframe:  {args.timeframe} (bars/year={_state['bars_per_year']})", flush=True)
     print(f"UTC tag:    {utc_tag}", flush=True)
 
     all_summaries = []
@@ -340,7 +371,7 @@ def main():
         if ind not in REGISTRY:
             print(f"[skip] unknown indicator {ind}", flush=True)
             continue
-        s = run_one_indicator(ind, args.tickers, utc_tag)
+        s = run_one_indicator(ind, args.tickers, utc_tag, n_folds=args.n_folds)
         all_summaries.append(s)
         with open(out_jsonl, "a") as f:
             f.write(json.dumps(s, default=str) + "\n")
