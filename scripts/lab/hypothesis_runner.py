@@ -167,6 +167,38 @@ def _candidate_5min_dirs(ticker: str) -> List[Path]:
     return cands
 
 
+def _read_parquet_with_timeout(p: Path, timeout_sec: float = 5.0) -> Tuple[Optional["pd.DataFrame"], bool]:
+    """Read one parquet file with a hard wall-clock timeout.
+
+    Returns (DataFrame, timed_out_bool). On success returns (df, False). On
+    OSError / unknown exception returns (None, False). On wall-clock timeout
+    returns (None, True) so the caller can distinguish a broken-FUSE candidate
+    (skip the rest of the candidate's parquets) from a single-file corruption
+    (try the next file in the same candidate).
+
+    Required because Drive FUSE under load can hang ``pd.read_parquet`` at the
+    C level (errno 89 Operation Canceled OR an indefinite block), which would
+    otherwise stall the whole multi-TF dispatch.
+    """
+    import concurrent.futures as _cf
+    try:
+        with _cf.ThreadPoolExecutor(max_workers=1) as ex:
+            fut = ex.submit(pd.read_parquet, str(p))
+            try:
+                return fut.result(timeout=timeout_sec), False
+            except _cf.TimeoutError:
+                # Best-effort cancel — the underlying read may continue in the
+                # background thread until FUSE gives up. We just move on.
+                fut.cancel()
+                return None, True
+            except OSError:
+                return None, False
+            except Exception:
+                return None, False
+    except Exception:
+        return None, False
+
+
 def _load_alpaca_5min_concat(ticker: str) -> Optional["pd.DataFrame"]:
     """Concat all monthly 5min parquet files for a ticker into one DataFrame.
 
@@ -175,29 +207,47 @@ def _load_alpaca_5min_concat(ticker: str) -> Optional["pd.DataFrame"]:
     UTC — stripped to tz-naive for downstream join-friendliness).
 
     Walks the fallback chain from ``_candidate_5min_dirs`` (env -> Gabriel -> local
-    SSD). Returns None if no candidate path holds any parquets — caller is
-    responsible for raising or skipping.
+    SSD). For each candidate dir we read parquets with a 5s/file wall-clock
+    timeout via ``_read_parquet_with_timeout``; if the FIRST file in a candidate
+    hangs (FUSE-broken signal under load), we abandon that candidate immediately
+    and try the next. Files that hang AFTER >=1 success are skipped individually
+    (so a partial concat still returns useful data).
+
+    Returns None if NO candidate path yields >=1 successfully-read parquet.
     """
-    base: Optional[Path] = None
-    parquets: List[Path] = []
+    import os as _os
+    timeout_per_file = float(_os.environ.get("OHLC_PARQUET_TIMEOUT_SEC", "5.0"))
+    fallback_used: Optional[Path] = None
+    frames: List["pd.DataFrame"] = []
     for cand in _candidate_5min_dirs(ticker):
         if not cand.is_dir():
             continue
         found = sorted(cand.glob("*.parquet"))
-        if found:
-            base = cand
-            parquets = found
-            break
-    if base is None or not parquets:
-        return None
-    frames = []
-    for p in parquets:
-        try:
-            frames.append(pd.read_parquet(p))
-        except OSError:
+        if not found:
             continue
+        cand_frames: List["pd.DataFrame"] = []
+        cand_timeouts = 0
+        for i, p in enumerate(found):
+            df_i, timed_out = _read_parquet_with_timeout(p, timeout_per_file)
+            if df_i is not None:
+                cand_frames.append(df_i)
+            elif timed_out:
+                cand_timeouts += 1
+                # Fail-fast: if the FIRST 2 reads in this candidate both time
+                # out, the candidate's storage layer is broken — abandon it
+                # immediately so we fall through to the next candidate (rather
+                # than waiting 5s * 62 files = 5 min just to get 0 frames).
+                if i < 2 and cand_timeouts >= 2:
+                    break
+                # Otherwise: skip the single broken file but keep going.
+        if cand_frames:
+            fallback_used = cand
+            frames = cand_frames
+            break
     if not frames:
         return None
+    # Re-import os here is not needed; module already imports os in candidate fn.
+    _ = fallback_used  # diagnostic only; left in case future logging wants it
     df = pd.concat(frames, ignore_index=True)
     # Schema: timestamp may be tz-aware UTC or in an index.
     if "timestamp" not in df.columns:
