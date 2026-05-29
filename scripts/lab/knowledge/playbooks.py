@@ -21,6 +21,15 @@ DRIVE_BASE = "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmai
 
 _PLAYBOOKS: List[Dict[str, str]] = [
     {
+        "slug": "champion_kill_criterion",
+        "name": "Champion Kill-Criterion (LOCKED 2026-05-29)",
+        "path": f"{DRIVE_BASE}/AI-Tools/reports/champion_kill_criterion_2026-05-29.md",
+        "size_estimate": "9 KB",
+        "description": "Pre-registered, council-locked retirement and promotion criteria for per-ticker champion strategies. Specifies the 5 retirement triggers (R1 perm-survival > 20%, R2 multi-TF HoldSR drop > 40%, R3 WFE<0 AND PBO>0.5, R4 paper Sharpe < SPY*0.5/30d, R5 DSR<0.5) and 8 promotion gates (P1-P8: HoldSR>=1.5, PBO<0.15, DSR>0.95, WFE>0, param stability +/-10%, perm survival <5%, cluster-robust SE, hypothesis validates). Thresholds were locked BEFORE the 502-ticker daily dispatch completed and BEFORE permutation test #54 results landed — so they cannot be retroactively fitted to results.",
+        "use_when": "Any time a champion is promoted, retired, or re-evaluated. Every dispatch run MUST emit metadata pointing at this file. The promotion gate refuses to promote without a kill_criterion pointer.",
+        "authority": "user-locked + LLM Council pre-registration"
+    },
+    {
         "slug": "indicators_methodology",
         "name": "Indicators Methodology Playbook (LOCKED PRINCIPLE)",
         "path": f"{DRIVE_BASE}/AI-Tools/reports/indicators_methodology_playbook_2026-05-29.md",
