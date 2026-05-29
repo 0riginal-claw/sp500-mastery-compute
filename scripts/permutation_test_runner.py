@@ -62,7 +62,16 @@ sys.path.insert(0, str(HERE / "lab"))
 
 # Lab imports (sibling modules)
 import hypothesis_runner as _hr  # noqa: E402
-import championship_search as _cs  # noqa: E402
+# IMPORTANT: the live daily-dispatch (championship_dispatch_2026-05-29.md) ran with
+# the PRE-MTF-refactor seed templates. The MTF refactor happened AFTER the dispatch
+# (backup at backups/multi-tf-refactor-2026-05-29/championship_search.py.bak).
+# We use the pre-MTF templates for reconstruction so reproduced live HoldSR matches
+# the dispatch report. Live SAPs were single-TF on daily bars (n_obs=1262 in all
+# posterior history entries confirms this).
+# We still use the *current* championship_search for the POSTERIOR_DIR constant —
+# that hasn't moved.
+import championship_search as _cs_current  # noqa: E402
+import championship_search_legacy_pre_mtf as _cs  # noqa: E402
 import indicator_hardening_runner as _ihr  # noqa: E402
 
 # Storage tiers
@@ -71,7 +80,7 @@ DRIVE_REPORTS = Path(
     "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com"
     "/My Drive/AI-Tools/reports"
 )
-POSTERIOR_DIR = _cs.POSTERIOR_DIR
+POSTERIOR_DIR = _cs_current.POSTERIOR_DIR  # use current (path hasn't moved)
 DAILY_CACHE = _ihr.DRIVE_OHLC_DAILY
 
 # Constants
