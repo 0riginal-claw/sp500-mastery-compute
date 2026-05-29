@@ -1098,6 +1098,726 @@ def sig_supertrend(bars: ArrayDict, atr_period: int = 10, mult: float = 3.0) -> 
 
 
 # ---------------------------------------------------------------------------
+# PATH B — Thin wrappers for catalog param variants + additional well-known
+# TA indicators (KAMA, Hull, ALMA, T3, ZLEMA, FRAMA, NATR, Ulcer, etc.).
+# Added 2026-05-29 to make every catalog name callable by exact name.
+# ---------------------------------------------------------------------------
+
+
+# ── Catalog param-variant aliases (Donchian / RSI / EMA / SMA / VWAP / etc.) ──
+
+
+def donchian_20_up(bars: ArrayDict) -> np.ndarray:
+    """Donchian Channel (20) UP — series of 20-bar rolling high. axis=structure_geometry."""
+    return donchian(bars, period=20)["upper"]
+
+
+def donchian_20_dn(bars: ArrayDict) -> np.ndarray:
+    """Donchian Channel (20) DN — series of 20-bar rolling low. axis=structure_geometry."""
+    return donchian(bars, period=20)["lower"]
+
+
+def donchian_40_up(bars: ArrayDict) -> np.ndarray:
+    """Donchian Channel (40) UP — slower but cleaner breakout band (optimized_cycle001)."""
+    return donchian(bars, period=40)["upper"]
+
+
+def donchian_40_dn(bars: ArrayDict) -> np.ndarray:
+    """Donchian Channel (40) DN."""
+    return donchian(bars, period=40)["lower"]
+
+
+def rsi_2(bars: ArrayDict) -> np.ndarray:
+    """RSI(2) — ultra-short Connors-style mean-reversion entry trigger."""
+    return rsi(bars, period=2)
+
+
+def rsi_14(bars: ArrayDict) -> np.ndarray:
+    """RSI(14) — Wilder default."""
+    return rsi(bars, period=14)
+
+
+def rsi_scalp(bars: ArrayDict) -> np.ndarray:
+    """RSI(7) — scalping default."""
+    return rsi(bars, period=7)
+
+
+def ema_9(bars: ArrayDict) -> np.ndarray:
+    """EMA(9) — fast bias filter."""
+    return ema(bars, period=9)
+
+
+def ema_20(bars: ArrayDict) -> np.ndarray:
+    """EMA(20) — trend filter default."""
+    return ema(bars, period=20)
+
+
+def ema_21(bars: ArrayDict) -> np.ndarray:
+    """EMA(21) — pair partner with EMA(9)."""
+    return ema(bars, period=21)
+
+
+def ema_50(bars: ArrayDict) -> np.ndarray:
+    """EMA(50) — medium-term bias."""
+    return ema(bars, period=50)
+
+
+def ema_200(bars: ArrayDict) -> np.ndarray:
+    """EMA(200) — long-term bias."""
+    return ema(bars, period=200)
+
+
+def sma_20(bars: ArrayDict) -> np.ndarray:
+    """SMA(20) — trend filter default."""
+    return sma(bars, period=20)
+
+
+def sma_50(bars: ArrayDict) -> np.ndarray:
+    return sma(bars, period=50)
+
+
+def sma_200(bars: ArrayDict) -> np.ndarray:
+    return sma(bars, period=200)
+
+
+def atr_14(bars: ArrayDict) -> np.ndarray:
+    """ATR(14) — Wilder default for exit/sizing."""
+    return atr(bars, period=14)
+
+
+def atr_scalp(bars: ArrayDict) -> np.ndarray:
+    """ATR(7) — scalp variant."""
+    return atr(bars, period=7)
+
+
+# ── MACD param variants from catalog ──
+
+
+def macd_hist_raschke(bars: ArrayDict) -> np.ndarray:
+    """MACD Histogram — Raschke params (5,13,1). axis=trend."""
+    return macd_histogram(bars, fast=5, slow=13, signal=1)
+
+
+def macd_hist_scalp(bars: ArrayDict) -> np.ndarray:
+    """MACD Histogram — scalp params (3,10,1)."""
+    return macd_histogram(bars, fast=3, slow=10, signal=1)
+
+
+def macd_hist_smoother(bars: ArrayDict) -> np.ndarray:
+    """MACD Histogram — smoother params (8,17,9)."""
+    return macd_histogram(bars, fast=8, slow=17, signal=9)
+
+
+def macd_12_26_9(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """MACD(12,26,9) classic."""
+    return macd(bars, fast=12, slow=26, signal=9)
+
+
+# ── Stochastic / Williams %R / CCI / MFI variants ──
+
+
+def williams_r_14(bars: ArrayDict) -> np.ndarray:
+    """Williams %R(14)."""
+    return williams_r(bars, period=14)
+
+
+def williams_r_scalp(bars: ArrayDict) -> np.ndarray:
+    """Williams %R(10) — scalp variant with -90/-10 thresholds."""
+    return williams_r(bars, period=10)
+
+
+def stochastic_14_3_3(bars: ArrayDict) -> dict[str, np.ndarray]:
+    return stochastic(bars, k=14, d=3, smooth_k=3)
+
+
+def cci_20(bars: ArrayDict) -> np.ndarray:
+    return cci(bars, period=20)
+
+
+def mfi_14(bars: ArrayDict) -> np.ndarray:
+    return mfi(bars, period=14)
+
+
+def roc_10(bars: ArrayDict) -> np.ndarray:
+    return roc(bars, period=10)
+
+
+# ── ADX / Aroon / Parabolic SAR variants ──
+
+
+def adx_14(bars: ArrayDict) -> dict[str, np.ndarray]:
+    return adx(bars, period=14)
+
+
+def adx_scalp(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """ADX(7-10) scalp variant — use period=8."""
+    return adx(bars, period=8)
+
+
+def aroon_25(bars: ArrayDict) -> dict[str, np.ndarray]:
+    return aroon(bars, period=25)
+
+
+def aroon_scalp(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Aroon intraday (14-20) — use period=17."""
+    return aroon(bars, period=17)
+
+
+def parabolic_sar_scalp(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Parabolic SAR scalp variant (step=0.03, max=0.30)."""
+    return parabolic_sar(bars, step=0.03, max_step=0.30)
+
+
+# ── Connors RSI / Fisher / Bollinger variants ──
+
+
+def connors_rsi_3(bars: ArrayDict) -> np.ndarray:
+    return connors_rsi(bars, rsi_period=3, streak_period=2, rank_period=100)
+
+
+def fisher_transform_10(bars: ArrayDict) -> np.ndarray:
+    return fisher_transform(bars, period=10)
+
+
+def bollinger_20_2(bars: ArrayDict) -> dict[str, np.ndarray]:
+    return bollinger(bars, period=20, nstd=2.0)
+
+
+def bollinger_pctb(bars: ArrayDict) -> np.ndarray:
+    return bb_percent_b(bars, period=20, nstd=2.0)
+
+
+def keltner_20_15(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Keltner Channels (20, 1.5 ATR)."""
+    return keltner(bars, ema_period=20, atr_period=14, mult=1.5)
+
+
+def keltner_fast(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Keltner Channels fast variant (10 EMA / 1.0 ATR)."""
+    return keltner(bars, ema_period=10, atr_period=10, mult=1.0)
+
+
+def chopping_index_14(bars: ArrayDict) -> np.ndarray:
+    return choppiness_index(bars, period=14)
+
+
+def cmf_21(bars: ArrayDict) -> np.ndarray:
+    return cmf(bars, period=21)
+
+
+def cmf_scalp(bars: ArrayDict) -> np.ndarray:
+    """CMF scalp variant period=12."""
+    return cmf(bars, period=12)
+
+
+def force_index_13(bars: ArrayDict) -> dict[str, np.ndarray]:
+    return force_index(bars, period=13)
+
+
+def elder_ray_13(bars: ArrayDict) -> dict[str, np.ndarray]:
+    return elder_ray(bars, ema_p=13)
+
+
+def elder_ray_scalp(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Elder Ray scalp variant (EMA 9)."""
+    return elder_ray(bars, ema_p=9)
+
+
+def supertrend_10_3(bars: ArrayDict) -> dict[str, np.ndarray]:
+    return supertrend(bars, atr_period=10, mult=3.0)
+
+
+def opening_range_6(bars: ArrayDict) -> dict[str, np.ndarray]:
+    return opening_range(bars, bars_in_range=6)
+
+
+def pivot_points_standard(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Pivot Points (Standard) — same as classic."""
+    return pivot_points_classic(bars)
+
+
+def zscore_20(bars: ArrayDict) -> np.ndarray:
+    return zscore(bars, period=20)
+
+
+# ── New TA indicators not previously implemented ──
+
+
+def kama(bars_or_arr: ArrayDict | np.ndarray, period: int = 10,
+         fast: int = 2, slow: int = 30, key: str = "close") -> np.ndarray:
+    """Kaufman Adaptive Moving Average. Adapts speed by efficiency ratio.
+
+    ER = |C - C[period]| / sum(|C - C[-1]|) over period.
+    SC = (ER * (2/(fast+1) - 2/(slow+1)) + 2/(slow+1)) ** 2
+    KAMA_t = KAMA_{t-1} + SC * (C_t - KAMA_{t-1}).
+    axis=trend.
+    """
+    x = bars_or_arr[key] if isinstance(bars_or_arr, dict) else bars_or_arr
+    x = np.asarray(x, dtype=np.float64)
+    n = len(x)
+    out = np.full(n, np.nan, dtype=np.float64)
+    if n <= period:
+        return out
+    change = np.abs(x[period:] - x[:-period])
+    volatility = np.zeros(n - period, dtype=np.float64)
+    diffs = np.abs(np.diff(x))
+    for i in range(period, n):
+        volatility[i - period] = np.sum(diffs[i - period:i])
+    er = np.where(volatility > 0, change / volatility, 0.0)
+    fast_sc = 2.0 / (fast + 1.0)
+    slow_sc = 2.0 / (slow + 1.0)
+    sc = (er * (fast_sc - slow_sc) + slow_sc) ** 2
+    out[period] = x[period]
+    for i in range(period + 1, n):
+        out[i] = out[i - 1] + sc[i - period] * (x[i] - out[i - 1])
+    return out
+
+
+def hull_ma(bars_or_arr: ArrayDict | np.ndarray, period: int = 20,
+            key: str = "close") -> np.ndarray:
+    """Hull Moving Average. WMA(2*WMA(n/2) - WMA(n), sqrt(n)). axis=trend."""
+    x = bars_or_arr[key] if isinstance(bars_or_arr, dict) else bars_or_arr
+    x = np.asarray(x, dtype=np.float64)
+    n = len(x)
+
+    def _wma(arr: np.ndarray, p: int) -> np.ndarray:
+        w = np.arange(1, p + 1, dtype=np.float64)
+        ws = w.sum()
+        out = np.full_like(arr, np.nan, dtype=np.float64)
+        for i in range(p - 1, len(arr)):
+            out[i] = np.dot(arr[i - p + 1:i + 1], w) / ws
+        return out
+
+    half = max(2, period // 2)
+    sq = max(2, int(np.sqrt(period)))
+    wma_half = _wma(x, half)
+    wma_full = _wma(x, period)
+    raw = 2.0 * wma_half - wma_full
+    # WMA over the diff series; NaN-safe slice
+    out = np.full(n, np.nan, dtype=np.float64)
+    valid_from = period - 1
+    if valid_from + sq <= n:
+        seg = raw[valid_from:]
+        out[valid_from + sq - 1:] = _wma(seg, sq)[sq - 1:]
+    return out
+
+
+def hma(bars_or_arr: ArrayDict | np.ndarray, period: int = 20,
+        key: str = "close") -> np.ndarray:
+    """HMA alias for Hull MA."""
+    return hull_ma(bars_or_arr, period=period, key=key)
+
+
+def alma(bars_or_arr: ArrayDict | np.ndarray, period: int = 9,
+         offset: float = 0.85, sigma: float = 6.0, key: str = "close") -> np.ndarray:
+    """Arnaud Legoux Moving Average. Gaussian-weighted with sigma+offset. axis=trend."""
+    x = bars_or_arr[key] if isinstance(bars_or_arr, dict) else bars_or_arr
+    x = np.asarray(x, dtype=np.float64)
+    n = len(x)
+    out = np.full(n, np.nan, dtype=np.float64)
+    m = offset * (period - 1)
+    s = period / sigma
+    w = np.exp(-((np.arange(period) - m) ** 2) / (2 * s * s))
+    ws = w.sum()
+    for i in range(period - 1, n):
+        out[i] = np.dot(x[i - period + 1:i + 1], w) / ws
+    return out
+
+
+def t3(bars_or_arr: ArrayDict | np.ndarray, period: int = 5,
+       vfactor: float = 0.7, key: str = "close") -> np.ndarray:
+    """T3 (Tillson) — 6-pass EMA with volume-factor blend. axis=trend."""
+    x = bars_or_arr[key] if isinstance(bars_or_arr, dict) else bars_or_arr
+    x = np.asarray(x, dtype=np.float64)
+    e1 = _ema(x, period)
+    e2 = _ema(e1, period)
+    e3 = _ema(e2, period)
+    e4 = _ema(e3, period)
+    e5 = _ema(e4, period)
+    e6 = _ema(e5, period)
+    v = vfactor
+    c1 = -v ** 3
+    c2 = 3 * v ** 2 + 3 * v ** 3
+    c3 = -6 * v ** 2 - 3 * v - 3 * v ** 3
+    c4 = 1 + 3 * v + v ** 3 + 3 * v ** 2
+    return c1 * e6 + c2 * e5 + c3 * e4 + c4 * e3
+
+
+def zlema(bars_or_arr: ArrayDict | np.ndarray, period: int = 20,
+          key: str = "close") -> np.ndarray:
+    """Zero-Lag EMA: EMA(2*x - x[lag], period) where lag = (period-1)/2. axis=trend."""
+    x = bars_or_arr[key] if isinstance(bars_or_arr, dict) else bars_or_arr
+    x = np.asarray(x, dtype=np.float64)
+    lag = (period - 1) // 2
+    if lag <= 0:
+        return _ema(x, period)
+    shifted = np.concatenate([np.full(lag, x[0]), x[:-lag]])
+    de = 2.0 * x - shifted
+    return _ema(de, period)
+
+
+def smma(bars_or_arr: ArrayDict | np.ndarray, period: int = 20,
+         key: str = "close") -> np.ndarray:
+    """Smoothed Moving Average — equivalent to Wilder smoothing. axis=trend."""
+    x = bars_or_arr[key] if isinstance(bars_or_arr, dict) else bars_or_arr
+    x = np.asarray(x, dtype=np.float64)
+    return _wilder(x, period)
+
+
+def wma(bars_or_arr: ArrayDict | np.ndarray, period: int = 20,
+        key: str = "close") -> np.ndarray:
+    """Weighted Moving Average (linear weights). axis=trend."""
+    x = bars_or_arr[key] if isinstance(bars_or_arr, dict) else bars_or_arr
+    x = np.asarray(x, dtype=np.float64)
+    w = np.arange(1, period + 1, dtype=np.float64)
+    ws = w.sum()
+    out = np.full_like(x, np.nan, dtype=np.float64)
+    for i in range(period - 1, len(x)):
+        out[i] = np.dot(x[i - period + 1:i + 1], w) / ws
+    return out
+
+
+def natr(bars: ArrayDict, period: int = 14) -> np.ndarray:
+    """Normalized ATR: 100 * ATR / close. axis=volatility_band."""
+    a = _atr(bars, period)
+    c = bars["close"]
+    out = np.full_like(c, np.nan, dtype=np.float64)
+    mask = c > 0
+    out[mask] = 100.0 * a[mask] / c[mask]
+    return out
+
+
+def ulcer_index(bars: ArrayDict, period: int = 14) -> np.ndarray:
+    """Ulcer Index — RMS of percentage drawdown from rolling high. axis=volatility_band."""
+    c = bars["close"]
+    n = len(c)
+    out = np.full(n, np.nan, dtype=np.float64)
+    rmax = _rolling_max(c, period)
+    dd = np.where(rmax > 0, 100.0 * (c - rmax) / rmax, 0.0)
+    dd2 = dd * dd
+    # rolling mean of dd2
+    for i in range(period - 1, n):
+        out[i] = np.sqrt(np.mean(dd2[i - period + 1:i + 1]))
+    return out
+
+
+def chaikin_volatility(bars: ArrayDict, ema_period: int = 10, roc_period: int = 10) -> np.ndarray:
+    """Chaikin Volatility — ROC of EMA of (high - low). axis=volatility_band."""
+    h, l = bars["high"], bars["low"]
+    rng = h - l
+    em = _ema(rng, ema_period)
+    out = np.full_like(em, np.nan, dtype=np.float64)
+    n = len(em)
+    if n > roc_period:
+        prev = em[:-roc_period]
+        out[roc_period:] = np.where(prev != 0, 100.0 * (em[roc_period:] - prev) / prev, np.nan)
+    return out
+
+
+def rvi(bars: ArrayDict, period: int = 10) -> dict[str, np.ndarray]:
+    """Relative Vigor Index. axis=momentum_oscillator.
+
+    num = SMA(close - open, period)
+    den = SMA(high - low, period)
+    rvi = num/den ; signal = SMA(rvi, 4)
+    """
+    o, h, l, c = bars["open"], bars["high"], bars["low"], bars["close"]
+    num = _sma(c - o, period)
+    den = _sma(h - l, period)
+    out = np.full_like(c, np.nan, dtype=np.float64)
+    mask = (den != 0) & np.isfinite(den)
+    out[mask] = num[mask] / den[mask]
+    sig = _sma(out, 4)
+    return {"rvi": out, "signal": sig}
+
+
+def coppock_curve(bars: ArrayDict, roc1: int = 14, roc2: int = 11, wma_p: int = 10) -> np.ndarray:
+    """Coppock Curve = WMA(ROC(close, roc1) + ROC(close, roc2), wma_p). axis=momentum_oscillator."""
+    c = bars["close"]
+    r1 = np.full_like(c, np.nan, dtype=np.float64)
+    r2 = np.full_like(c, np.nan, dtype=np.float64)
+    if len(c) > roc1:
+        r1[roc1:] = 100.0 * (c[roc1:] - c[:-roc1]) / np.where(c[:-roc1] != 0, c[:-roc1], np.nan)
+    if len(c) > roc2:
+        r2[roc2:] = 100.0 * (c[roc2:] - c[:-roc2]) / np.where(c[:-roc2] != 0, c[:-roc2], np.nan)
+    summed = r1 + r2
+    w = np.arange(1, wma_p + 1, dtype=np.float64)
+    ws = w.sum()
+    out = np.full_like(c, np.nan, dtype=np.float64)
+    for i in range(wma_p - 1, len(c)):
+        seg = summed[i - wma_p + 1:i + 1]
+        if np.all(np.isfinite(seg)):
+            out[i] = np.dot(seg, w) / ws
+    return out
+
+
+def chande_momentum(bars: ArrayDict, period: int = 14) -> np.ndarray:
+    """Chande Momentum Oscillator. axis=momentum_oscillator."""
+    c = bars["close"]
+    diff = np.diff(c, prepend=c[0])
+    up = np.where(diff > 0, diff, 0.0)
+    dn = np.where(diff < 0, -diff, 0.0)
+    n = len(c)
+    out = np.full(n, np.nan, dtype=np.float64)
+    for i in range(period, n):
+        su = np.sum(up[i - period + 1:i + 1])
+        sd = np.sum(dn[i - period + 1:i + 1])
+        if (su + sd) > 0:
+            out[i] = 100.0 * (su - sd) / (su + sd)
+    return out
+
+
+def detrended_oscillator(bars: ArrayDict, period: int = 14) -> np.ndarray:
+    """Detrended Price Oscillator alias (catalog name 'Detrended Oscillator')."""
+    return dpo(bars, period=period)
+
+
+def klinger_oscillator(bars: ArrayDict, fast: int = 34, slow: int = 55, signal: int = 13) -> dict[str, np.ndarray]:
+    """Klinger Volume Oscillator. axis=volume_conviction.
+
+    Trend t = sign((H+L+C)_t - (H+L+C)_{t-1}); dm_t = H_t - L_t (TR-like);
+    cm starts at dm and resets/sums with trend changes; VF = V * trend * |2*dm/cm - 1| * 100.
+    Simplified causal numpy version.
+    """
+    h, l, c, v = bars["high"], bars["low"], bars["close"], bars["volume"]
+    hlc = h + l + c
+    prev_hlc = np.concatenate([[hlc[0]], hlc[:-1]])
+    trend = np.sign(hlc - prev_hlc)
+    dm = h - l
+    cm = np.zeros_like(dm)
+    prev_trend = 0.0
+    for i in range(len(dm)):
+        if i == 0:
+            cm[i] = dm[i]
+        elif trend[i] == prev_trend:
+            cm[i] = cm[i - 1] + dm[i]
+        else:
+            cm[i] = dm[i - 1] + dm[i] if i > 0 else dm[i]
+        prev_trend = trend[i]
+    safe_cm = np.where(cm > 0, cm, 1.0)
+    vf = v * trend * np.abs(2.0 * dm / safe_cm - 1.0) * 100.0
+    kvo = _ema(vf, fast) - _ema(vf, slow)
+    sig = _ema(kvo, signal)
+    return {"kvo": kvo, "signal": sig}
+
+
+def eom(bars: ArrayDict, period: int = 14, divisor: float = 10000.0) -> np.ndarray:
+    """Ease of Movement (Arms). axis=volume_conviction."""
+    h, l, v = bars["high"], bars["low"], bars["volume"]
+    mid = (h + l) / 2.0
+    prev_mid = np.concatenate([[mid[0]], mid[:-1]])
+    box = np.where((h - l) > 0, (v / divisor) / (h - l), 0.0)
+    raw = (mid - prev_mid) / np.where(box > 0, box, np.nan)
+    return _sma(raw, period)
+
+
+def pvt(bars: ArrayDict) -> np.ndarray:
+    """Price Volume Trend (cumulative). axis=volume_conviction."""
+    c, v = bars["close"], bars["volume"]
+    prev_c = np.concatenate([[c[0]], c[:-1]])
+    pct = np.where(prev_c != 0, (c - prev_c) / prev_c, 0.0)
+    return np.cumsum(pct * v)
+
+
+def vwma(bars: ArrayDict, period: int = 20) -> np.ndarray:
+    """Volume-Weighted Moving Average. axis=volume_conviction."""
+    c, v = bars["close"], bars["volume"]
+    pv = c * v
+    num = _sma(pv, period)
+    den = _sma(v, period)
+    out = np.full_like(c, np.nan, dtype=np.float64)
+    mask = (den != 0) & np.isfinite(den)
+    out[mask] = num[mask] / den[mask]
+    return out
+
+
+def vroc(bars: ArrayDict, period: int = 14) -> np.ndarray:
+    """Volume Rate of Change. axis=volume_conviction."""
+    v = bars["volume"]
+    out = np.full_like(v, np.nan, dtype=np.float64)
+    if len(v) > period:
+        prev = v[:-period]
+        out[period:] = np.where(prev > 0, 100.0 * (v[period:] - prev) / prev, np.nan)
+    return out
+
+
+def correlation_coefficient(bars: ArrayDict, ref_close: np.ndarray | None = None,
+                            period: int = 60) -> np.ndarray:
+    """Rolling Pearson correlation of close vs ref_close (auto-correlation if ref None).
+
+    axis=structure_geometry. For pair selection / xsym wrapper.
+    """
+    c = bars["close"].astype(np.float64)
+    if ref_close is None:
+        # Autocorrelation against lagged self as a degenerate fallback.
+        ref = np.concatenate([[c[0]], c[:-1]])
+    else:
+        ref = np.asarray(ref_close, dtype=np.float64)
+        if len(ref) != len(c):
+            raise ValueError(f"ref_close length {len(ref)} != close length {len(c)}")
+    out = np.full_like(c, np.nan, dtype=np.float64)
+    for i in range(period - 1, len(c)):
+        a = c[i - period + 1:i + 1]
+        b = ref[i - period + 1:i + 1]
+        sa = a.std()
+        sb = b.std()
+        if sa > 0 and sb > 0:
+            out[i] = np.corrcoef(a, b)[0, 1]
+    return out
+
+
+def candlestick_pattern_score(bars: ArrayDict) -> np.ndarray:
+    """Composite candlestick-pattern score in {-1, 0, +1}: +1 hammer/bullish-engulf,
+    -1 shooting-star/bearish-engulf, 0 otherwise. axis=structure_geometry.
+    Simplified per-bar implementation suitable as a confirmation token.
+    """
+    o, h, l, c = bars["open"], bars["high"], bars["low"], bars["close"]
+    n = len(c)
+    out = np.zeros(n, dtype=np.float64)
+    body = np.abs(c - o)
+    full = (h - l).clip(min=1e-12)
+    upper = h - np.maximum(o, c)
+    lower = np.minimum(o, c) - l
+    # Hammer: small body, long lower shadow (>=2*body), upper shadow <= body
+    hammer = (lower >= 2.0 * body) & (upper <= body) & (body > 0)
+    # Shooting star: inverse
+    shooter = (upper >= 2.0 * body) & (lower <= body) & (body > 0)
+    out[hammer] = 1.0
+    out[shooter] = -1.0
+    # Engulfing (need previous bar)
+    for i in range(1, n):
+        if (c[i] > o[i]) and (c[i - 1] < o[i - 1]) \
+                and (c[i] >= o[i - 1]) and (o[i] <= c[i - 1]):
+            out[i] = 1.0
+        elif (c[i] < o[i]) and (c[i - 1] > o[i - 1]) \
+                and (o[i] >= c[i - 1]) and (c[i] <= o[i - 1]):
+            out[i] = -1.0
+    return out
+
+
+def historical_volatility(bars: ArrayDict, period: int = 20,
+                           bars_per_year: int = 252) -> np.ndarray:
+    """Annualized historical volatility (log returns std). axis=volatility_band."""
+    c = bars["close"]
+    log_ret = np.diff(np.log(np.where(c > 0, c, np.nan)), prepend=0.0)
+    out = np.full_like(c, np.nan, dtype=np.float64)
+    for i in range(period - 1, len(c)):
+        seg = log_ret[i - period + 1:i + 1]
+        if np.all(np.isfinite(seg)):
+            out[i] = seg.std(ddof=0) * np.sqrt(bars_per_year)
+    return out
+
+
+def true_strength_index_classic(bars: ArrayDict, long_p: int = 25, short_p: int = 13) -> np.ndarray:
+    """TSI value (without signal) — convenience scalar alias of tsi()."""
+    return tsi(bars, long_p=long_p, short_p=short_p)["tsi"]
+
+
+def williams_alligator(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Williams Alligator (jaw=SMMA13 shifted 8, teeth=SMMA8 shifted 5, lips=SMMA5 shifted 3).
+    Returns same-length series; the shift is documented but applied as a forward lag (NaN-pad).
+    axis=trend.
+    """
+    c = bars["close"]
+    jaw_raw = _wilder(c, 13)
+    teeth_raw = _wilder(c, 8)
+    lips_raw = _wilder(c, 5)
+
+    def _lag(arr: np.ndarray, k: int) -> np.ndarray:
+        if k <= 0:
+            return arr.copy()
+        out = np.concatenate([np.full(k, np.nan), arr[:-k]])
+        return out
+
+    return {"jaw": _lag(jaw_raw, 8), "teeth": _lag(teeth_raw, 5), "lips": _lag(lips_raw, 3)}
+
+
+def gator_oscillator(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Gator = |jaw - teeth| (upper), -|teeth - lips| (lower)."""
+    a = williams_alligator(bars)
+    upper = np.abs(a["jaw"] - a["teeth"])
+    lower = -np.abs(a["teeth"] - a["lips"])
+    return {"upper": upper, "lower": lower}
+
+
+def disparity_index(bars: ArrayDict, period: int = 14) -> np.ndarray:
+    """100 * (close - SMA(close,p)) / SMA(close,p). axis=mean_reversion."""
+    c = bars["close"]
+    s = _sma(c, period)
+    out = np.full_like(c, np.nan, dtype=np.float64)
+    mask = s > 0
+    out[mask] = 100.0 * (c[mask] - s[mask]) / s[mask]
+    return out
+
+
+def percent_price_oscillator(bars: ArrayDict, fast: int = 12, slow: int = 26,
+                              signal: int = 9) -> dict[str, np.ndarray]:
+    """Alias of PPO."""
+    return ppo(bars, fast=fast, slow=slow, signal=signal)
+
+
+def schaff_trend_cycle(bars: ArrayDict, fast: int = 23, slow: int = 50,
+                       cycle: int = 10) -> np.ndarray:
+    """Schaff Trend Cycle — double-Stochastic of MACD. axis=trend."""
+    c = bars["close"]
+    macd_line = _ema(c, fast) - _ema(c, slow)
+    n = len(c)
+    out1 = np.full(n, np.nan, dtype=np.float64)
+    for i in range(cycle - 1, n):
+        seg = macd_line[i - cycle + 1:i + 1]
+        lo, hi = np.nanmin(seg), np.nanmax(seg)
+        if hi > lo:
+            out1[i] = 100.0 * (macd_line[i] - lo) / (hi - lo)
+    # Smooth out1, then second stochastic
+    f1 = _ema(np.nan_to_num(out1, nan=50.0), 3)
+    out2 = np.full(n, np.nan, dtype=np.float64)
+    for i in range(cycle - 1, n):
+        seg = f1[i - cycle + 1:i + 1]
+        lo, hi = np.nanmin(seg), np.nanmax(seg)
+        if hi > lo:
+            out2[i] = 100.0 * (f1[i] - lo) / (hi - lo)
+    return _ema(np.nan_to_num(out2, nan=50.0), 3)
+
+
+def mass_index(bars: ArrayDict, ema_p: int = 9, sum_p: int = 25) -> np.ndarray:
+    """Mass Index — reversal detector by EMA(H-L)/EMA(EMA(H-L)) summed. axis=volatility_band."""
+    h, l = bars["high"], bars["low"]
+    rng = h - l
+    e1 = _ema(rng, ema_p)
+    e2 = _ema(e1, ema_p)
+    ratio = np.where(e2 > 0, e1 / e2, np.nan)
+    out = np.full_like(rng, np.nan, dtype=np.float64)
+    for i in range(sum_p - 1, len(rng)):
+        seg = ratio[i - sum_p + 1:i + 1]
+        if np.all(np.isfinite(seg)):
+            out[i] = seg.sum()
+    return out
+
+
+def stc(bars: ArrayDict) -> np.ndarray:
+    """Alias of Schaff Trend Cycle (default params)."""
+    return schaff_trend_cycle(bars)
+
+
+def klinger(bars: ArrayDict) -> dict[str, np.ndarray]:
+    """Alias of klinger_oscillator (default params)."""
+    return klinger_oscillator(bars)
+
+
+def williams_alligator_jaw(bars: ArrayDict) -> np.ndarray:
+    """Jaw line of Williams Alligator."""
+    return williams_alligator(bars)["jaw"]
+
+
+def williams_alligator_teeth(bars: ArrayDict) -> np.ndarray:
+    return williams_alligator(bars)["teeth"]
+
+
+def williams_alligator_lips(bars: ArrayDict) -> np.ndarray:
+    return williams_alligator(bars)["lips"]
+
+
+# ---------------------------------------------------------------------------
 # Registry — name → (callable, default params, param-grid for stability)
 # Banned pairs per Phase 1 redundancy matrix are NOT enforced here; runner respects ban list.
 # ---------------------------------------------------------------------------
@@ -1289,6 +2009,96 @@ INDICATOR_AXIS: dict[str, str] = {
     "pivot_points_classic": "structure_geometry",
     "pivot_points_fib": "structure_geometry",
     "opening_range": "structure_geometry",
+    # ── PATH B (2026-05-29): catalog name aliases + new indicators ──
+    # trend aliases / new
+    "ema_9": "trend",
+    "ema_20": "trend",
+    "ema_21": "trend",
+    "ema_50": "trend",
+    "ema_200": "trend",
+    "sma_20": "trend",
+    "sma_50": "trend",
+    "sma_200": "trend",
+    "macd_hist_raschke": "trend",
+    "macd_hist_scalp": "trend",
+    "macd_hist_smoother": "trend",
+    "macd_12_26_9": "trend",
+    "adx_14": "trend",
+    "adx_scalp": "trend",
+    "aroon_25": "trend",
+    "aroon_scalp": "trend",
+    "parabolic_sar_scalp": "trend",
+    "supertrend_10_3": "trend",
+    "kama": "trend",
+    "hull_ma": "trend",
+    "hma": "trend",
+    "alma": "trend",
+    "t3": "trend",
+    "zlema": "trend",
+    "smma": "trend",
+    "wma": "trend",
+    "williams_alligator": "trend",
+    "williams_alligator_jaw": "trend",
+    "williams_alligator_teeth": "trend",
+    "williams_alligator_lips": "trend",
+    "gator_oscillator": "trend",
+    "schaff_trend_cycle": "trend",
+    "stc": "trend",
+    # momentum_oscillator aliases / new
+    "rsi_2": "momentum_oscillator",
+    "rsi_14": "momentum_oscillator",
+    "rsi_scalp": "momentum_oscillator",
+    "williams_r_14": "momentum_oscillator",
+    "williams_r_scalp": "momentum_oscillator",
+    "stochastic_14_3_3": "momentum_oscillator",
+    "cci_20": "momentum_oscillator",
+    "mfi_14": "momentum_oscillator",
+    "roc_10": "momentum_oscillator",
+    "fisher_transform_10": "momentum_oscillator",
+    "rvi": "momentum_oscillator",
+    "coppock_curve": "momentum_oscillator",
+    "chande_momentum": "momentum_oscillator",
+    "detrended_oscillator": "momentum_oscillator",
+    "true_strength_index_classic": "momentum_oscillator",
+    "percent_price_oscillator": "momentum_oscillator",
+    # volatility_band aliases / new
+    "atr_14": "volatility_band",
+    "atr_scalp": "volatility_band",
+    "bollinger_20_2": "volatility_band",
+    "keltner_20_15": "volatility_band",
+    "keltner_fast": "volatility_band",
+    "chopping_index_14": "volatility_band",
+    "natr": "volatility_band",
+    "ulcer_index": "volatility_band",
+    "chaikin_volatility": "volatility_band",
+    "historical_volatility": "volatility_band",
+    "mass_index": "volatility_band",
+    # volume_conviction aliases / new
+    "cmf_21": "volume_conviction",
+    "cmf_scalp": "volume_conviction",
+    "force_index_13": "volume_conviction",
+    "elder_ray_13": "volume_conviction",
+    "elder_ray_scalp": "volume_conviction",
+    "klinger_oscillator": "volume_conviction",
+    "klinger": "volume_conviction",
+    "eom": "volume_conviction",
+    "pvt": "volume_conviction",
+    "vwma": "volume_conviction",
+    "vroc": "volume_conviction",
+    # mean_reversion aliases / new
+    "bollinger_pctb": "mean_reversion",
+    "connors_rsi_3": "mean_reversion",
+    "zscore_20": "mean_reversion",
+    "disparity_index": "mean_reversion",
+    # structure_geometry aliases / new
+    "donchian_20_up": "structure_geometry",
+    "donchian_20_dn": "structure_geometry",
+    "donchian_40_up": "structure_geometry",
+    "donchian_40_dn": "structure_geometry",
+    "opening_range_6": "structure_geometry",
+    "pivot_points_standard": "structure_geometry",
+    "correlation_coefficient": "structure_geometry",
+    "candlestick_pattern_score": "structure_geometry",
 }
 
 
@@ -1442,6 +2252,43 @@ _SMOKE_SUITE: list[tuple[str, Callable, dict | None]] = [
     ("pivot_points_classic", pivot_points_classic, None),
     ("pivot_points_fib", pivot_points_fib, None),
     ("opening_range", opening_range, {"bars_in_range": 6}),
+    # ── PATH B additions (2026-05-29) ──
+    ("donchian_20_up", donchian_20_up, None),
+    ("donchian_40_up", donchian_40_up, None),
+    ("rsi_2", rsi_2, None),
+    ("ema_9", ema_9, None),
+    ("ema_20", ema_20, None),
+    ("macd_hist_raschke", macd_hist_raschke, None),
+    ("macd_hist_scalp", macd_hist_scalp, None),
+    ("williams_r_scalp", williams_r_scalp, None),
+    ("adx_scalp", adx_scalp, None),
+    ("aroon_scalp", aroon_scalp, None),
+    ("kama", kama, None),
+    ("hull_ma", hull_ma, None),
+    ("alma", alma, None),
+    ("t3", t3, None),
+    ("zlema", zlema, None),
+    ("smma", smma, None),
+    ("wma", wma, None),
+    ("natr", natr, None),
+    ("ulcer_index", ulcer_index, None),
+    ("chaikin_volatility", chaikin_volatility, None),
+    ("rvi", rvi, None),
+    ("coppock_curve", coppock_curve, None),
+    ("chande_momentum", chande_momentum, None),
+    ("klinger_oscillator", klinger_oscillator, None),
+    ("eom", eom, None),
+    ("pvt", pvt, None),
+    ("vwma", vwma, None),
+    ("vroc", vroc, None),
+    ("disparity_index", disparity_index, None),
+    ("historical_volatility", historical_volatility, None),
+    ("mass_index", mass_index, None),
+    ("schaff_trend_cycle", schaff_trend_cycle, None),
+    ("williams_alligator", williams_alligator, None),
+    ("gator_oscillator", gator_oscillator, None),
+    ("candlestick_pattern_score", candlestick_pattern_score, None),
+    ("correlation_coefficient", correlation_coefficient, None),
 ]
 
 
