@@ -30,26 +30,88 @@ import pandas as pd
 
 LOG = logging.getLogger(__name__)
 
-GOVTRADES_DB_DRIVE = (
+# Path resolution: post-2026-05-13 storage-tier migration moved the canonical
+# govtrades.db off Drive (Ph0tis/Gov-Trades/) onto the 2TB external (/Volumes/ZG-2TB/).
+# We walk a fallback chain so older callers / mirror configs still work.
+#
+# Order:
+#   1. $GOVTRADES_DB env var (operator override)
+#   2. /Volumes/ZG-2TB/zg/govtrades/data/govtrades.db (canonical post-migration, 334 MB)
+#   3. /My Drive/Ph0tis/Gov-Trades/data/govtrades.db  (legacy pre-migration)
+#   4. /My Drive/claudes test/govtrades_test/govtrades.db (audit mirror)
+#
+# The first path that opens cleanly AND contains a `politicians` table wins.
+# Result is cached at class-level so we only probe once per process.
+GOVTRADES_DB_FALLBACKS = [
+    "/Volumes/ZG-2TB/zg/govtrades/data/govtrades.db",
     "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/"
-    "My Drive/Ph0tis/Gov-Trades/data/govtrades.db"
-)
+    "My Drive/Ph0tis/Gov-Trades/data/govtrades.db",
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/"
+    "My Drive/claudes test/govtrades_test/govtrades.db",
+]
+
+# Back-compat alias — some external callers still import this constant directly.
+# Points at the first fallback (canonical post-migration).
+GOVTRADES_DB_DRIVE = GOVTRADES_DB_FALLBACKS[0]
+
+
+def _resolve_govtrades_db_path() -> str:
+    """Walk the fallback chain; return first path that opens + has politicians table.
+
+    Raises FileNotFoundError listing every path searched if all fall through.
+    """
+    candidates = []
+    env_override = os.environ.get("GOVTRADES_DB")
+    if env_override:
+        candidates.append(env_override)
+    candidates.extend(GOVTRADES_DB_FALLBACKS)
+
+    errors = []
+    for path in candidates:
+        if not os.path.exists(path):
+            errors.append(f"  - {path}  (missing)")
+            continue
+        try:
+            con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=5.0)
+            try:
+                cur = con.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' AND name='politicians'"
+                )
+                if cur.fetchone() is None:
+                    errors.append(f"  - {path}  (no politicians table)")
+                    continue
+            finally:
+                con.close()
+            LOG.info("[govtrades_cache] resolved DB -> %s", path)
+            return path
+        except sqlite3.Error as e:
+            errors.append(f"  - {path}  (sqlite error: {e})")
+
+    raise FileNotFoundError(
+        "govtrades.db not found in any known location. Searched (in order):\n"
+        + "\n".join(errors)
+    )
 # NOTE: 2026-05-21 — switched to read-only URI direct over Drive (NO /tmp copy).
 # Prior implementation copied the 39 MB DB via sqlite3.backup() which deadlocked
 # on Drive-FUSE. Read-only URI avoids any write to the source AND skips the
 # copy entirely; FUSE handles the random-access reads without lock contention.
+#
+# 2026-05-28 — added fallback chain (env override → /Volumes/ZG-2TB → legacy Drive →
+# audit mirror) so the wrapper survives the storage-tier migration.
 
 
 class GovTradesCache:
     # per-ticker DataFrames keyed by (ticker, kind)
     _df_cache: dict = {}
+    _db_path: Optional[str] = None  # resolved on first _connect() call
 
     @classmethod
     def _connect(cls):
-        if not os.path.exists(GOVTRADES_DB_DRIVE):
-            raise FileNotFoundError(f"govtrades.db missing at {GOVTRADES_DB_DRIVE}")
+        if cls._db_path is None:
+            cls._db_path = _resolve_govtrades_db_path()
         return sqlite3.connect(
-            f"file:{GOVTRADES_DB_DRIVE}?mode=ro", uri=True, timeout=10.0
+            f"file:{cls._db_path}?mode=ro", uri=True, timeout=10.0
         )
 
     @classmethod
