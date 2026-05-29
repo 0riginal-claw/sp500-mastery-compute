@@ -1082,10 +1082,18 @@ class _RoleParser:
         bars_by_tf: Optional[Dict[str, ArrayDict]] = None,
         ts_by_tf: Optional[Dict[str, "pd.DatetimeIndex"]] = None,
         primary_tf: str = "1d",
+        altdata_numeric_resolver: Optional["_AltDataNumericResolver"] = None,
+        xsym_resolver: Optional["_XSymResolver"] = None,
     ):
         self.bars = bars
         self.n = len(bars["close"])
         self.alt_data_resolver = alt_data_resolver
+        # Task #56 (GOV_AWARE numeric) + #57 (cross-asset gates): additional resolvers
+        # that return NUMERIC pd.Series (not bool). Resolved by lowercase identifier
+        # match; falls through to the normal "unknown identifier" error if neither
+        # resolver knows the name. Attached lazily by callers — None means feature off.
+        self.altdata_numeric_resolver = altdata_numeric_resolver
+        self.xsym_resolver = xsym_resolver
         # Multi-TF state. Default: wrap single-TF input as a one-entry map so the
         # cross-TF lookup path can ALWAYS go through bars_by_tf — keeps the code
         # uniform without bifurcating eval logic.
@@ -1429,6 +1437,36 @@ class _RoleParser:
                 raise ValueError(f"role parser: BB has no attribute {attr!r}")
             return res[attr]
         if key not in self.indicators:
+            # Task #56: NUMERIC alt-data tokens (form4_insider_cluster_score etc.) — these
+            # carry NO call args and resolve to a per-bar float series via the numeric
+            # resolver. Check BEFORE bool alt-data so numeric takes priority when both
+            # resolvers see the name. Returns NaN-filled series if source missing —
+            # downstream comparisons handle NaN by yielding 0 (no signal).
+            if (self.altdata_numeric_resolver is not None
+                    and self.altdata_numeric_resolver.knows(key)):
+                if self._peek() and self._peek().kind == "LP":
+                    # Allow but ignore empty parens for consistency with how indicator
+                    # tokens look in DSL — `form4_insider_cluster_score()` is fine.
+                    _args, _kwargs = self._parse_call_args_if_any()
+                    if _args or _kwargs:
+                        raise ValueError(
+                            f"role parser: numeric alt-data token {ident!r} takes no call args"
+                        )
+                arr = self.altdata_numeric_resolver.resolve(key)
+                return arr.astype(np.float64)
+            # Task #57: cross-asset (cross-symbol) tokens (vix_term_struct, sector_rs_rank,
+            # hyg_lqd_ratio, spy_beta_60d, sector_rotation_rank, vix_multiplied_atr,
+            # spy_correlation, dxy_delta, abs_spy_beta_60d). Empty-paren also allowed.
+            if (self.xsym_resolver is not None
+                    and self.xsym_resolver.knows(key)):
+                if self._peek() and self._peek().kind == "LP":
+                    _args, _kwargs = self._parse_call_args_if_any()
+                    if _args or _kwargs:
+                        raise ValueError(
+                            f"role parser: cross-asset token {ident!r} takes no call args"
+                        )
+                arr = self.xsym_resolver.resolve(key)
+                return arr.astype(np.float64)
             # Alt-data fallback: a bareword like ``InsiderForm4_LT5d`` resolves to a per-bar
             # bool series via the alt-data resolver if one was attached.
             if self.alt_data_resolver is not None and _looks_like_alt_data_token(ident):
@@ -1598,7 +1636,9 @@ def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict,
                         *,
                         bars_by_tf: Optional[Dict[str, ArrayDict]] = None,
                         ts_by_tf: Optional[Dict[str, "pd.DatetimeIndex"]] = None,
-                        primary_tf: str = "1d") -> np.ndarray:
+                        primary_tf: str = "1d",
+                        altdata_numeric_resolver: Optional["_AltDataNumericResolver"] = None,
+                        xsym_resolver: Optional["_XSymResolver"] = None) -> np.ndarray:
     """Walk the per-bar state machine for a hypothesis.
 
     Returns a position series in {-1, 0, +1}, length n.
@@ -1637,6 +1677,8 @@ def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict,
         parser = _RoleParser(
             bars, alt_data_resolver=alt_data_resolver,
             bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+            altdata_numeric_resolver=altdata_numeric_resolver,
+            xsym_resolver=xsym_resolver,
         )
         pos = np.zeros(n, dtype=np.int8)
         for child in hypothesis["child_hypotheses"]:
@@ -1645,6 +1687,8 @@ def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict,
                 bars, child["hypothesis"],
                 alt_data_resolver=alt_data_resolver,
                 bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+                altdata_numeric_resolver=altdata_numeric_resolver,
+                xsym_resolver=xsym_resolver,
             )
             # Apply mask: child position only counts during its regime
             pos = np.where(mask & (pos == 0), sub_pos, pos).astype(np.int8)
@@ -1652,14 +1696,24 @@ def evaluate_hypothesis(bars: ArrayDict, hypothesis: dict,
         if hypothesis.get("no_trade"):
             no_trade_mask = _bool_mask(parser.evaluate(hypothesis["no_trade"]))
             pos[no_trade_mask] = 0
+        # Cross-asset gate (task #57, parent-level): force flat where xsym gate False
+        if hypothesis.get("cross_asset_gate"):
+            xa_mask = _bool_mask(parser.evaluate(hypothesis["cross_asset_gate"]))
+            pos[~xa_mask] = 0
         return pos
 
     parser = _RoleParser(
         bars, alt_data_resolver=alt_data_resolver,
         bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+        altdata_numeric_resolver=altdata_numeric_resolver,
+        xsym_resolver=xsym_resolver,
     )
     side = -1 if str(hypothesis.get("side", "long")).lower() == "short" else 1
     gate = _bool_mask(parser.evaluate(hypothesis.get("regime_gate", "TRUE")))
+    # Cross-asset gate (task #57): an additional AND'd filter ON TOP of regime_gate.
+    # Defaults to TRUE so legacy v1 hypotheses without the field are unaffected.
+    cross_asset_gate = _bool_mask(parser.evaluate(hypothesis.get("cross_asset_gate", "TRUE")))
+    gate = gate & cross_asset_gate
     bias = _bool_mask(parser.evaluate(hypothesis.get("bias_filter", "TRUE")))
     trig = _bool_mask(parser.evaluate(hypothesis.get("trigger", "FALSE")))
     conf = _bool_mask(parser.evaluate(hypothesis.get("confirmation", "TRUE")))
@@ -1864,21 +1918,40 @@ def run_hypothesis_for_ticker(
     # Building the resolver does the expensive parquet re-read for the timestamp column —
     # skip it for SAP-001 / SAP-005 etc.
     alt_resolver = None
-    if _hypothesis_uses_alt_data(hypothesis):
+    altdata_numeric_resolver = None
+    xsym_resolver = None
+    # Bar timestamps are needed for any of the 3 resolvers — compute once.
+    bar_ts_obj = None
+    if (_hypothesis_uses_alt_data(hypothesis)
+            or _hypothesis_uses_altdata_numeric(hypothesis)
+            or _hypothesis_uses_xsym(hypothesis)):
         if ts_by_tf is not None and primary_tf in ts_by_tf:
-            bar_ts = ts_by_tf[primary_tf]
+            bar_ts_obj = ts_by_tf[primary_tf]
         else:
-            bar_ts = _load_bar_timestamps(ticker)
-        if bar_ts is not None and len(bar_ts) == len(bars["close"]):
-            alt_resolver = _AltDataResolver(ticker, bar_ts)
-        else:
-            # If the timestamp column is missing or misaligned, log it but continue —
-            # downstream alt-data tokens will resolve to all-False (degrade to OHLCV).
-            pass
+            bar_ts_obj = _load_bar_timestamps(ticker)
+    if _hypothesis_uses_alt_data(hypothesis):
+        if bar_ts_obj is not None and len(bar_ts_obj) == len(bars["close"]):
+            alt_resolver = _AltDataResolver(ticker, bar_ts_obj)
+        # else: tokens degrade to all-False (no signal)
+    if _hypothesis_uses_altdata_numeric(hypothesis):
+        if bar_ts_obj is not None and len(bar_ts_obj) == len(bars["close"]):
+            try:
+                altdata_numeric_resolver = _AltDataNumericResolver(ticker, bar_ts_obj)
+            except Exception as e:
+                print(f"  [altdata_numeric] init failed for {ticker}: {e}", flush=True)
+        # else: tokens degrade to all-NaN (comparison yields 0 → no signal)
+    if _hypothesis_uses_xsym(hypothesis):
+        if bar_ts_obj is not None and len(bar_ts_obj) == len(bars["close"]):
+            try:
+                xsym_resolver = _XSymResolver(ticker, bar_ts_obj)
+            except Exception as e:
+                print(f"  [xsym] init failed for {ticker}: {e}", flush=True)
 
     pos = evaluate_hypothesis(
         bars, hypothesis, alt_data_resolver=alt_resolver,
         bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+        altdata_numeric_resolver=altdata_numeric_resolver,
+        xsym_resolver=xsym_resolver,
     )
     rets = returns_from_position(bars, pos)
     full_sharpe = annualized_sharpe(rets, bars_per_year)
@@ -1906,7 +1979,14 @@ def run_hypothesis_for_ticker(
         try:
             # Re-use the same resolver across variants — perturbing role numerics
             # doesn't change the alt-data joins (which key off token names, not literals).
-            p_j = evaluate_hypothesis(bars, v, alt_data_resolver=alt_resolver)
+            # Multi-TF args also propagate so cross-TF tokens stay consistent
+            # across perturbed-variant PBO evaluation.
+            p_j = evaluate_hypothesis(
+                bars, v, alt_data_resolver=alt_resolver,
+                bars_by_tf=bars_by_tf, ts_by_tf=ts_by_tf, primary_tf=primary_tf,
+                altdata_numeric_resolver=altdata_numeric_resolver,
+                xsym_resolver=xsym_resolver,
+            )
             M[:, j] = returns_from_position(bars, p_j)
         except Exception as e:
             M[:, j] = np.nan
@@ -1960,6 +2040,9 @@ def run_hypothesis_for_ticker(
         "stability": stability,
         "holdout_sharpe": holdout_sharpe,
         "insample_sharpe_pre_holdout": insample_sharpe_pre,
+        "timeframe_stack": tf_stack if len(tf_stack) > 1 else None,
+        "primary_tf": primary_tf,
+        "multi_tf_load_notes": load_notes if load_notes else None,
     }
 
 
@@ -2110,6 +2193,356 @@ def run_hypothesis(
             except OSError as e:
                 print(f"  [persist] failed at {base}: {e}", flush=True)
     return agg
+
+
+# =============================================================================
+# Task #56 (GOV_AWARE numeric upgrade) + #57 (cross-asset regime gates)
+# 2026-05-29 — appended at file bottom to avoid collision with task #53's
+# multi-TF refactor (primary_tf/bars_by_tf). Surgical hooks above only inject
+# new keyword args to existing constructors/functions; the heavy lifting lives
+# here. Both classes are lazy-loaded — only built if the hypothesis uses the
+# tokens. NaN-safe degradation: missing source → NaN series → comparison → 0.
+# =============================================================================
+
+
+# ---- Token sets (lowercase, identifier-form — match what _RoleParser sees) ----
+
+# Numeric alt-data tokens dispatched against lab.indicator_compute_altdata.
+# The role parser will route these to _AltDataNumericResolver.resolve(key).
+_ALTDATA_NUMERIC_TOKENS = frozenset({
+    "form4_insider_cluster_score",
+    "congress_lead_lag",
+    "news_velocity_zscore",
+    "dark_pool_divergence_z",
+    "lobbying_intensity",
+    "gov_contract_inflow",
+    "8k_pulse",
+    "eight_k_pulse",
+})
+
+# Cross-asset (cross-symbol) tokens dispatched against lab.indicator_compute_xsym.
+# Compound tokens like ``vix_term_struct``, ``sector_rs_rank``, ``hyg_lqd_ratio``,
+# ``spy_beta_60d``, ``abs_spy_beta_60d`` are normalized in _XSymResolver.resolve().
+_XSYM_TOKENS = frozenset({
+    "vix_term_struct", "vix_term_structure",
+    "sector_rs_rank", "sector_relative_strength",
+    "hyg_lqd_ratio",
+    "spy_beta_60d", "spy_beta",
+    "abs_spy_beta_60d",
+    "vix_multiplied_atr",
+    "spy_correlation",
+    "sector_rotation_rank",
+    "dxy_delta",
+})
+
+
+def _hypothesis_uses_altdata_numeric(h: dict) -> bool:
+    """Cheap text scan: does any role expression reference a numeric alt-data token?
+    Recurses into child_hypotheses + cross_asset_gate."""
+    if not isinstance(h, dict):
+        return False
+    role_keys = ("regime_gate", "bias_filter", "trigger", "confirmation",
+                 "timing", "exit", "no_trade", "cross_asset_gate")
+    ident_re = re.compile(r"\b\d*[A-Za-z][A-Za-z0-9_]+\b")
+    for k in role_keys:
+        v = h.get(k)
+        if not isinstance(v, str):
+            continue
+        for m in ident_re.findall(v):
+            if m.lower() in _ALTDATA_NUMERIC_TOKENS:
+                return True
+    if isinstance(h.get("child_hypotheses"), list):
+        for c in h["child_hypotheses"]:
+            if _hypothesis_uses_altdata_numeric(c.get("hypothesis", {})):
+                return True
+            reg = c.get("regime")
+            if isinstance(reg, str):
+                for m in ident_re.findall(reg):
+                    if m.lower() in _ALTDATA_NUMERIC_TOKENS:
+                        return True
+    return False
+
+
+def _hypothesis_uses_xsym(h: dict) -> bool:
+    """Cheap text scan: does any role expression reference a cross-asset token?
+    Recurses into child_hypotheses + cross_asset_gate."""
+    if not isinstance(h, dict):
+        return False
+    role_keys = ("regime_gate", "bias_filter", "trigger", "confirmation",
+                 "timing", "exit", "no_trade", "cross_asset_gate")
+    ident_re = re.compile(r"\b[A-Za-z][A-Za-z0-9_]+\b")
+    for k in role_keys:
+        v = h.get(k)
+        if not isinstance(v, str):
+            continue
+        for m in ident_re.findall(v):
+            if m.lower() in _XSYM_TOKENS:
+                return True
+    if isinstance(h.get("child_hypotheses"), list):
+        for c in h["child_hypotheses"]:
+            if _hypothesis_uses_xsym(c.get("hypothesis", {})):
+                return True
+            reg = c.get("regime")
+            if isinstance(reg, str):
+                for m in ident_re.findall(reg):
+                    if m.lower() in _XSYM_TOKENS:
+                        return True
+    return False
+
+
+class _AltDataNumericResolver:
+    """Per-bar numeric resolver for alt-data tokens (task #56).
+
+    Wraps lab.indicator_compute_altdata's continuous-value functions and exposes
+    them as ``resolve(token: str) -> np.ndarray[float]`` of length n_bars.
+
+    Differs from _AltDataResolver (which returns bool event flags) — this one
+    returns continuous scores so the role parser can do ``token > threshold``
+    style numeric comparisons.
+
+    Per-token cache: same instance never recomputes the same numeric series.
+    """
+
+    def __init__(self, ticker: str, bar_timestamps: "pd.DatetimeIndex"):
+        self.ticker = ticker.upper()
+        # Convert tz-aware → naive (the altdata functions tolerate either but
+        # normalize internally).
+        ts = pd.DatetimeIndex(bar_timestamps)
+        if ts.tz is not None:
+            ts = ts.tz_convert("UTC").tz_localize(None)
+        self.bar_ts = ts
+        self.n = len(ts)
+        self._series_cache: Dict[str, np.ndarray] = {}
+        self._diagnostics: Dict[str, Any] = {"ticker": self.ticker, "n_bars": self.n}
+        # Lazy-import the altdata module (avoids cycle when running smoke tests).
+        try:
+            import indicator_compute_altdata as _altmod  # type: ignore
+        except ImportError:
+            try:
+                from lab import indicator_compute_altdata as _altmod  # type: ignore
+            except ImportError as e:
+                self._altmod = None
+                self._diagnostics["import_error"] = repr(e)
+                return
+        self._altmod = _altmod
+
+    def knows(self, token: str) -> bool:
+        return token.lower() in _ALTDATA_NUMERIC_TOKENS
+
+    def resolve(self, token: str) -> np.ndarray:
+        """Return length-n float array. NaN where source is missing."""
+        key = token.lower()
+        if key in self._series_cache:
+            return self._series_cache[key]
+        if self._altmod is None:
+            arr = np.full(self.n, np.nan, dtype=np.float64)
+            self._series_cache[key] = arr
+            return arr
+        # Map identifier → function name in indicator_compute_altdata.
+        # ``8k_pulse`` is the user-facing token; the function is ``eight_k_pulse``
+        # (Python identifier can't start with a digit).
+        fn_name = {
+            "8k_pulse": "eight_k_pulse",
+        }.get(key, key)
+        fn = getattr(self._altmod, fn_name, None)
+        if fn is None:
+            arr = np.full(self.n, np.nan, dtype=np.float64)
+            self._diagnostics.setdefault("unknown_fn", []).append(token)
+            self._series_cache[key] = arr
+            return arr
+        try:
+            ser = fn(self.ticker, self.bar_ts)
+        except Exception as e:  # noqa: BLE001
+            self._diagnostics.setdefault("errors", []).append({"token": token, "err": repr(e)})
+            arr = np.full(self.n, np.nan, dtype=np.float64)
+            self._series_cache[key] = arr
+            return arr
+        # Coerce to plain ndarray, length-n. If lengths mismatch, align by
+        # reindex on the bar timestamps (defensive — usually returns already-aligned).
+        if isinstance(ser, pd.Series):
+            if len(ser) != self.n:
+                try:
+                    ser = ser.reindex(self.bar_ts, method="ffill")
+                except Exception:
+                    pass
+            arr = ser.to_numpy(dtype=np.float64, na_value=np.nan)
+        else:
+            arr = np.asarray(ser, dtype=np.float64)
+        if arr.shape != (self.n,):
+            # Last-resort: pad or truncate with NaN to keep parser invariant.
+            fixed = np.full(self.n, np.nan, dtype=np.float64)
+            m = min(arr.shape[0], self.n)
+            fixed[:m] = arr[:m]
+            arr = fixed
+        self._series_cache[key] = arr
+        return arr
+
+    def diagnostics(self) -> Dict[str, Any]:
+        return dict(self._diagnostics)
+
+
+class _XSymResolver:
+    """Per-bar numeric resolver for cross-asset tokens (task #57).
+
+    Wraps lab.indicator_compute_xsym's cross-symbol functions and exposes them
+    as ``resolve(token: str) -> np.ndarray[float]`` of length n_bars, aligned to
+    the target ticker's bar timestamps.
+
+    Token aliases (user-facing ↔ xsym function):
+        vix_term_struct      → vix_term_structure(target_symbol=ticker)
+        sector_rs_rank       → sector_rotation_rank(symbol_sector=<sector ETF>, target_symbol=ticker)
+        hyg_lqd_ratio        → hyg_lqd_ratio(target_symbol=ticker)
+        spy_beta_60d         → spy_beta(target=ticker, n=60)
+        abs_spy_beta_60d     → abs(spy_beta(..., n=60))
+        vix_multiplied_atr   → vix_multiplied_atr(target=ticker)
+        spy_correlation      → spy_correlation(target=ticker)
+        sector_rotation_rank → sector_rotation_rank(...)
+        dxy_delta            → dxy_delta(target_symbol=ticker)
+        sector_relative_strength → sector_relative_strength(target=ticker, sector_etf=<inferred>)
+
+    Missing reference symbols (e.g. VIX not in parquet store) → NaN series.
+    """
+
+    # Best-effort static map ticker → sector ETF. Falls back to XLK if unknown.
+    # The championship_metadata.enrich_metadata returns the canonical sector for
+    # known S&P 500 tickers; we use a small map here to avoid a circular dep.
+    _DEFAULT_SECTOR_ETF = "XLK"
+
+    def __init__(self, ticker: str, bar_timestamps: "pd.DatetimeIndex"):
+        self.ticker = ticker.upper()
+        ts = pd.DatetimeIndex(bar_timestamps)
+        if ts.tz is not None:
+            ts = ts.tz_convert("UTC").tz_localize(None)
+        self.bar_ts = ts
+        self.n = len(ts)
+        self._series_cache: Dict[str, np.ndarray] = {}
+        self._bars_by_symbol: Dict[str, "pd.DataFrame"] = {}
+        self._diagnostics: Dict[str, Any] = {"ticker": self.ticker, "n_bars": self.n}
+        try:
+            import indicator_compute_xsym as _xsymmod  # type: ignore
+        except ImportError:
+            try:
+                from lab import indicator_compute_xsym as _xsymmod  # type: ignore
+            except ImportError as e:
+                self._xsymmod = None
+                self._diagnostics["import_error"] = repr(e)
+                return
+        self._xsymmod = _xsymmod
+
+    def knows(self, token: str) -> bool:
+        return token.lower() in _XSYM_TOKENS
+
+    def _sector_for_ticker(self) -> str:
+        """Cheap sector lookup: try championship_metadata.enrich_metadata, fall back to XLK."""
+        try:
+            try:
+                import championship_metadata as _cm  # type: ignore
+            except ImportError:
+                from lab import championship_metadata as _cm  # type: ignore
+            meta = _cm.enrich_metadata(self.ticker, formatted=False)
+            sector = (meta or {}).get("sector")
+            # Map GICS sector → sector ETF (best-effort)
+            sector_map = {
+                "Information Technology": "XLK",
+                "Technology": "XLK",
+                "Financials": "XLF",
+                "Energy": "XLE",
+                "Health Care": "XLV",
+                "Healthcare": "XLV",
+                "Utilities": "XLU",
+                "Consumer Discretionary": "XLY",
+                "Consumer Staples": "XLP",
+                "Industrials": "XLI",
+                "Materials": "XLB",
+                "Real Estate": "XLRE",
+                "Communication Services": "XLC",
+            }
+            if sector in sector_map:
+                return sector_map[sector]
+        except Exception:
+            pass
+        return self._DEFAULT_SECTOR_ETF
+
+    def _align_to_bars(self, ser: "pd.Series") -> np.ndarray:
+        """Reindex an xsym output series onto the ticker's bar timestamps (ffill).
+        Returns length-n float64 array.
+        """
+        if ser is None or not isinstance(ser, pd.Series):
+            return np.full(self.n, np.nan, dtype=np.float64)
+        # Normalize index tz
+        idx = ser.index
+        if isinstance(idx, pd.DatetimeIndex) and idx.tz is not None:
+            ser = ser.copy()
+            ser.index = idx.tz_convert("UTC").tz_localize(None)
+        try:
+            aligned = ser.reindex(self.bar_ts, method="ffill")
+        except Exception:
+            aligned = ser.reindex(self.bar_ts)
+        arr = aligned.to_numpy(dtype=np.float64, na_value=np.nan)
+        if arr.shape != (self.n,):
+            fixed = np.full(self.n, np.nan, dtype=np.float64)
+            m = min(arr.shape[0], self.n)
+            fixed[:m] = arr[:m]
+            arr = fixed
+        return arr
+
+    def resolve(self, token: str) -> np.ndarray:
+        key = token.lower()
+        if key in self._series_cache:
+            return self._series_cache[key]
+        if self._xsymmod is None:
+            arr = np.full(self.n, np.nan, dtype=np.float64)
+            self._series_cache[key] = arr
+            return arr
+        try:
+            ser = self._compute(key)
+        except Exception as e:  # noqa: BLE001
+            self._diagnostics.setdefault("errors", []).append({"token": token, "err": repr(e)})
+            ser = None
+        if ser is None:
+            arr = np.full(self.n, np.nan, dtype=np.float64)
+            self._series_cache[key] = arr
+            return arr
+        arr = self._align_to_bars(ser)
+        # Handle special abs() wrapper
+        if key == "abs_spy_beta_60d":
+            arr = np.abs(arr)
+        self._series_cache[key] = arr
+        return arr
+
+    def _compute(self, key: str) -> Optional["pd.Series"]:
+        """Dispatch the lowercase token to the xsym function. Returns a pd.Series
+        (NOT yet aligned to bar_ts; _align_to_bars does that)."""
+        m = self._xsymmod
+        bbs = self._bars_by_symbol  # reused across calls so each ref-symbol is loaded once
+        if key in ("vix_term_struct", "vix_term_structure"):
+            return m.vix_term_structure(bbs, target_symbol=self.ticker)
+        if key == "hyg_lqd_ratio":
+            return m.hyg_lqd_ratio(bbs, target_symbol=self.ticker)
+        if key in ("spy_beta_60d", "spy_beta", "abs_spy_beta_60d"):
+            return m.spy_beta(bbs, self.ticker, n=60)
+        if key == "vix_multiplied_atr":
+            return m.vix_multiplied_atr(bbs, self.ticker)
+        if key == "spy_correlation":
+            return m.spy_correlation(bbs, self.ticker)
+        if key == "dxy_delta":
+            return m.dxy_delta(bbs, target_symbol=self.ticker)
+        if key in ("sector_rs_rank", "sector_rotation_rank"):
+            sector_etf = self._sector_for_ticker()
+            return m.sector_rotation_rank(bbs, symbol_sector=sector_etf,
+                                           target_symbol=self.ticker)
+        if key == "sector_relative_strength":
+            sector_etf = self._sector_for_ticker()
+            return m.sector_relative_strength(bbs, self.ticker, sector_etf=sector_etf)
+        return None
+
+    def diagnostics(self) -> Dict[str, Any]:
+        return dict(self._diagnostics)
+
+
+# =============================================================================
+# End task #56 + #57 additions
+# =============================================================================
 
 
 def main():
