@@ -5,6 +5,14 @@ Loads from `Tech0/Data Master/BackTests & Data/indicator_mastery_index.csv` (38 
 and `indicator_manifest.json` (full 107). Falls back to embedded constants from the
 insights playbook when the live CSV isn't reachable via Drive FUSE.
 
+CORE PRINCIPLE (user-set hard rule, locked 2026-05-29):
+  Indicators ASSIST strategies. They add information. They are inputs, never the sole signal.
+  The unit of validation is a strategy hypothesis dict (regime gate × bias filter × trigger
+  × confirmation × timing × exit × cost × universe × timeframe), NOT a single indicator.
+  See methodology_principle() / informational_axes() / strategy_hypothesis_template() /
+  validate_test_unit() below, and the playbook at
+  `AI-Tools/reports/indicators_methodology_playbook_2026-05-29.md`.
+
 Top funcs:
   all_indicators()              — list of all curated rows as dicts
   by_status(status)             — filter to rows matching a status (e.g. 'TESTED_MULTIPLE_TICKERS')
@@ -16,6 +24,10 @@ Top funcs:
   recommended_settings(tf)      — default params per timeframe (5min S&P)
   banned_combinations()         — explicit math-equivalent bans (Williams %R = StochK etc.)
   tested_multiple_tickers()     — the small validated set
+  methodology_principle()       — locked principle: indicators assist strategies, not sole signal
+  informational_axes()          — 6 axes (trend, momentum, vol band, volume, mean-rev, structure)
+  strategy_hypothesis_template()— template dict for the validator's input unit
+  validate_test_unit(spec)      — gate: True if spec is a hypothesis dict, False if standalone indicator
 """
 from __future__ import annotations
 
@@ -236,6 +248,143 @@ def recommended_settings(timeframe: str = "5min") -> Dict[str, Dict[str, Any]]:
     if timeframe != "5min":
         return {}
     return dict(_RECOMMENDED_SETTINGS_5MIN_SP500)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Methodology (locked 2026-05-29): indicators ASSIST strategies, never sole signal.
+# Full playbook: AI-Tools/reports/indicators_methodology_playbook_2026-05-29.md
+# ──────────────────────────────────────────────────────────────────────────────
+
+_METHODOLOGY_PRINCIPLE = {
+    "version": 1,
+    "locked": "2026-05-29",
+    "authority": "user-set hard rule",
+    "principle": (
+        "Indicators ASSIST strategies. They add information. They are inputs, "
+        "never the sole signal. A backtest that fires a single indicator rule "
+        "(e.g. 'MACD cross → buy') with no surrounding regime gate, bias filter, "
+        "confirmation, or exit logic is not a fair test of the indicator — it is "
+        "a test of the weakest possible use case for it."
+    ),
+    "labelling_rule": (
+        "Reserve 'REJECTED' for indicators that fail to add useful information "
+        "even as a confirmation layer inside a multi-indicator strategy hypothesis. "
+        "For standalone-signal failures, the honest label is "
+        "'underperforms as standalone entry trigger'."
+    ),
+    "playbook_path": (
+        "AI-Tools/reports/indicators_methodology_playbook_2026-05-29.md"
+    ),
+}
+
+
+_INFORMATIONAL_AXES = {
+    "trend": {
+        "what_it_tells_you": "Direction and persistence",
+        "example_indicators": ["EMA(9/21)", "MACD signal line", "Supertrend", "ADX"],
+        "right_job": "Bias filter / regime gate",
+    },
+    "momentum_oscillator": {
+        "what_it_tells_you": "Overbought/oversold within trend",
+        "example_indicators": ["RSI", "Stochastic", "Williams %R", "CCI", "MFI"],
+        "right_job": "Pullback / exhaustion timing",
+    },
+    "volatility_band": {
+        "what_it_tells_you": "Where price is vs. normal range",
+        "example_indicators": ["Bollinger Bands", "Keltner", "Donchian", "ATR"],
+        "right_job": "Breakout vs. mean-revert regime",
+    },
+    "volume_conviction": {
+        "what_it_tells_you": "Is this move backed by participation?",
+        "example_indicators": ["OBV", "CMF", "A/D", "Volume Expansion", "VWAP"],
+        "right_job": "Confirmation only — never standalone entry",
+    },
+    "mean_reversion": {
+        "what_it_tells_you": "Statistical extreme",
+        "example_indicators": ["BB %B", "Connors RSI", "Z-score"],
+        "right_job": "Setup trigger in range regime",
+    },
+    "structure_geometry": {
+        "what_it_tells_you": "Price levels and ranges",
+        "example_indicators": ["Pivot points", "Opening Range", "S/R", "Donchian extremes"],
+        "right_job": "Entry / exit anchors",
+    },
+}
+
+
+_STRATEGY_HYPOTHESIS_TEMPLATE = {
+    "id": "SAP-XXX",
+    "regime_gate": "ADX(14) > 25",
+    "bias_filter": "EMA(9) > EMA(21)",
+    "trigger": "Donchian(20) UP breakout",
+    "confirmation": "Volume > 1.5 × SMA(20)",
+    "timing": "RSI(14) > 50",
+    "exit": "1.5 × ATR(14) trailing stop OR 2R target",
+    "no_trade": "ChopIdx >= 62",
+    "cost": "5bps + VIX_mult",
+    "universe": "SP500_502",
+    "timeframe": "5min",
+    "data_sources": ["alpaca_bars_5min"],
+}
+
+
+_REQUIRED_HYPOTHESIS_ROLES = ("regime_gate", "trigger", "exit", "cost", "universe", "timeframe")
+
+
+def methodology_principle() -> Dict[str, str]:
+    """The locked principle on how indicators are used in this lab. Returns dict."""
+    return dict(_METHODOLOGY_PRINCIPLE)
+
+
+def informational_axes() -> Dict[str, Dict[str, Any]]:
+    """
+    The 6 axes of information an indicator can occupy. Indicators within an axis are
+    highly correlated (redundancy clusters); indicators across axes carry orthogonal
+    information. A strategy hypothesis stacks one indicator per relevant axis.
+    """
+    return {k: dict(v) for k, v in _INFORMATIONAL_AXES.items()}
+
+
+def strategy_hypothesis_template() -> Dict[str, Any]:
+    """
+    Template dict for the validator's input unit. NOT a single indicator + params —
+    a multi-indicator hypothesis with explicit roles per indicator.
+    """
+    return dict(_STRATEGY_HYPOTHESIS_TEMPLATE)
+
+
+def validate_test_unit(spec: Any) -> Dict[str, Any]:
+    """
+    Gate function: True if the spec is a valid strategy hypothesis dict (multi-indicator
+    with required roles), False if it's a bare standalone indicator name/params tuple.
+
+    Returns: {ok: bool, reason: str, missing_roles: list[str]}.
+
+    Validators should call this before accepting a test request, and reject specs that
+    don't carry at least: regime_gate, trigger, exit, cost, universe, timeframe.
+    """
+    if isinstance(spec, str) or (isinstance(spec, tuple) and len(spec) <= 2):
+        return {
+            "ok": False,
+            "reason": (
+                "Single indicator + params is not a valid test unit. Wrap it in a "
+                "strategy_hypothesis dict so the indicator plays an explicit role "
+                "alongside regime_gate, bias_filter, confirmation, timing, and exit. "
+                "See lab.knowledge.indicators.strategy_hypothesis_template()."
+            ),
+            "missing_roles": list(_REQUIRED_HYPOTHESIS_ROLES),
+        }
+    if not isinstance(spec, dict):
+        return {"ok": False, "reason": f"spec must be a dict, got {type(spec).__name__}",
+                "missing_roles": list(_REQUIRED_HYPOTHESIS_ROLES)}
+    missing = [r for r in _REQUIRED_HYPOTHESIS_ROLES if not spec.get(r)]
+    if missing:
+        return {
+            "ok": False,
+            "reason": f"hypothesis missing required roles: {missing}",
+            "missing_roles": missing,
+        }
+    return {"ok": True, "reason": "valid strategy hypothesis", "missing_roles": []}
 
 
 def _clear_cache():
