@@ -21,6 +21,16 @@ DRIVE_BASE = "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmai
 
 _PLAYBOOKS: List[Dict[str, str]] = [
     {
+        "slug": "indicators_methodology",
+        "name": "Indicators Methodology Playbook (LOCKED PRINCIPLE)",
+        "path": f"{DRIVE_BASE}/AI-Tools/reports/indicators_methodology_playbook_2026-05-29.md",
+        "size_estimate": "7 KB",
+        "description": "User-locked hard rule: indicators ASSIST strategies; they are informational inputs, never the sole signal. Unit of validation is a strategy hypothesis dict (regime_gate × bias_filter × trigger × confirmation × timing × exit × cost × universe × timeframe), NOT a single indicator. Includes the 6 informational axes (trend / momentum / vol band / volume / mean-rev / structure), the strategy_hypothesis_template, and the reframe of the 2026-05-28 standalone validation result. Strongest hypotheses combine alt-data as trigger with OHLCV indicators as confluence.",
+        "use_when": "Writing any backtest brief; designing a strategy hypothesis; validating an indicator; refactoring a validator API; pre-registering a SAP. ALWAYS read before writing 'test indicator X' in any brief.",
+        "structured_form": "lab.knowledge.indicators (methodology_principle / informational_axes / strategy_hypothesis_template / validate_test_unit)",
+        "authority": "user-set hard rule"
+    },
+    {
         "slug": "indicator_insights",
         "name": "Indicator Insights Playbook",
         "path": f"{DRIVE_BASE}/AI-Tools/reports/indicator_insights_playbook_2026-05-28.md",
