@@ -1,48 +1,52 @@
 """update_mastery_index.py — Merge validation results into indicator_mastery_index.csv.
 
-Reads the runner's `summary.json` files for each indicator and writes back to the canonical
-mastery CSV at /My Drive/Combo-1/BackTests & Data/indicator_mastery_index.csv with new fields:
-  win_rate_v2, pbo, dsr, wfe, holdout_sharpe, validation_status, validation_utc, validation_n_tickers
+Two outputs:
+1. `indicator_validation_results.csv` — STANDALONE table of validation outputs (safe, idempotent).
+2. `indicator_mastery_index.csv` — original file with appended validation columns. To avoid
+   damaging the unquoted-comma cells in source columns, we operate at the *line* level:
+   - Read original file as raw text lines
+   - For each line, regex-match the row id and indicator name pattern
+   - Append validation fields by string-concatenation (after the original line's trailing fields)
 
-Always creates a timestamped backup first per workspace safety rules.
-
-Name → indicator_id mapping uses the registry's name and the CSV's indicator_name fuzzy match.
+This is non-destructive: original columns are untouched even if their unquoted commas would
+confuse a standard pandas csv parser.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-
-import pandas as pd
 
 CANONICAL_CSV = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/Combo-1/BackTests & Data/indicator_mastery_index.csv")
 LOCAL_CACHE_CSV = Path("/Volumes/ZG-2TB/zg/btd-local/indicator_mastery_index.csv")
 DRIVE_RESULTS = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery/data/indicator_validation")
 LOCAL_RESULTS = Path("/Volumes/ZG-2TB/zg/indicator_backtest/results")
+STANDALONE_LOCAL = Path("/Volumes/ZG-2TB/zg/btd-local/indicator_validation_results.csv")
+STANDALONE_DRIVE = Path("/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery/data/indicator_validation_results.csv")
 
-# Map runner indicator name -> mastery CSV indicator_name substring (lowercased) for matching
-NAME_TO_CSV = {
-    "MACD_12_26_9": "macd(12,26,9)",
-    "BB_20_2": "bollinger bands (20,2)",
-    "BB_pctB": "bollinger %b",
-    "Keltner_20_1.5": "keltner channels (20,1.5)",
-    "OBV": "obv",
-    "Stoch_14_3_3": "stochastic (14,3,3)",
-    "Williams_R_14": "williams %r(14)",
-    "CCI_20": "cci(20)",
-    "MFI_14": "mfi(14)",
-    "Fisher_Transform_10": "fisher transform",
-    "Connors_RSI_3": "connors rsi(3)",
-    "Supertrend_10_3": "supertrend",
+# Map runner indicator name -> indicator_id in mastery CSV (1-indexed)
+NAME_TO_ID = {
+    "MACD_12_26_9": "11",
+    "BB_20_2": "13",
+    "BB_pctB": "14",
+    "Keltner_20_1.5": "15",
+    "OBV": "19",
+    "Stoch_14_3_3": "20",
+    "Williams_R_14": "21",
+    "CCI_20": "22",
+    "MFI_14": "23",
+    "Fisher_Transform_10": "25",
+    "Connors_RSI_3": "34",
+    "Supertrend_10_3": "28",
 }
 
 
 def find_summary(name: str, utc_tag: str) -> dict | None:
-    """Try local then Drive results path."""
     for base in (LOCAL_RESULTS / name / utc_tag, DRIVE_RESULTS / name / utc_tag):
         p = base / "summary.json"
         if p.exists():
@@ -53,15 +57,83 @@ def find_summary(name: str, utc_tag: str) -> dict | None:
     return None
 
 
-def backup_csv(p: Path) -> Path:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    bp = p.parent / f"indicator_mastery_index_pre_validation_{ts}.csv"
+def write_standalone(summaries: dict[str, dict], utc_tag: str, paths: list[Path]):
+    """Write a clean validation-results CSV (separate file, no risk to mastery CSV)."""
+    rows = []
+    for name, s in summaries.items():
+        rows.append({
+            "indicator_id": NAME_TO_ID.get(name, ""),
+            "indicator_name_runner": name,
+            "validation_utc": utc_tag,
+            "timeframe": "1d",
+            "n_tickers_attempted": s.get("n_tickers_attempted"),
+            "n_tickers_ok": s.get("n_tickers_ok"),
+            "n_trades_total": s.get("n_trades_total"),
+            "wr_mean": round(s.get("wr_mean") or 0, 4),
+            "wfe_mean": round(s.get("wfe_mean") or 0, 4),
+            "pbo_mean": round(s.get("pbo_mean") or 0, 4),
+            "dsr_mean": round(s.get("dsr_mean") or 0, 4),
+            "new_status": s.get("new_status"),
+            "elapsed_sec": round(s.get("elapsed_sec") or 0, 1),
+        })
+    if not rows:
+        return
+    fieldnames = list(rows[0].keys())
+    for p in paths:
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with open(p, "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=fieldnames)
+                w.writeheader()
+                for r in rows:
+                    w.writerow(r)
+            print(f"  wrote standalone: {p}")
+        except OSError as e:
+            print(f"  write FAILED {p}: {e}")
+
+
+def append_to_mastery(target: Path, summaries: dict[str, dict], utc_tag: str):
+    """Non-destructive: read original file as text lines, append validation columns to matched
+    rows, write to a new copy. Safer than parsing the broken CSV.
+    """
     try:
-        shutil.copy(p, bp)
-        print(f"backup: {bp}")
+        text = target.read_text()
     except OSError as e:
-        print(f"backup FAILED at {bp}: {e}")
-    return bp
+        print(f"read failed at {target}: {e}")
+        return None
+    lines = text.splitlines()
+    if not lines:
+        return None
+    header = lines[0]
+    new_cols = "win_rate_v2,pbo_v2,dsr_v2,wfe_v2,validation_status,validation_utc,validation_n_tickers"
+    if "validation_utc" not in header:
+        header = header + "," + new_cols
+
+    out_lines = [header]
+    updates = 0
+    for line in lines[1:]:
+        if not line.strip():
+            out_lines.append(line)
+            continue
+        # First column is indicator_id followed by comma
+        m = re.match(r"^(\d+),", line)
+        rid = m.group(1) if m else None
+        matched_name = None
+        for name, idx in NAME_TO_ID.items():
+            if rid == idx and name in summaries:
+                matched_name = name
+                break
+        if matched_name is None:
+            out_lines.append(line)
+            continue
+        s = summaries[matched_name]
+        append = f',{round(s.get("wr_mean") or 0, 4)},{round(s.get("pbo_mean") or 0, 4)},{round(s.get("dsr_mean") or 0, 4)},{round(s.get("wfe_mean") or 0, 4)},{s.get("new_status")},{utc_tag},{s.get("n_tickers_ok")}'
+        out_lines.append(line + append)
+        updates += 1
+        print(f"  [appended row id={rid}] {matched_name} -> {s.get('new_status')} WR={s.get('wr_mean'):.3f}")
+
+    print(f"  total rows appended: {updates}")
+    return "\n".join(out_lines) + "\n"
 
 
 def main():
@@ -70,121 +142,59 @@ def main():
     ap.add_argument("--target-csv", default=str(CANONICAL_CSV))
     ap.add_argument("--cache-csv", default=str(LOCAL_CACHE_CSV))
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--no-drive", action="store_true", help="skip Drive writes (Drive FUSE flaky)")
     args = ap.parse_args()
 
-    target = Path(args.target_csv)
-    cache = Path(args.cache_csv)
-
-    # Prefer local cache (writeable + readable), fall back to canonical
-    src = cache if cache.exists() else target
-    # The CSV has unquoted commas inside parameter fields like "MACD(12,26,9)".
-    # Use the python `csv` module to read it as raw rows, then fix the column count
-    # by treating the canonical 15-column schema as fixed and joining overflow into the
-    # `evidence_path` column (the last column, which may already contain commas).
-    import csv as _csv
-    try:
-        with open(src, newline="") as f:
-            reader = _csv.reader(f)
-            rows = list(reader)
-    except OSError as e:
-        print(f"read failed at {src}: {e}")
-        return 1
-    header = rows[0]
-    n_cols = len(header)
-    fixed = []
-    for r in rows[1:]:
-        if not r or not any(r):
-            continue
-        if len(r) == n_cols:
-            fixed.append(r)
-        elif len(r) > n_cols:
-            # Overflow — collapse unquoted commas inside the indicator_name field (col 1).
-            # Heuristic: if r[1] starts with "MACD(", "Bollinger ", "Stochastic ", "Keltner ",
-            # or ends with "(<digit>" pattern, merge columns 1..k until we find a non-numeric
-            # token closing with ')'. Otherwise default to collapsing extras into the last
-            # column (evidence_path with unquoted commas).
-            r1 = r[1]
-            join_until = None
-            if any(r1.startswith(p) for p in ("MACD(", "Bollinger ", "Stochastic ", "Keltner ", "MACD Histogram ")):
-                # Walk forward until we see ')' closing the parameter spec
-                for k in range(2, min(len(r), 6)):
-                    if ")" in r[k]:
-                        join_until = k
-                        break
-            if join_until is not None:
-                merged_name = ",".join(r[1: join_until + 1])
-                r2 = [r[0], merged_name] + list(r[join_until + 1:])
-                # Now r2 may still have extras at the end — collapse into evidence_path
-                if len(r2) > n_cols:
-                    r2 = r2[: n_cols - 1] + [",".join(r2[n_cols - 1:])]
-                if len(r2) < n_cols:
-                    r2 = r2 + [""] * (n_cols - len(r2))
-                fixed.append(r2)
-            else:
-                # Default: collapse trailing extras into evidence_path
-                r2 = r[: n_cols - 1] + [",".join(r[n_cols - 1:])]
-                if len(r2) == n_cols:
-                    fixed.append(r2)
+    # Collect all summaries that exist
+    summaries: dict[str, dict] = {}
+    for name in NAME_TO_ID:
+        s = find_summary(name, args.utc_tag)
+        if s is not None:
+            summaries[name] = s
         else:
-            # Pad short rows (rare)
-            r2 = r + [""] * (n_cols - len(r))
-            fixed.append(r2)
-    df = pd.DataFrame(fixed, columns=header)
-    print(f"read {len(df)} rows from {src} (raw {len(rows)-1})")
-
-    # Add new columns if missing
-    new_cols = ["win_rate_v2", "pbo", "dsr", "wfe", "validation_status", "validation_utc", "validation_n_tickers"]
-    for c in new_cols:
-        if c not in df.columns:
-            df[c] = None
-
-    updates = 0
-    for name, csv_substr in NAME_TO_CSV.items():
-        summary = find_summary(name, args.utc_tag)
-        if summary is None:
             print(f"  [no summary] {name}")
-            continue
-        # Find matching row(s)
-        mask = df["indicator_name"].str.lower().str.contains(csv_substr.lower(), regex=False, na=False)
-        if mask.sum() == 0:
-            print(f"  [no match] {name} -> '{csv_substr}'")
-            continue
-        idxs = df.index[mask].tolist()
-        for i in idxs:
-            df.at[i, "win_rate_v2"] = round(summary.get("wr_mean") or 0, 4)
-            df.at[i, "pbo"] = round(summary.get("pbo_mean") or 0, 4)
-            df.at[i, "dsr"] = round(summary.get("dsr_mean") or 0, 4)
-            df.at[i, "wfe"] = round(summary.get("wfe_mean") or 0, 4)
-            df.at[i, "validation_status"] = summary.get("new_status")
-            df.at[i, "validation_utc"] = args.utc_tag
-            df.at[i, "validation_n_tickers"] = summary.get("n_tickers_ok")
-            # Also overwrite top-level status field if validation produced a clear verdict
-            if summary.get("new_status") in ("TESTED_MULTIPLE_TICKERS", "REJECTED"):
-                df.at[i, "status"] = summary.get("new_status")
-            updates += 1
-            print(f"  [updated row {i}] {name} -> {summary.get('new_status')} WR={summary.get('wr_mean'):.3f} PBO={summary.get('pbo_mean'):.3f} DSR={summary.get('dsr_mean'):.3f}")
-
-    print(f"\ntotal row updates: {updates}")
-    if args.dry_run:
-        print("DRY-RUN — not writing")
+    print(f"\ncollected {len(summaries)} summaries\n")
+    if not summaries:
         return 0
 
-    # Always write a local cache copy first (safer if Drive is flaky)
-    try:
-        cache.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(cache, index=False)
-        print(f"wrote cache: {cache}")
-    except OSError as e:
-        print(f"cache write FAILED: {e}")
+    # Standalone CSV
+    print("== standalone validation results CSV ==")
+    paths = [STANDALONE_LOCAL]
+    if not args.no_drive:
+        paths.append(STANDALONE_DRIVE)
+    if not args.dry_run:
+        write_standalone(summaries, args.utc_tag, paths)
+    else:
+        print("  DRY-RUN — not writing standalone")
 
-    # Backup + write canonical
-    if target.exists():
-        backup_csv(target)
-    try:
-        df.to_csv(target, index=False)
-        print(f"wrote canonical: {target}")
-    except OSError as e:
-        print(f"canonical write FAILED: {e}")
+    # Append to mastery (local cache first, then canonical)
+    print("\n== appending to mastery_index ==")
+    # Local cache:
+    text = append_to_mastery(Path(args.cache_csv), summaries, args.utc_tag)
+    if text is not None and not args.dry_run:
+        try:
+            Path(args.cache_csv).write_text(text)
+            print(f"  wrote local cache: {args.cache_csv}")
+        except OSError as e:
+            print(f"  cache write FAILED: {e}")
+
+    # Canonical:
+    if not args.no_drive:
+        text = append_to_mastery(Path(args.target_csv), summaries, args.utc_tag)
+        if text is not None and not args.dry_run:
+            # Backup first
+            try:
+                ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                bp = Path(args.target_csv).parent / f"indicator_mastery_index_pre_validation_{ts}.csv"
+                shutil.copy(args.target_csv, bp)
+                print(f"  backup: {bp}")
+            except OSError as e:
+                print(f"  backup FAILED: {e}")
+            try:
+                Path(args.target_csv).write_text(text)
+                print(f"  wrote canonical: {args.target_csv}")
+            except OSError as e:
+                print(f"  canonical write FAILED: {e}")
 
     return 0
 
