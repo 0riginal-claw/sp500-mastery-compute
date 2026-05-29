@@ -692,6 +692,58 @@ def _looks_like_alt_data_token(s: str) -> bool:
     ))
 
 
+# ----------------------------------------------------------------------------
+# Cross-variant alt-data fetch cache (task #76, 2026-05-29)
+#
+# Problem: CHAMP-002 attempt2 timed out 12/12 tickers at 600s on the DAILY
+# timeframe. Root cause is _NOT_ FUSE — `_AltDataResolver` is recreated per
+# variant in championship_search (see hypothesis_runner.run_hypothesis_for_ticker
+# line ~2041), so 23 variants × 4 source DBs (Form 4, Form 8-K, GovTrades
+# congress + offexchange, News) = ~92 sqlite hits per ticker. With the Edgar
+# daemon writing concurrently, sqlite contention pushes per-variant cost to
+# ~30 s → 23 × 30 s = 690 s = timeout.
+#
+# Fix: module-level cache keyed by (ticker, source_kind). The source_kind is a
+# short string like "edgar:4" / "edgar:8-K" / "congress" / "offexchange" /
+# "news". Once any resolver for a given ticker pulls a source, every subsequent
+# resolver — for the SAME ticker, in the SAME process — reuses the cached
+# DataFrame. The cache is per-process (no TTL) because a championship run is
+# always a single ticker for the duration of search_championship; later runs
+# of a different ticker simply add more entries.
+#
+# Memory cost: ~few MB per ticker (Form 4 + 8-K + news ~10k-50k rows each).
+# Acceptable for the 502-ticker universe (~2 GB peak if all tickers fully
+# cached — but in practice search_championship runs one ticker at a time and
+# the cache can be cleared between tickers by championship_search if needed).
+#
+# No-regression guarantee: cached DataFrames are returned as-is (no mutation
+# downstream — the _resolve_* methods only read columns + searchsorted).
+# ----------------------------------------------------------------------------
+_ALTDATA_FETCH_CACHE: Dict[Tuple[str, str], Any] = {}
+
+
+def _altdata_cache_get(ticker: str, source_kind: str) -> Optional["pd.DataFrame"]:
+    """Return cached DataFrame for (ticker, source_kind), or None if not cached."""
+    return _ALTDATA_FETCH_CACHE.get((ticker.upper(), source_kind))
+
+
+def _altdata_cache_set(ticker: str, source_kind: str, df: "pd.DataFrame") -> None:
+    _ALTDATA_FETCH_CACHE[(ticker.upper(), source_kind)] = df
+
+
+def _altdata_cache_clear(ticker: Optional[str] = None) -> int:
+    """Clear cache entries for `ticker` (or all entries if None). Returns count removed."""
+    if ticker is None:
+        n = len(_ALTDATA_FETCH_CACHE)
+        _ALTDATA_FETCH_CACHE.clear()
+        return n
+    tk = ticker.upper()
+    keys = [k for k in _ALTDATA_FETCH_CACHE if k[0] == tk]
+    for k in keys:
+        del _ALTDATA_FETCH_CACHE[k]
+    return len(keys)
+
+
 class _AltDataResolver:
     """Per-bar resolver for alt-data event-window tokens.
 
