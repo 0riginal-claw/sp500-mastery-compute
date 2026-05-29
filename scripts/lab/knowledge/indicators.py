@@ -44,6 +44,21 @@ INDEX_CSV = f"{DRIVE_BASE}/Tech0/Data Master/BackTests & Data/indicator_mastery_
 MANIFEST_JSON = f"{DRIVE_BASE}/Tech0/Data Master/BackTests & Data/indicator_manifest.json"
 LAB_MIRROR_DIR = f"{DRIVE_BASE}/AI-Tools/research-lab/data_inventory"
 
+# Fallback chain for INDEX_CSV — Tech0/ is FUSE-blind on this Mac, so we maintain a
+# local SSD mirror at /Volumes/ZG-2TB/zg/btd-local/ AND a Drive mirror under sp500-mastery/data/.
+# Order matters: primary first, then 2TB local, then Drive mirror, then embedded constants.
+INDEX_CSV_FALLBACKS = [
+    INDEX_CSV,
+    "/Volumes/ZG-2TB/zg/btd-local/indicator_mastery_index.csv",
+    f"{DRIVE_BASE}/AI-Tools/s&p500-ticker-mastery/data/indicator_mastery_index.csv",
+    f"{DRIVE_BASE}/AI-Tools/s&p500-ticker-mastery/data/indicator_validation_results.csv",
+]
+MANIFEST_JSON_FALLBACKS = [
+    MANIFEST_JSON,
+    "/Volumes/ZG-2TB/zg/btd-local/indicator_manifest.json",
+    f"{DRIVE_BASE}/AI-Tools/s&p500-ticker-mastery/data/indicator_manifest.json",
+]
+
 
 def _read_csv_safe(path: str) -> Optional[List[Dict[str, str]]]:
     """Drive FUSE may not see Tech0; return None on ENOENT, raise on other errors."""
