@@ -922,6 +922,199 @@ def _smoke_bar_timestamps(n: int = 90, end: str = "2026-05-27") -> pd.DatetimeIn
     return pd.date_range(end=end, periods=n, freq="B")
 
 
+# ---------------------------------------------------------------------------
+# No-regression equality validation (task #78, 2026-05-29)
+# ---------------------------------------------------------------------------
+#
+# Compares the new vectorized implementations against the original `_*_loop_v1`
+# references on synthetic data (no real fetch). The cache is preloaded with
+# realistic-shape DataFrames so both code paths see identical inputs.
+# ---------------------------------------------------------------------------
+
+
+def _synth_dataframes(seed: int = 42, n_events: int = 200,
+                       start: str = "2024-01-01", end: str = "2026-05-29"
+                       ) -> Dict[str, pd.DataFrame]:
+    """Build synthetic alt-data DataFrames matching schemas the fetch helpers emit."""
+    rng = np.random.default_rng(seed)
+    span = pd.date_range(start, end, freq="D")
+    pick = rng.choice(len(span), size=n_events, replace=True)
+    pick.sort()
+    ts = span[pick]
+
+    insiders = rng.choice(["Cook T.", "Maestri L.", "Adams K.", "O'Brien K.", "Williams J."],
+                          size=n_events)
+    side = rng.choice(["P", "S", "B"], size=n_events, p=[0.5, 0.3, 0.2])
+    values = rng.exponential(scale=50_000, size=n_events)
+
+    form4 = pd.DataFrame({
+        "filed_at": ts,
+        "form": "4",
+        "reporting_owner": insiders,
+        "transaction_code": side,
+        "value_usd": values,
+    })
+
+    eight_k = pd.DataFrame({
+        "filed_at": ts[: n_events // 2],
+        "form": "8-K",
+    })
+
+    congress = pd.DataFrame({
+        "disclosure_date": ts[: n_events // 3],
+    })
+
+    offex_days = pd.date_range(start, end, freq="B")
+    offex = pd.DataFrame({
+        "as_of_date": offex_days,
+        "short_volume_ratio": 0.4 + rng.normal(0, 0.05, size=len(offex_days)),
+    })
+
+    lobbying = pd.DataFrame({
+        "period_end": ts[: n_events // 4],
+        "amount_usd": rng.exponential(scale=250_000, size=n_events // 4),
+    })
+
+    contracts = pd.DataFrame({
+        "awarded_at": ts[: n_events // 5],
+        "amount_usd": rng.exponential(scale=1_500_000, size=n_events // 5),
+    })
+
+    news_days = pd.date_range(start, end, freq="6h")
+    news_pick = rng.choice(len(news_days), size=min(2000, len(news_days)), replace=False)
+    news = pd.DataFrame({
+        "published_utc": news_days[news_pick],
+    })
+
+    return {
+        "filings:Form 4": form4,
+        "filings:8-K": eight_k,
+        "congress": congress,
+        "offex": offex,
+        "lobbying": lobbying,
+        "contracts": contracts,
+        "news": news,
+    }
+
+
+def _inject_synthetic_cache(ticker: str, dfs: Dict[str, pd.DataFrame],
+                              bar_timestamps: pd.DatetimeIndex) -> None:
+    """Populate the module's fetch cache with synthetic frames so neither the loop
+    nor vectorized paths fall through to real loaders during validation."""
+    _altdata_cache_clear(ticker)
+    # Apply the same dtype normalizations the real _fetch_* helpers apply
+    for col, df_key in (("filed_at", "filings:Form 4"), ("filed_at", "filings:8-K"),
+                        ("disclosure_date", "congress"), ("as_of_date", "offex"),
+                        ("period_end", "lobbying"), ("awarded_at", "contracts"),
+                        ("published_utc", "news")):
+        if df_key in dfs and col in dfs[df_key].columns:
+            dfs[df_key] = dfs[df_key].copy()
+            dfs[df_key][col] = _parse_dt(dfs[df_key][col])
+
+    _altdata_cache_set(ticker, "filings:Form 4", dfs["filings:Form 4"])
+    _altdata_cache_set(ticker, "filings:8-K", dfs["filings:8-K"])
+    _altdata_cache_set(ticker, "congress", dfs["congress"])
+    _altdata_cache_set(ticker, "offex", dfs["offex"])
+    _altdata_cache_set(ticker, "lobbying", dfs["lobbying"])
+    _altdata_cache_set(ticker, "contracts", dfs["contracts"])
+
+    # News is keyed by date range — match what news_velocity_zscore computes
+    # for the given bar_timestamps so the cache hits.
+    idx = _ensure_naive_index(bar_timestamps)
+    start = idx.min() - pd.Timedelta(days=90 + 7 + 1)
+    end = idx.max()
+    cache_key = f"news:{start.date()}:{end.date()}"
+    _altdata_cache_set(ticker, cache_key, dfs["news"])
+
+
+def _validate_vectorization(ticker: str = "TEST",
+                              n_bars: int = 500,
+                              seed: int = 42) -> Dict[str, dict]:
+    """Run all 7 vectorized indicators against their _loop_v1 references on synthetic
+    data and verify equality. Returns a per-indicator dict with `passed`, `max_abs_diff`,
+    `n_mismatch`, and any error message.
+    """
+    import time
+
+    # Use a long bar history to make rolling baselines well-populated
+    bar_timestamps = pd.date_range(end="2026-05-27", periods=n_bars, freq="B")
+    dfs = _synth_dataframes(seed=seed)
+    _inject_synthetic_cache(ticker, dfs, bar_timestamps)
+
+    pairs = [
+        ("form4_insider_cluster_score", form4_insider_cluster_score, _form4_insider_cluster_score_loop_v1, {"lookback_d": 5}),
+        ("congress_lead_lag", congress_lead_lag, _congress_lead_lag_loop_v1, {"lookback_d": 30}),
+        ("news_velocity_zscore", news_velocity_zscore, _news_velocity_zscore_loop_v1, {"lookback_d": 7, "baseline_d": 90}),
+        ("dark_pool_divergence_z", dark_pool_divergence_z, _dark_pool_divergence_z_loop_v1, {"lookback_d": 5, "baseline_d": 30}),
+        ("lobbying_intensity", lobbying_intensity, _lobbying_intensity_loop_v1, {"lookback_d": 90, "baseline_d": 365}),
+        ("gov_contract_inflow", gov_contract_inflow, _gov_contract_inflow_loop_v1, {"lookback_d": 90}),
+        ("eight_k_pulse", eight_k_pulse, _eight_k_pulse_loop_v1, {"lookback_d": 5}),
+    ]
+
+    results: Dict[str, dict] = {}
+    for name, new_fn, old_fn, kw in pairs:
+        try:
+            t0 = time.perf_counter()
+            new_out = new_fn(ticker, bar_timestamps, **kw)
+            t_new = time.perf_counter() - t0
+            t0 = time.perf_counter()
+            old_out = old_fn(ticker, bar_timestamps, **kw)
+            t_old = time.perf_counter() - t0
+
+            new_arr = new_out.to_numpy(dtype="float64")
+            old_arr = old_out.to_numpy(dtype="float64")
+
+            if new_arr.shape != old_arr.shape:
+                results[name] = {
+                    "passed": False,
+                    "reason": f"shape mismatch {new_arr.shape} vs {old_arr.shape}",
+                    "t_new_s": t_new, "t_old_s": t_old,
+                }
+                continue
+
+            # NaN positions must agree exactly
+            nan_new = np.isnan(new_arr)
+            nan_old = np.isnan(old_arr)
+            nan_diff = int(np.sum(nan_new != nan_old))
+
+            # Compute diffs only on positions where both are finite.
+            # Use a hybrid abs+rel tolerance so cumsum-vs-per-window-sum FP differences
+            # at scale (e.g. $10M+ contract sums where 1e-15 relative == 1e-8 absolute)
+            # don't false-positive. Tolerance matches np.allclose defaults: atol=1e-8,
+            # rtol=1e-6 — well below any economically-meaningful threshold.
+            finite_mask = ~nan_new & ~nan_old
+            if finite_mask.any():
+                diff = np.abs(new_arr[finite_mask] - old_arr[finite_mask])
+                max_abs_diff = float(diff.max())
+                tol = 1e-8 + 1e-6 * np.abs(old_arr[finite_mask])
+                n_mismatch = int(np.sum(diff > tol))
+            else:
+                max_abs_diff = 0.0
+                n_mismatch = 0
+
+            passed = (nan_diff == 0) and (n_mismatch == 0)
+            speedup = t_old / t_new if t_new > 0 else float("inf")
+            results[name] = {
+                "passed": bool(passed),
+                "max_abs_diff": max_abs_diff,
+                "n_mismatch": n_mismatch,
+                "nan_position_diff": nan_diff,
+                "t_new_s": t_new,
+                "t_old_s": t_old,
+                "speedup_x": speedup,
+                "n_finite_new": int(np.sum(~nan_new)),
+                "n_finite_old": int(np.sum(~nan_old)),
+            }
+        except Exception as e:  # noqa: BLE001
+            results[name] = {
+                "passed": False,
+                "reason": f"EXC {type(e).__name__}: {e}",
+            }
+
+    _altdata_cache_clear(ticker)
+    return results
+
+
 if __name__ == "__main__":
     ticker = "AAPL"
     bts = _smoke_bar_timestamps(90)
