@@ -106,6 +106,10 @@ _TF_STACK_BY_SEED = {
     # cache for the 12-ticker cohort before re-dispatch).
     "CATALYST_CONFLUENCE":  ["1d"],
     "CROSS_SYMBOL_REGIME":  ["1d"],
+    # CHAMP-003B (task #83) — CONFLUENCE_v1: OHLCV breakout triggers, alt-data
+    # OR'd as confirmation. Reverses the CHAMP-002 conjunction trap. Daily TF
+    # only for first run; multi-TF deferred.
+    "CONFLUENCE_v1":        ["1d"],
     "HYBRID_REGIME": ["5min", "1h",    "1d"],
 }
 
@@ -337,6 +341,57 @@ _SEED_TEMPLATES = [
             "indicator_compute_xsym.hyg_lqd_ratio (HYG + LQD)",
             "indicator_compute_xsym.sector_rs_rank (sector ETFs)",
             "indicator_compute_xsym.spy_beta_60d (60d OLS vs SPY)",
+        ],
+    },
+    # ─── CHAMP-003B seed (task #83, 2026-05-30) ────────────────────────────
+    # CONFLUENCE_v1 — Expansionist R6's fix to the CHAMP-002 conjunction trap.
+    # In CHAMP-002 the alt-data tokens were AND'd onto the regime_gate + trigger,
+    # producing a ~0.001% joint firing rate (67% of tickers fired 0 trades, the
+    # remaining 33% fired 1 trade — see CHAMP-002 attempt4 results). Reframe:
+    # OHLCV breakout is the TRIGGER (fires often, ~5-15% daily), alt-data is
+    # the CONFIRMATION as an OR over 4 sources (any one being hot is enough).
+    # Pre-registered at AI-Tools/reports/champ_003b_confluence_pre_registration_
+    # 2026-05-29.md (sha256: 031563e0f14f56877c775ebc8262bb10a4a34344d4822977f
+    # 9beeb0c240dc2a8). Locked thresholds: perm p<0.05 AND PBO<0.20 AND
+    # DSR>0.95 AND WFE>0 AND cluster-SE t>2 AND n_trades>=30 per variant.
+    {
+        "seed_id": "CONFLUENCE_v1",
+        "theory": (
+            "OHLCV breakout triggers; alt-data confluence (OR'd over Form 4 cluster, "
+            "news velocity Z, dark-pool divergence, 8-K pulse) confirms the breakout. "
+            "Alt-data ASSISTS the strategy (per feedback_indicators_are_assistance), "
+            "it does not gate it. Replaces CHAMP-002 GOV_AWARE_v2 / CATALYST_CONFLUENCE "
+            "AND'd 5-gate trap that produced n_trades=0 for 67% of cohort."
+        ),
+        "side": "long",
+        # Standard daily-TF trend regime
+        "regime_gate": "ADX(14) > {adx_thresh}",
+        "bias_filter": "EMA({ema_fast}) > EMA({ema_slow})",
+        # PRIMARY trigger = OHLCV breakout — fires often (typical 5-15% on daily)
+        "trigger": "Close > Donchian_UP({donch})",
+        # CONFIRMATION = OR-confluence over 4 alt-data sources.
+        # Any ONE being hot is sufficient — this is the "do we believe it" filter.
+        # f4_thresh=30 is loose (vs. CHAMP-002's >60). nv_thresh=1.5 is the
+        # standard 1.5-sigma news-flow trigger. dark_pool_divergence_z < -1.5
+        # = institutional accumulation signature. 8k_pulse >= 1 = any recent
+        # material event. Numeric tokens degrade NaN→0 where source missing,
+        # so the OR'd block is honestly conservative (false → no contribution).
+        "confirmation": (
+            "form4_insider_cluster_score > 30 "
+            "OR news_velocity_zscore > 1.5 "
+            "OR dark_pool_divergence_z < -1.5 "
+            "OR 8k_pulse >= 1"
+        ),
+        # Timing band: not-overbought AND non-trivial momentum
+        "timing": "RSI(14) > 40 AND RSI(14) < 70",
+        "exit": "{atr_mult} * ATR(14) trailing stop",
+        "no_trade": "ChopIdx(14) > 62",
+        "data_sources": [
+            "yfinance_daily_5yr cache (daily OHLCV: ADX, EMA, Donchian, RSI, ATR, Chop)",
+            "indicator_compute_altdata.form4_insider_cluster_score (edgar Form 4)",
+            "indicator_compute_altdata.news_velocity_zscore (news 7d-vs-90d Z)",
+            "indicator_compute_altdata.dark_pool_divergence_z (FINRA offexchange)",
+            "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
         ],
     },
     {
@@ -1254,7 +1309,8 @@ def main():
     ap.add_argument("--n-folds", type=int, default=12)
     ap.add_argument("--seeds", nargs="+", default=None,
                     help="Optional seed_id allowlist (e.g. CATALYST_CONFLUENCE "
-                         "CROSS_SYMBOL_REGIME GOV_AWARE_v2). Default: all seeds.")
+                         "CROSS_SYMBOL_REGIME GOV_AWARE_v2 CONFLUENCE_v1). "
+                         "Default: all seeds.")
     args = ap.parse_args()
 
     summary = {}
