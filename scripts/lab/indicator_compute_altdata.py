@@ -301,20 +301,14 @@ def _fetch_news(ticker: str, start_dt: pd.Timestamp, end_dt: pd.Timestamp) -> pd
 # ---------------------------------------------------------------------------
 
 
-def form4_insider_cluster_score(ticker: str, bar_timestamps: pd.DatetimeIndex,
-                                 lookback_d: int = 5) -> pd.Series:
-    """For each bar_timestamp t: cluster_score = n_distinct_insiders * log(1 + total_value)
-    from Form 4 BUY rows accepted in (t - lookback_d, t]. Causal via `filed_at <= t`.
-
-    Returns same-length Series, 0 where no Form 4 activity, NaN if source missing entirely.
-    axis=volume_conviction (insider conviction confirmation).
-    """
+def _form4_insider_cluster_score_loop_v1(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                                          lookback_d: int = 5) -> pd.Series:
+    """Original O(N*M) reference implementation — kept for equality regression tests."""
     idx = _ensure_naive_index(bar_timestamps)
     df = _fetch_filings(ticker, form="Form 4")
     if df.empty or "filed_at" not in df.columns:
         return _empty_series(idx)
 
-    # Heuristic value/insider columns — schemas vary; default to scalar 1.0 each
     value_col = None
     for c in ("value_usd", "transaction_value", "amount_usd", "amount"):
         if c in df.columns:
@@ -325,7 +319,6 @@ def form4_insider_cluster_score(ticker: str, bar_timestamps: pd.DatetimeIndex,
         if c in df.columns:
             insider_col = c
             break
-    # Filter buys only if we have a side column
     if "transaction_code" in df.columns:
         df = df[df["transaction_code"].astype(str).str.upper().isin(("P", "B"))]
     elif "side" in df.columns:
@@ -350,17 +343,101 @@ def form4_insider_cluster_score(ticker: str, bar_timestamps: pd.DatetimeIndex,
     return out
 
 
+def form4_insider_cluster_score(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                                 lookback_d: int = 5) -> pd.Series:
+    """For each bar_timestamp t: cluster_score = n_distinct_insiders * log(1 + total_value)
+    from Form 4 BUY rows accepted in (t - lookback_d, t]. Causal via `filed_at <= t`.
+
+    Returns same-length Series, 0 where no Form 4 activity, NaN if source missing entirely.
+    axis=volume_conviction (insider conviction confirmation).
+
+    Vectorized (2026-05-29, task #78): replaces O(N*M) per-bar loop with O((N+M) log M)
+    searchsorted + per-interval distinct count. The distinct-insider count cannot be
+    pure cumsum (set cardinality is not additive), but each per-bar set computation is
+    bounded to the events inside the lookback window — typically <50 rows even for
+    very active tickers — so the inner loop is small and cache-friendly.
+    """
+    idx = _ensure_naive_index(bar_timestamps)
+    df = _fetch_filings(ticker, form="Form 4")
+    if df.empty or "filed_at" not in df.columns:
+        return _empty_series(idx)
+
+    value_col = None
+    for c in ("value_usd", "transaction_value", "amount_usd", "amount"):
+        if c in df.columns:
+            value_col = c
+            break
+    insider_col = None
+    for c in ("reporting_owner", "insider_name", "reporter_name", "filer"):
+        if c in df.columns:
+            insider_col = c
+            break
+    if "transaction_code" in df.columns:
+        df = df[df["transaction_code"].astype(str).str.upper().isin(("P", "B"))]
+    elif "side" in df.columns:
+        df = df[df["side"].astype(str).str.lower().str.startswith("buy")]
+
+    df = df.dropna(subset=["filed_at"]).sort_values("filed_at")
+    out = pd.Series(0.0, index=idx, dtype="float64")
+    if df.empty:
+        return out
+
+    # Sorted event timestamps + paired arrays
+    event_times = df["filed_at"].values.astype("datetime64[ns]")
+    if value_col and value_col in df.columns:
+        event_values = pd.to_numeric(df[value_col], errors="coerce").fillna(0.0).to_numpy(dtype="float64")
+    else:
+        event_values = None  # signal: use count instead
+    if insider_col:
+        # Map insider strings to int codes for fast unique count via np.unique
+        codes, _ = pd.factorize(df[insider_col].astype(str), sort=False)
+        insider_codes = codes.astype(np.int64)
+    else:
+        insider_codes = None
+
+    bar_arr = idx.values.astype("datetime64[ns]")
+    window_ns = np.timedelta64(int(lookback_d), "D")
+    # upper: events with filed_at <= t   (side='right')
+    upper = np.searchsorted(event_times, bar_arr, side="right")
+    # lower: events with filed_at > t - window  (side='right' on (t-window))
+    lower = np.searchsorted(event_times, bar_arr - window_ns, side="right")
+
+    # Cumsum trick for SUM aggregation (or count fallback)
+    if event_values is not None:
+        cum_val = np.concatenate(([0.0], np.cumsum(event_values)))
+        sum_window = cum_val[upper] - cum_val[lower]
+    else:
+        sum_window = (upper - lower).astype("float64")  # count fallback
+
+    # Per-bar distinct-insider count: small inner loop bounded by lookback window
+    if insider_codes is not None:
+        n_insider = np.zeros(len(bar_arr), dtype="float64")
+        # Skip bars with zero window-events
+        nonempty = np.flatnonzero(upper > lower)
+        for i in nonempty:
+            lo, hi = lower[i], upper[i]
+            # Distinct count on a small slice — uses optimized C-level np.unique
+            n_insider[i] = np.unique(insider_codes[lo:hi]).size
+    else:
+        # No insider column → use raw event count as proxy
+        n_insider = (upper - lower).astype("float64")
+
+    # Clamp sum_window to >=0 then apply log1p
+    sum_window = np.maximum(sum_window, 0.0)
+    out_arr = n_insider * np.log1p(sum_window)
+    # Where no events at all, keep 0.0 (matches loop version's `continue` semantics)
+    out = pd.Series(out_arr, index=idx, dtype="float64")
+    return out
+
+
 # ---------------------------------------------------------------------------
 # 2. Congress lead-lag (days since most recent disclosure)
 # ---------------------------------------------------------------------------
 
 
-def congress_lead_lag(ticker: str, bar_timestamps: pd.DatetimeIndex,
-                       lookback_d: int = 30) -> pd.Series:
-    """Days since the latest congress trade disclosure for `ticker`, capped at `lookback_d`.
-    NaN if no disclosure within lookback. Causal via `disclosure_date <= t`.
-    axis=volume_conviction (informed-flow confirmation).
-    """
+def _congress_lead_lag_loop_v1(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                                lookback_d: int = 30) -> pd.Series:
+    """Original O(N*M) reference — kept for equality tests."""
     idx = _ensure_naive_index(bar_timestamps)
     df = _fetch_congress(ticker)
     if df.empty or "disclosure_date" not in df.columns:
@@ -378,23 +455,52 @@ def congress_lead_lag(ticker: str, bar_timestamps: pd.DatetimeIndex,
     return out
 
 
+def congress_lead_lag(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                       lookback_d: int = 30) -> pd.Series:
+    """Days since the latest congress trade disclosure for `ticker`, capped at `lookback_d`.
+    NaN if no disclosure within lookback. Causal via `disclosure_date <= t`.
+    axis=volume_conviction (informed-flow confirmation).
+
+    Vectorized (2026-05-29, task #78): "days since latest event <= t (within window)"
+    reduces to a single searchsorted — pick the event at index upper-1 if upper > lower.
+    Events are pre-sorted so events[upper-1] is the most recent <= t.
+    """
+    idx = _ensure_naive_index(bar_timestamps)
+    df = _fetch_congress(ticker)
+    if df.empty or "disclosure_date" not in df.columns:
+        return _empty_series(idx)
+    df = df.dropna(subset=["disclosure_date"]).sort_values("disclosure_date")
+    if df.empty:
+        return _empty_series(idx)
+
+    event_times = df["disclosure_date"].values.astype("datetime64[ns]")
+    bar_arr = idx.values.astype("datetime64[ns]")
+    window_ns = np.timedelta64(int(lookback_d), "D")
+    upper = np.searchsorted(event_times, bar_arr, side="right")
+    lower = np.searchsorted(event_times, bar_arr - window_ns, side="right")
+
+    out_arr = np.full(len(bar_arr), np.nan, dtype="float64")
+    mask = upper > lower  # at least one event in window
+    if mask.any():
+        most_recent_idx = (upper[mask] - 1).astype(np.int64)
+        most_recent = event_times[most_recent_idx]
+        # (t - most_recent).days — matches pandas Timedelta.days (integer floor of total days)
+        delta = bar_arr[mask] - most_recent
+        # Convert numpy timedelta64[ns] → integer days (floor toward -inf to match pandas)
+        days = (delta / np.timedelta64(1, "D")).astype(np.float64)
+        # Pandas Timedelta.days uses floor div for negative, but here delta>=0 so floor == int
+        out_arr[mask] = np.floor(days)
+    return pd.Series(out_arr, index=idx, dtype="float64")
+
+
 # ---------------------------------------------------------------------------
 # 3. News velocity Z-score
 # ---------------------------------------------------------------------------
 
 
-def news_velocity_zscore(ticker: str, bar_timestamps: pd.DatetimeIndex,
-                          lookback_d: int = 7, baseline_d: int = 90) -> pd.Series:
-    """Rolling Z-score of `lookback_d`-day news count vs `baseline_d`-day trailing baseline.
-
-    For each bar_timestamp t:
-      n_recent = count(news.published_utc in (t - lookback_d, t])
-      baseline = mean of `lookback_d`-counts over the past `baseline_d` days
-      std = std of those counts
-      z = (n_recent - baseline) / std
-
-    Causal via `published_utc <= t`. axis=volume_conviction (catalyst flow).
-    """
+def _news_velocity_zscore_loop_v1(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                                   lookback_d: int = 7, baseline_d: int = 90) -> pd.Series:
+    """Original O(N*M) reference — kept for equality tests."""
     idx = _ensure_naive_index(bar_timestamps)
     if len(idx) == 0:
         return _empty_series(idx)
@@ -404,22 +510,16 @@ def news_velocity_zscore(ticker: str, bar_timestamps: pd.DatetimeIndex,
     if df.empty or "published_utc" not in df.columns:
         return _empty_series(idx)
     df = df.dropna(subset=["published_utc"]).sort_values("published_utc")
-    # Build per-day count series spanning the full needed range
     if df.empty:
         return _empty_series(idx)
     days = pd.date_range(start.normalize(), end.normalize(), freq="D")
     daily = df.assign(d=df["published_utc"].dt.normalize()).groupby("d").size().reindex(days).fillna(0)
-
-    # Rolling-lookback sum: count of news in last `lookback_d` days
     rolling_recent = daily.rolling(lookback_d, min_periods=1).sum()
     rolling_mean = rolling_recent.rolling(baseline_d, min_periods=lookback_d).mean()
     rolling_std = rolling_recent.rolling(baseline_d, min_periods=lookback_d).std(ddof=0)
-
-    # For each bar_timestamp, find the day-level row at-or-before t
     out = pd.Series(np.nan, index=idx, dtype="float64")
     daily_index = rolling_recent.index
     for t in idx:
-        # The 'as-of-day' is t.normalize()
         d = pd.Timestamp(t).normalize()
         if d < daily_index[0] or d > daily_index[-1]:
             continue
@@ -433,9 +533,103 @@ def news_velocity_zscore(ticker: str, bar_timestamps: pd.DatetimeIndex,
     return out
 
 
+def news_velocity_zscore(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                          lookback_d: int = 7, baseline_d: int = 90) -> pd.Series:
+    """Rolling Z-score of `lookback_d`-day news count vs `baseline_d`-day trailing baseline.
+
+    For each bar_timestamp t:
+      n_recent = count(news.published_utc in (t - lookback_d, t])
+      baseline = mean of `lookback_d`-counts over the past `baseline_d` days
+      std = std of those counts
+      z = (n_recent - baseline) / std
+
+    Causal via `published_utc <= t`. axis=volume_conviction (catalyst flow).
+
+    Vectorized (2026-05-29, task #78): daily rolling stats were already vectorized,
+    but the per-bar lookup loop was O(M log K). Replace it with a single .reindex()
+    that broadcasts daily values to bar_timestamps in one shot.
+    """
+    idx = _ensure_naive_index(bar_timestamps)
+    if len(idx) == 0:
+        return _empty_series(idx)
+    start = idx.min() - pd.Timedelta(days=baseline_d + lookback_d + 1)
+    end = idx.max()
+    df = _fetch_news(ticker, start, end)
+    if df.empty or "published_utc" not in df.columns:
+        return _empty_series(idx)
+    df = df.dropna(subset=["published_utc"]).sort_values("published_utc")
+    if df.empty:
+        return _empty_series(idx)
+    days = pd.date_range(start.normalize(), end.normalize(), freq="D")
+    daily = df.assign(d=df["published_utc"].dt.normalize()).groupby("d").size().reindex(days).fillna(0)
+    rolling_recent = daily.rolling(lookback_d, min_periods=1).sum()
+    rolling_mean = rolling_recent.rolling(baseline_d, min_periods=lookback_d).mean()
+    rolling_std = rolling_recent.rolling(baseline_d, min_periods=lookback_d).std(ddof=0)
+
+    # Vectorized lookup: normalize each bar timestamp to its day then reindex against the daily Series
+    bar_days = idx.normalize()
+    recent_v = rolling_recent.reindex(bar_days).to_numpy()
+    mean_v = rolling_mean.reindex(bar_days).to_numpy()
+    std_v = rolling_std.reindex(bar_days).to_numpy()
+
+    out_arr = np.full(len(idx), np.nan, dtype="float64")
+    has_data = ~np.isnan(recent_v)  # bar day within daily range
+    std_pos = np.isfinite(std_v) & (std_v > 0)
+    mean_ok = np.isfinite(mean_v)
+    # Where std > 0: z = (recent - mean) / std
+    z_mask = has_data & std_pos
+    out_arr[z_mask] = (recent_v[z_mask] - mean_v[z_mask]) / std_v[z_mask]
+    # Where std is 0/nan but mean is finite: 0.0 (constant baseline)
+    zero_mask = has_data & ~std_pos & mean_ok
+    out_arr[zero_mask] = 0.0
+    return pd.Series(out_arr, index=idx, dtype="float64")
+
+
 # ---------------------------------------------------------------------------
 # 4. Dark pool divergence Z-score
 # ---------------------------------------------------------------------------
+
+
+def _dark_pool_divergence_z_loop_v1(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                                     lookback_d: int = 5, baseline_d: int = 30) -> pd.Series:
+    """Original O(N*M) reference — kept for equality tests."""
+    idx = _ensure_naive_index(bar_timestamps)
+    df = _fetch_offex(ticker)
+    if df.empty or "as_of_date" not in df.columns:
+        return _empty_series(idx)
+    df = df.dropna(subset=["as_of_date"]).sort_values("as_of_date").set_index("as_of_date")
+    metric: Optional[pd.Series] = None
+    for c in ("short_volume_ratio", "dpi", "dark_pool_index"):
+        if c in df.columns:
+            metric = pd.to_numeric(df[c], errors="coerce")
+            break
+    if metric is None and "short_volume" in df.columns and "total_volume" in df.columns:
+        sv = pd.to_numeric(df["short_volume"], errors="coerce")
+        tv = pd.to_numeric(df["total_volume"], errors="coerce")
+        metric = sv / tv.replace(0.0, np.nan)
+    if metric is None:
+        return _empty_series(idx)
+    metric = metric.sort_index()
+    rolling = metric.rolling(lookback_d, min_periods=1).mean()
+    base_mean = metric.rolling(baseline_d, min_periods=lookback_d).mean()
+    base_std = metric.rolling(baseline_d, min_periods=lookback_d).std(ddof=0)
+    out = pd.Series(np.nan, index=idx, dtype="float64")
+    for t in idx:
+        sub = rolling.loc[:t]
+        if sub.empty:
+            continue
+        recent = sub.iloc[-1]
+        if pd.isna(recent):
+            continue
+        sub_b_mean = base_mean.loc[:t]
+        sub_b_std = base_std.loc[:t]
+        if sub_b_mean.empty or sub_b_std.empty:
+            continue
+        b_mean = sub_b_mean.iloc[-1]
+        b_std = sub_b_std.iloc[-1]
+        if pd.notna(b_std) and b_std > 0:
+            out.loc[t] = float((recent - b_mean) / b_std)
+    return out
 
 
 def dark_pool_divergence_z(ticker: str, bar_timestamps: pd.DatetimeIndex,
@@ -446,14 +640,15 @@ def dark_pool_divergence_z(ticker: str, bar_timestamps: pd.DatetimeIndex,
     if raw volume + short_volume present.
 
     Causal via `as_of_date <= t`. axis=volume_conviction (institutional positioning).
+
+    Vectorized (2026-05-29, task #78): "most recent rolling stat <= t" reduces to
+    searchsorted then index — replace per-bar loop with a single vectorized lookup.
     """
     idx = _ensure_naive_index(bar_timestamps)
     df = _fetch_offex(ticker)
     if df.empty or "as_of_date" not in df.columns:
         return _empty_series(idx)
     df = df.dropna(subset=["as_of_date"]).sort_values("as_of_date").set_index("as_of_date")
-
-    # Locate the metric column
     metric: Optional[pd.Series] = None
     for c in ("short_volume_ratio", "dpi", "dark_pool_index"):
         if c in df.columns:
@@ -471,25 +666,25 @@ def dark_pool_divergence_z(ticker: str, bar_timestamps: pd.DatetimeIndex,
     base_mean = metric.rolling(baseline_d, min_periods=lookback_d).mean()
     base_std = metric.rolling(baseline_d, min_periods=lookback_d).std(ddof=0)
 
-    out = pd.Series(np.nan, index=idx, dtype="float64")
-    for t in idx:
-        # Snap to most recent row <= t
-        sub = rolling.loc[:t]
-        if sub.empty:
-            continue
-        recent = sub.iloc[-1]
-        if pd.isna(recent):
-            continue
-        # baseline at same t
-        sub_b_mean = base_mean.loc[:t]
-        sub_b_std = base_std.loc[:t]
-        if sub_b_mean.empty or sub_b_std.empty:
-            continue
-        b_mean = sub_b_mean.iloc[-1]
-        b_std = sub_b_std.iloc[-1]
-        if pd.notna(b_std) and b_std > 0:
-            out.loc[t] = float((recent - b_mean) / b_std)
-    return out
+    # Vectorized "as-of" lookup: for each bar t, find index of most recent metric row <= t
+    metric_times = rolling.index.values.astype("datetime64[ns]")
+    bar_arr = idx.values.astype("datetime64[ns]")
+    pos = np.searchsorted(metric_times, bar_arr, side="right") - 1
+    valid = pos >= 0
+
+    recent_arr = np.full(len(bar_arr), np.nan, dtype="float64")
+    bmean_arr = np.full(len(bar_arr), np.nan, dtype="float64")
+    bstd_arr = np.full(len(bar_arr), np.nan, dtype="float64")
+    if valid.any():
+        idx_v = pos[valid].astype(np.int64)
+        recent_arr[valid] = rolling.values[idx_v]
+        bmean_arr[valid] = base_mean.values[idx_v]
+        bstd_arr[valid] = base_std.values[idx_v]
+
+    out_arr = np.full(len(bar_arr), np.nan, dtype="float64")
+    ok = np.isfinite(recent_arr) & np.isfinite(bmean_arr) & np.isfinite(bstd_arr) & (bstd_arr > 0)
+    out_arr[ok] = (recent_arr[ok] - bmean_arr[ok]) / bstd_arr[ok]
+    return pd.Series(out_arr, index=idx, dtype="float64")
 
 
 # ---------------------------------------------------------------------------
@@ -497,10 +692,43 @@ def dark_pool_divergence_z(ticker: str, bar_timestamps: pd.DatetimeIndex,
 # ---------------------------------------------------------------------------
 
 
+def _lobbying_intensity_loop_v1(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                                 lookback_d: int = 90, baseline_d: int = 365) -> pd.Series:
+    """Original O(N*M) reference — kept for equality tests."""
+    idx = _ensure_naive_index(bar_timestamps)
+    df = _fetch_lobbying(ticker)
+    if df.empty or "period_end" not in df.columns:
+        return _empty_series(idx)
+    amt_col = None
+    for c in ("amount_usd", "amount", "spend", "total_spending"):
+        if c in df.columns:
+            amt_col = c
+            break
+    if amt_col is None:
+        return _empty_series(idx)
+    df = df.dropna(subset=["period_end"]).copy()
+    df["amount"] = pd.to_numeric(df[amt_col], errors="coerce").fillna(0.0)
+    df = df.sort_values("period_end")
+    out = pd.Series(np.nan, index=idx, dtype="float64")
+    w = pd.Timedelta(days=lookback_d)
+    b = pd.Timedelta(days=baseline_d)
+    for t in idx:
+        recent = df[(df["period_end"] <= t) & (df["period_end"] > (t - w))]["amount"].sum()
+        base = df[(df["period_end"] <= t) & (df["period_end"] > (t - b))]["amount"].sum()
+        base_per_day = base / max(baseline_d, 1)
+        if base_per_day > 0:
+            out.loc[t] = float(recent / lookback_d) / float(base_per_day)
+    return out
+
+
 def lobbying_intensity(ticker: str, bar_timestamps: pd.DatetimeIndex,
                         lookback_d: int = 90, baseline_d: int = 365) -> pd.Series:
     """90d lobbying $ normalized by trailing-year ($/day) average. Causal via `period_end <= t`.
     axis=volume_conviction (policy-driver context).
+
+    Vectorized (2026-05-29, task #78): both window-sums computed via cumsum +
+    searchsorted (lookback and baseline). The two-interval window-sum trick is the
+    canonical vectorization for rolling-window event aggregations.
     """
     idx = _ensure_naive_index(bar_timestamps)
     df = _fetch_lobbying(ticker)
@@ -517,16 +745,25 @@ def lobbying_intensity(ticker: str, bar_timestamps: pd.DatetimeIndex,
     df["amount"] = pd.to_numeric(df[amt_col], errors="coerce").fillna(0.0)
     df = df.sort_values("period_end")
 
-    out = pd.Series(np.nan, index=idx, dtype="float64")
-    w = pd.Timedelta(days=lookback_d)
-    b = pd.Timedelta(days=baseline_d)
-    for t in idx:
-        recent = df[(df["period_end"] <= t) & (df["period_end"] > (t - w))]["amount"].sum()
-        base = df[(df["period_end"] <= t) & (df["period_end"] > (t - b))]["amount"].sum()
-        base_per_day = base / max(baseline_d, 1)
-        if base_per_day > 0:
-            out.loc[t] = float(recent / lookback_d) / float(base_per_day)
-    return out
+    event_times = df["period_end"].values.astype("datetime64[ns]")
+    event_amounts = df["amount"].to_numpy(dtype="float64")
+    cum_amt = np.concatenate(([0.0], np.cumsum(event_amounts)))
+
+    bar_arr = idx.values.astype("datetime64[ns]")
+    w_ns = np.timedelta64(int(lookback_d), "D")
+    b_ns = np.timedelta64(int(baseline_d), "D")
+    upper = np.searchsorted(event_times, bar_arr, side="right")
+    lower_w = np.searchsorted(event_times, bar_arr - w_ns, side="right")
+    lower_b = np.searchsorted(event_times, bar_arr - b_ns, side="right")
+
+    recent = cum_amt[upper] - cum_amt[lower_w]
+    base = cum_amt[upper] - cum_amt[lower_b]
+    base_per_day = base / max(baseline_d, 1)
+
+    out_arr = np.full(len(bar_arr), np.nan, dtype="float64")
+    ok = base_per_day > 0
+    out_arr[ok] = (recent[ok] / lookback_d) / base_per_day[ok]
+    return pd.Series(out_arr, index=idx, dtype="float64")
 
 
 # ---------------------------------------------------------------------------
@@ -534,10 +771,38 @@ def lobbying_intensity(ticker: str, bar_timestamps: pd.DatetimeIndex,
 # ---------------------------------------------------------------------------
 
 
+def _gov_contract_inflow_loop_v1(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                                  lookback_d: int = 90) -> pd.Series:
+    """Original O(N*M) reference — kept for equality tests."""
+    idx = _ensure_naive_index(bar_timestamps)
+    df = _fetch_contracts(ticker)
+    if df.empty or "awarded_at" not in df.columns:
+        return _empty_series(idx)
+    amt_col = None
+    for c in ("amount_usd", "obligated_amount", "amount", "award_amount", "value"):
+        if c in df.columns:
+            amt_col = c
+            break
+    df = df.dropna(subset=["awarded_at"]).copy()
+    if amt_col:
+        df["amount"] = pd.to_numeric(df[amt_col], errors="coerce").fillna(0.0)
+    else:
+        df["amount"] = 1.0
+    df = df.sort_values("awarded_at")
+    out = pd.Series(np.nan, index=idx, dtype="float64")
+    w = pd.Timedelta(days=lookback_d)
+    for t in idx:
+        sub = df[(df["awarded_at"] <= t) & (df["awarded_at"] > (t - w))]
+        out.loc[t] = float(sub["amount"].sum())
+    return out
+
+
 def gov_contract_inflow(ticker: str, bar_timestamps: pd.DatetimeIndex,
                          lookback_d: int = 90) -> pd.Series:
     """Total gov contract $ awarded in last `lookback_d` days. Causal via `awarded_at <= t`.
     axis=volume_conviction (revenue-driver inflow).
+
+    Vectorized (2026-05-29, task #78): cumsum + searchsorted dual-interval rolling sum.
     """
     idx = _ensure_naive_index(bar_timestamps)
     df = _fetch_contracts(ticker)
@@ -552,14 +817,19 @@ def gov_contract_inflow(ticker: str, bar_timestamps: pd.DatetimeIndex,
     if amt_col:
         df["amount"] = pd.to_numeric(df[amt_col], errors="coerce").fillna(0.0)
     else:
-        df["amount"] = 1.0  # fall back to count
+        df["amount"] = 1.0
     df = df.sort_values("awarded_at")
-    out = pd.Series(np.nan, index=idx, dtype="float64")
-    w = pd.Timedelta(days=lookback_d)
-    for t in idx:
-        sub = df[(df["awarded_at"] <= t) & (df["awarded_at"] > (t - w))]
-        out.loc[t] = float(sub["amount"].sum())
-    return out
+
+    event_times = df["awarded_at"].values.astype("datetime64[ns]")
+    event_amounts = df["amount"].to_numpy(dtype="float64")
+    cum_amt = np.concatenate(([0.0], np.cumsum(event_amounts)))
+
+    bar_arr = idx.values.astype("datetime64[ns]")
+    w_ns = np.timedelta64(int(lookback_d), "D")
+    upper = np.searchsorted(event_times, bar_arr, side="right")
+    lower = np.searchsorted(event_times, bar_arr - w_ns, side="right")
+    sum_window = cum_amt[upper] - cum_amt[lower]
+    return pd.Series(sum_window, index=idx, dtype="float64")
 
 
 # ---------------------------------------------------------------------------
@@ -567,11 +837,9 @@ def gov_contract_inflow(ticker: str, bar_timestamps: pd.DatetimeIndex,
 # ---------------------------------------------------------------------------
 
 
-def eight_k_pulse(ticker: str, bar_timestamps: pd.DatetimeIndex,
-                   lookback_d: int = 5) -> pd.Series:
-    """Count of 8-K filings in last `lookback_d` days (material-event catalyst pulse).
-    Causal via `filed_at <= t`. axis=structure_geometry (event anchor).
-    """
+def _eight_k_pulse_loop_v1(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                            lookback_d: int = 5) -> pd.Series:
+    """Original O(N*M) reference — kept for equality tests."""
     idx = _ensure_naive_index(bar_timestamps)
     df = _fetch_filings(ticker, form="8-K")
     if df.empty or "filed_at" not in df.columns:
@@ -583,6 +851,30 @@ def eight_k_pulse(ticker: str, bar_timestamps: pd.DatetimeIndex,
         sub = df[(df["filed_at"] <= t) & (df["filed_at"] > (t - w))]
         out.loc[t] = float(len(sub))
     return out
+
+
+def eight_k_pulse(ticker: str, bar_timestamps: pd.DatetimeIndex,
+                   lookback_d: int = 5) -> pd.Series:
+    """Count of 8-K filings in last `lookback_d` days (material-event catalyst pulse).
+    Causal via `filed_at <= t`. axis=structure_geometry (event anchor).
+
+    Vectorized (2026-05-29, task #78): pure count via searchsorted diff (cumsum unneeded).
+    """
+    idx = _ensure_naive_index(bar_timestamps)
+    df = _fetch_filings(ticker, form="8-K")
+    if df.empty or "filed_at" not in df.columns:
+        return _empty_series(idx).fillna(0.0)
+    df = df.dropna(subset=["filed_at"]).sort_values("filed_at")
+    if df.empty:
+        return pd.Series(0.0, index=idx, dtype="float64")
+
+    event_times = df["filed_at"].values.astype("datetime64[ns]")
+    bar_arr = idx.values.astype("datetime64[ns]")
+    w_ns = np.timedelta64(int(lookback_d), "D")
+    upper = np.searchsorted(event_times, bar_arr, side="right")
+    lower = np.searchsorted(event_times, bar_arr - w_ns, side="right")
+    counts = (upper - lower).astype("float64")
+    return pd.Series(counts, index=idx, dtype="float64")
 
 
 # alias matching task spec naming
