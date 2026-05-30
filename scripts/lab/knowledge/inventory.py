@@ -9,21 +9,27 @@ Loads from:
 Top funcs:
   mastered()                    — list of 502 mastered S&P 500 tickers
   is_mastered(ticker)           — bool
+  capacity_floor_cohort()       — list of 200 sub-S&P illiquid tickers (task #84)
+  capacity_floor_cohort_meta()  — full rows (ticker, sector, mcap, ADV, ...)
   active_cycle()                — e.g. 'cycle059_force_sweep'
   active_stack_path()           — relative path within Tech0 to the active stack CSV
   tech0_top_level()             — high-level summary of Tech0 structure
 """
 from __future__ import annotations
 
+import csv
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 DRIVE_BASE = "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive"
 TICKERS_TXT_LAB = f"{DRIVE_BASE}/AI-Tools/research-lab/data_inventory/mastered_tickers_20260528.txt"
 TICKERS_TXT_TECH0 = f"{DRIVE_BASE}/Tech0/_mastered_tickers_20260528.txt"
 ACTIVE_STACK_JSON = f"{DRIVE_BASE}/Tech0/Data Master/universe/active_stack.json"
+# Capacity-floor cohort (task #84, Expansionist R3-R6) — 200 illiquid sub-S&P tickers
+CAPACITY_FLOOR_CSV = f"{DRIVE_BASE}/AI-Tools/s&p500-ticker-mastery/data/capacity_floor_cohort_2026-05-29.csv"
+CAPACITY_FLOOR_OHLC_DIR = "/Volumes/ZG-2TB/zg/cache/alpaca_5yr_capacity_floor"
 
 # Embedded fallback — captured at module-write time (2026-05-28)
 _FALLBACK_ACTIVE = {
@@ -58,6 +64,57 @@ def mastered() -> List[str]:
 def is_mastered(ticker: str) -> bool:
     """Is this ticker in the mastered set?"""
     return ticker.upper() in set(mastered())
+
+
+@lru_cache(maxsize=1)
+def _load_capacity_floor_rows() -> List[Dict[str, Any]]:
+    """Read the capacity-floor cohort CSV. Coerces numeric columns."""
+    p = Path(CAPACITY_FLOOR_CSV)
+    if not p.exists():
+        return []
+    rows: List[Dict[str, Any]] = []
+    with open(p, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            for k in ("market_cap", "adv_dollars", "last_price"):
+                try:
+                    row[k] = float(row[k]) if row.get(k) else None
+                except (TypeError, ValueError):
+                    row[k] = None
+            for k in ("shortable", "marginable"):
+                try:
+                    row[k] = bool(int(row[k]))
+                except (TypeError, ValueError):
+                    row[k] = False
+            rows.append(row)
+    return rows
+
+
+def capacity_floor_cohort() -> List[str]:
+    """
+    Sorted list of 200 capacity-floor cohort tickers (task #84, Expansionist R3-R6).
+
+    These are liquid US equities BELOW the HFT capacity floor and NOT in the S&P 500:
+      - $-ADV in (10M, 30M)  — enough liquidity to backtest with 5bps cost
+      - market cap in (1B, 10B) — meaningful but not mega-cap
+      - NYSE / NASDAQ / ARCA, active+tradable, no warrants/prefs/units
+      - last price >= $5 (no penny stocks)
+
+    The lab's structural-edge claim has only ever been tested on S&P 500 large-caps;
+    this cohort isolates the regime where the edge should be strongest (sub-HFT-capacity
+    names quants can't trade at scale).
+    """
+    return sorted(r["ticker"] for r in _load_capacity_floor_rows() if r.get("ticker"))
+
+
+def capacity_floor_cohort_meta() -> List[Dict[str, Any]]:
+    """Full cohort rows: ticker, exchange, sector, market_cap, adv_dollars, last_price,
+    shortable, marginable, name. Source: data/capacity_floor_cohort_2026-05-29.csv."""
+    return list(_load_capacity_floor_rows())
+
+
+def is_capacity_floor(ticker: str) -> bool:
+    """Is this ticker in the capacity-floor cohort?"""
+    return ticker.upper() in set(capacity_floor_cohort())
 
 
 @lru_cache(maxsize=1)
@@ -101,6 +158,7 @@ def tech0_top_level() -> Dict[str, str]:
 def _clear_cache():
     mastered.cache_clear()
     _load_active.cache_clear()
+    _load_capacity_floor_rows.cache_clear()
 
 
 if __name__ == "__main__":
