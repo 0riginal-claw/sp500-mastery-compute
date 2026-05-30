@@ -387,8 +387,55 @@ SAP_GAV2N = {
 }
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# CHAMP-003B template (added 2026-05-30, R5/R6 task #83) — CONFLUENCE_v1 seed
+# Expansionist R6's fix to the CHAMP-002 conjunction trap. OHLCV breakout is
+# the trigger; alt-data is the OR'd confirmation. Pre-reg:
+# AI-Tools/reports/champ_003b_confluence_pre_registration_2026-05-29.md
+# (sha256: 031563e0f14f56877c775ebc8262bb10a4a34344d4822977f9beeb0c240dc2a8)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+SAP_CONFLUENCE_V1 = {
+    "id": "CHAMP-003B-CONFLUENCE_v1",
+    "name": "CONFLUENCE v1 — OHLCV breakout + OR'd alt-data confirmation",
+    "thesis": (
+        "OHLCV breakout (Donchian_UP) is the trigger; alt-data confluence (OR over "
+        "form4_insider_cluster_score, news_velocity_zscore, dark_pool_divergence_z, "
+        "8k_pulse) is the confirmation. Reverses the CHAMP-002 AND'd 5-gate trap "
+        "that produced n_trades=0 for 67% of the cohort. Alt-data ASSISTS the "
+        "strategy, it does not gate it (per feedback_indicators_are_assistance)."
+    ),
+    "regime_gate": "ADX(14) > 20",
+    "bias_filter": "EMA(9) > EMA(21)",
+    "trigger": "Close > Donchian_UP(20)",
+    # OR-confluence over 4 alt-data sources — any one being hot is sufficient
+    "confirmation": (
+        "form4_insider_cluster_score > 30 "
+        "OR news_velocity_zscore > 1.5 "
+        "OR dark_pool_divergence_z < -1.5 "
+        "OR 8k_pulse >= 1"
+    ),
+    "timing": "RSI(14) > 40 AND RSI(14) < 70",
+    "exit": "1.5 * ATR(14) trailing stop",
+    "no_trade": "ChopIdx(14) > 62",
+    "side": "long",
+    "cost": "5bps_per_side",
+    "universe": "CHAMP-003B cohort (12 sector-diverse tickers, identical to CHAMP-002 attempt4)",
+    "timeframe": "1d",
+    "timeframe_stack": ["1d"],
+    "data_sources": [
+        "yfinance_daily_5yr cache (daily OHLCV anchor)",
+        "indicator_compute_altdata.form4_insider_cluster_score (edgar Form 4)",
+        "indicator_compute_altdata.news_velocity_zscore (news 7d-vs-90d Z)",
+        "indicator_compute_altdata.dark_pool_divergence_z (FINRA offexchange)",
+        "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
+    ],
+}
+
+
 HYPOTHESES: List[Dict] = [SAP_001, SAP_002, SAP_003, SAP_004, SAP_005,
-                          SAP_CAT_CC, SAP_CSR, SAP_GAV2N]
+                          SAP_CAT_CC, SAP_CSR, SAP_GAV2N, SAP_CONFLUENCE_V1]
 HYPOTHESES_BY_ID: Dict[str, Dict] = {h["id"]: h for h in HYPOTHESES}
 
 
