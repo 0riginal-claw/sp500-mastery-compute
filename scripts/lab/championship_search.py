@@ -110,6 +110,12 @@ _TF_STACK_BY_SEED = {
     # OR'd as confirmation. Reverses the CHAMP-002 conjunction trap. Daily TF
     # only for first run; multi-TF deferred.
     "CONFLUENCE_v1":        ["1d"],
+    # CHAMP-003D (task #87) — CONFLUENCE_OHLCV_v1: alt-data-free reframe for the
+    # capacity-floor 198-ticker cohort (sub-S&P large-caps where alt-data
+    # backfill is unavailable). Tests the UNIVERSE-level structural-edge claim
+    # (Expansionist R3-R6) for the first time. Same OR-confluence pattern but
+    # over pure OHLCV signals.
+    "CONFLUENCE_OHLCV_v1":  ["1d"],
     "HYBRID_REGIME": ["5min", "1h",    "1d"],
 }
 
@@ -392,6 +398,44 @@ _SEED_TEMPLATES = [
             "indicator_compute_altdata.news_velocity_zscore (news 7d-vs-90d Z)",
             "indicator_compute_altdata.dark_pool_divergence_z (FINRA offexchange)",
             "indicator_compute_altdata.eight_k_pulse (edgar 8-K, 5d count)",
+        ],
+    },
+    # ─── CHAMP-003D seed (task #87, 2026-05-30) ────────────────────────────
+    # CONFLUENCE_OHLCV_v1 — Expansionist R6 untested-universe experiment.
+    # Capacity-floor cohort (198 sub-S&P tickers, ADV $10-30M, mcap $1-10B)
+    # has NO alt-data backfill (Edgar/news/offexchange daemons are S&P-500-
+    # scoped). To test the UNIVERSE-level structural-edge claim, use the
+    # CONFLUENCE pattern (OHLCV breakout + OR-confluence) but with ALL
+    # signals being pure OHLCV. If this substrate clears thresholds, that's
+    # evidence the structural edge is universe-driven (capacity floor),
+    # not data-driven (alt-data). If it fails, both dimensions are refuted.
+    {
+        "seed_id": "CONFLUENCE_OHLCV_v1",
+        "theory": (
+            "OHLCV breakout triggers; OHLCV-only OR-confluence (volume expansion, "
+            "non-overbought RSI, above-VWAP price) confirms. Tests the capacity-floor "
+            "universe claim from Expansionist R3-R6 without depending on alt-data "
+            "(which is S&P-500-scoped). Universe = 198 sub-S&P tickers built by #84."
+        ),
+        "side": "long",
+        "regime_gate": "ADX(14) > {adx_thresh}",
+        "bias_filter": "EMA({ema_fast}) > EMA({ema_slow})",
+        "trigger": "Close > Donchian_UP({donch})",
+        # CONFIRMATION = OR-confluence over 3 OHLCV signals. Any ONE is enough.
+        # Volume expansion: institutional participation. RSI<70: not yet overbought.
+        # Close>VWAP: institutional benchmark above midline. The OR semantics
+        # (vs CHAMP-002's AND'd 5-gate trap) keep firing rate high enough for
+        # statistically meaningful n_trades.
+        "confirmation": (
+            "Volume > 1.5 * SMA(Volume, 20) "
+            "OR RSI(14) < 70 "
+            "OR Close > VWAP"
+        ),
+        "timing": "RSI(14) > 40",
+        "exit": "{atr_mult} * ATR(14) trailing stop",
+        "no_trade": "ChopIdx(14) > 62",
+        "data_sources": [
+            "alpaca_5yr_capacity_floor cache (daily OHLCV from #84 build)",
         ],
     },
     {
