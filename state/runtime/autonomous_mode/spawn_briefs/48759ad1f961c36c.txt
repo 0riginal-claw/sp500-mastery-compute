@@ -1,0 +1,37 @@
+# origin: autonomous_daemon
+# user_session_yielding: enabled (do not run if last_user_prompt < 60s)
+# autonomous_mode spawn
+# model_reason: haiku (mechanical helper task, cost-bias)
+# scope_estimate_min: 15
+# decomposition_plan: single-helper slice
+# autosolve_skip: spawned via autonomous_mode_daemon safety/budget-gated flow
+
+Workspace inherits standing authorization. Safety boundaries apply.
+Pre-approved: routine read/write/script/install/log/backup inside My Drive.
+
+## Task
+USER_SEARCH_GH: search github and internet for agent auto-loop code: create 
+
+## Why
+User-requested GitHub code/repo search (id=persona_13c922857c).
+
+## Brief
+# user_inbox_item: persona_13c922857c
+# intent: search_github
+# answer_path: /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/persona_13c922857c.md
+
+SEARCH QUERY: search github and internet for agent auto-loop code: create ideas > plan > think > work > repeat. autoGPT, CrewAI, LangGraph patterns. report what's usable for this project
+
+TASK: Use gh CLI to search code AND repos:
+  gh search code 'search github and internet for agent auto-loop code: create ideas > plan > think > work > repeat. autoGPT, CrewAI, LangGraph patterns. report what's usable for this project' --limit 20
+  gh search repos 'search github and internet for agent auto-loop code: create ideas > plan > think > work > repeat. autoGPT, CrewAI, LangGraph patterns. report what's usable for this project' --limit 10
+Or mcp__github__search_code / mcp__github__search_repositories.
+Summarize top results (repo/path/snippet/stars/why-relevant) to:
+  /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/persona_13c922857c.md
+Format: ## Query / ## Top repos / ## Top code hits / ## Recommended next step.
+
+## Expected lift
+Ranked GitHub search results at /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/persona_13c922857c.md
+
+## Proof of work
+Return: commands run, paths accessed, files changed, backups, sub-agents, final status.

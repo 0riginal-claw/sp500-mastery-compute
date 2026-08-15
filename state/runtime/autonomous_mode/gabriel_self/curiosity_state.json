@@ -1,0 +1,34 @@
+{
+  "data": {
+    "last_touched": "2026-05-20T20:46:41.387108+00:00",
+    "spawn_count": 23
+  },
+  "model": {
+    "last_touched": "2026-05-20T20:46:41.393757+00:00",
+    "spawn_count": 23
+  },
+  "infra": {
+    "last_touched": "2026-05-20T20:46:41.397501+00:00",
+    "spawn_count": 23
+  },
+  "cloud": {
+    "last_touched": "2026-05-20T20:46:41.407802+00:00",
+    "spawn_count": 23
+  },
+  "research": {
+    "last_touched": "2026-05-20T20:46:41.412842+00:00",
+    "spawn_count": 23
+  },
+  "trading": {
+    "last_touched": "2026-05-20T20:46:41.425160+00:00",
+    "spawn_count": 23
+  },
+  "self_improvement": {
+    "last_touched": "2026-05-20T20:46:41.430464+00:00",
+    "spawn_count": 23
+  },
+  "diagnostics": {
+    "last_touched": "2026-05-20T20:46:41.436651+00:00",
+    "spawn_count": 23
+  }
+}

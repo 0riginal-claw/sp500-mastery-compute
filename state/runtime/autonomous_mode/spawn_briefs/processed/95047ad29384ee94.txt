@@ -1,0 +1,77 @@
+# origin: autonomous_daemon
+# user_session_yielding: enabled (do not run if last_user_prompt < 60s)
+# autonomous_mode spawn
+# model_reason: haiku (mechanical helper task, cost-bias)
+# scope_estimate_min: 25
+# decomposition_plan: single-helper slice
+# autosolve_skip: spawned via autonomous_mode_daemon safety/budget-gated flow
+
+Workspace inherits standing authorization. Safety boundaries apply.
+Pre-approved: routine read/write/script/install/log/backup inside My Drive.
+
+## Task
+USER_FIX: <task-notification>
+<task-id>a0d2478c9d5ad4415</task-id>
+<to
+
+## Why
+User-reported error/blocker — §8 solver pattern (id=u_b6b10bb743a4).
+
+## Brief
+# user_inbox_item: u_b6b10bb743a4
+# intent: fix
+# answer_path: /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/u_b6b10bb743a4.md
+
+ERROR/BLOCKER:
+<task-notification>
+<task-id>a0d2478c9d5ad4415</task-id>
+<tool-use-id>toolu_013VjiFFrkijPJ9b7WJMJNyh</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/034564a7-1ebc-4fc9-b5e0-9ad5b6d17587/tasks/a0d2478c9d5ad4415.output</output-file>
+<status>completed</status>
+<summary>Agent "REPO-LOCAL — fix push race + backfill" completed</summary>
+<result>Both logs written. Final status report.
+
+## Proof of Work
+
+**Bugs identified (3 layered)**:
+
+1. **`if git push | tee ...; then` evaluated `tee`'s exit code (always 0)** — false positive "Push succeeded" reports for race-rejected pushes. Result: 1/7 result.json landed despite 7/7 conclusion=success.
+2. **Bare `git pull --rebase` failed on `sweeps/last_run_summary.json` cross-job conflicts** — exposed only after fixing bug 1.
+3. **`com.zg.sync_compute_repo` launchd daemon clobbered first remote patch** — local mirror at `…/s&amp;p500-ticker-mastery/.github/workflows/sweep.yml` was still buggy version.
+
+**Fix applied (3 commits to `0riginal-claw/sp500-mastery-compute`)**:
+
+| sha | what |
+|---|---|
+| `7984f2eeaa` | v1: PIPESTATUS exit-code capture (clobbered by sync) |
+| `9a3d6d0307` | v2: re-apply v1 + sync local mirror (exposed rebase bug) |
+| `5a616e3a88` | **v3 final**: v1 + `--strategy-option=theirs` + reset-and-recommit fallback |
+
+**Verification**:
+
+| batch | result.json on main | conclusion |
+|---|---|---|
+| Pre-fix | 1/7 | bug |
+| v1 | 7/10 (sync clobber confounder) | inconclusive |
+| v2 | 1/10 (PIPESTATUS exposed rebase bug) | rebase issue uncovered |
+| **v3** | **10/10** | **PASS** |
+
+V3 verification tickers: CVX/PFE/LLY/ABBV/ADBE/CSCO/TMO/MRK/PEP/INTC — all on main.
+
+**Backfill**: 75 result.json files recovered from runner artifacts (65 pre-fix + 9 v2-batch + 1 KO retry). `backtests/.../result.json` count on main went from 14 to 89.
+
+**Files changed**:
+- `/repos/0riginal-claw/sp500-mastery-compute/.github/workflo
+
+TASK (§8 auto-solve):
+  Spawn 3 parallel solvers — INTERNET (search + StackOverflow + docs),
+  GITHUB (search issues + similar bugs), REPO-LOCAL (grep + git log + tests).
+  Pick the best fix, apply silently, smoke-test. Write what-failed +
+  3-channel findings + applied fix + smoke result to: /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/u_b6b10bb743a4.md
+  Hard rule: respect CLAUDE.md safety boundaries.
+
+## Expected lift
+Fix applied + smoke-passed (report at /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/u_b6b10bb743a4.md)
+
+## Proof of work
+Return: commands run, paths accessed, files changed, backups, sub-agents, final status.

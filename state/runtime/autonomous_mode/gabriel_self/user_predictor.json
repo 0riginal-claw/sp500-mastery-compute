@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "trigger": "hour==1 UTC",
+      "predicted_intent": "search_github",
+      "confidence": 0.42,
+      "support_count": 5
+    },
+    {
+      "trigger": "hour==0 UTC",
+      "predicted_intent": "fix",
+      "confidence": 0.45,
+      "support_count": 5
+    },
+    {
+      "trigger": "hour==23 UTC",
+      "predicted_intent": "fix",
+      "confidence": 0.38,
+      "support_count": 3
+    },
+    {
+      "trigger": "hour==22 UTC",
+      "predicted_intent": "fix",
+      "confidence": 0.43,
+      "support_count": 3
+    },
+    {
+      "trigger": "hour==21 UTC",
+      "predicted_intent": "ask",
+      "confidence": 0.5,
+      "support_count": 2
+    },
+    {
+      "trigger": "hour==20 UTC",
+      "predicted_intent": "other",
+      "confidence": 0.5,
+      "support_count": 4
+    },
+    {
+      "trigger": "global_prior",
+      "predicted_intent": "fix",
+      "confidence": 0.26,
+      "support_count": 13
+    },
+    {
+      "trigger": "global_prior",
+      "predicted_intent": "other",
+      "confidence": 0.24,
+      "support_count": 12
+    },
+    {
+      "trigger": "global_prior",
+      "predicted_intent": "search_github",
+      "confidence": 0.22,
+      "support_count": 11
+    },
+    {
+      "trigger": "global_prior",
+      "predicted_intent": "ask",
+      "confidence": 0.16,
+      "support_count": 8
+    },
+    {
+      "trigger": "global_prior",
+      "predicted_intent": "search_internet",
+      "confidence": 0.1,
+      "support_count": 5
+    }
+  ],
+  "time_of_day_distribution": {
+    "1": {
+      "search_github": 5,
+      "search_internet": 3,
+      "ask": 2,
+      "fix": 2
+    },
+    "0": {
+      "search_github": 3,
+      "fix": 5,
+      "ask": 2,
+      "other": 1
+    },
+    "23": {
+      "fix": 3,
+      "other": 3,
+      "ask": 1,
+      "search_internet": 1
+    },
+    "22": {
+      "fix": 3,
+      "search_github": 1,
+      "ask": 1,
+      "other": 2
+    },
+    "21": {
+      "ask": 2,
+      "other": 2
+    },
+    "20": {
+      "other": 4,
+      "iterate": 1,
+      "search_github": 2,
+      "search_internet": 1
+    }
+  },
+  "intent_frequency": {
+    "search_github": 11,
+    "search_internet": 5,
+    "ask": 8,
+    "fix": 13,
+    "other": 12,
+    "iterate": 1
+  },
+  "n_prompts_analyzed": 50,
+  "updated_ts": "2026-05-21T01:57:06.212161+00:00"
+}

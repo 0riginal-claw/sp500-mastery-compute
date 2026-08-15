@@ -1,0 +1,37 @@
+# origin: autonomous_daemon
+# user_session_yielding: enabled (do not run if last_user_prompt < 60s)
+# autonomous_mode spawn
+# model_reason: haiku (mechanical helper task, cost-bias)
+# scope_estimate_min: 25
+# decomposition_plan: single-helper slice
+# autosolve_skip: spawned via autonomous_mode_daemon safety/budget-gated flow
+
+Workspace inherits standing authorization. Safety boundaries apply.
+Pre-approved: routine read/write/script/install/log/backup inside My Drive.
+
+## Task
+USER_FIX: check if alpaca paper trades are active. list today's trades
+
+## Why
+User-reported error/blocker — §8 solver pattern (id=persona_140cd64c50).
+
+## Brief
+# user_inbox_item: persona_140cd64c50
+# intent: fix
+# answer_path: /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/persona_140cd64c50.md
+
+ERROR/BLOCKER:
+check if alpaca paper trades are active. list today's trades if any. report account status and equity
+
+TASK (§8 auto-solve):
+  Spawn 3 parallel solvers — INTERNET (search + StackOverflow + docs),
+  GITHUB (search issues + similar bugs), REPO-LOCAL (grep + git log + tests).
+  Pick the best fix, apply silently, smoke-test. Write what-failed +
+  3-channel findings + applied fix + smoke result to: /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/persona_140cd64c50.md
+  Hard rule: respect CLAUDE.md safety boundaries.
+
+## Expected lift
+Fix applied + smoke-passed (report at /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/persona_140cd64c50.md)
+
+## Proof of work
+Return: commands run, paths accessed, files changed, backups, sub-agents, final status.

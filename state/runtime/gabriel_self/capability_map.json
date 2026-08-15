@@ -1,0 +1,96 @@
+{
+  "last_updated": "2026-05-21T01:47:19Z",
+  "strengths": [
+    {
+      "task_type": "alpaca_trading",
+      "attempts": 3,
+      "wins": 3,
+      "losses": 0,
+      "success_rate": 1.0
+    },
+    {
+      "task_type": "backtest_sweep",
+      "attempts": 4,
+      "wins": 4,
+      "losses": 0,
+      "success_rate": 1.0
+    },
+    {
+      "task_type": "infra_ops",
+      "attempts": 3,
+      "wins": 3,
+      "losses": 0,
+      "success_rate": 1.0
+    }
+  ],
+  "weaknesses": [],
+  "untried": [
+    "data_integration",
+    "feature_discovery",
+    "refactor_code",
+    "report_synthesis",
+    "self_improvement",
+    "ticker_scan"
+  ],
+  "recent_wins": [
+    "USER_FIX: check if alpaca paper trades are active. list today's trades",
+    "Session exhausted after 16+ hours \u2014 all 30+ ideas tested, 7 artifacts delivered,",
+    "USER_ASK: do you have a name",
+    "USER_ASK: Lets call you Gabriel and openclaw Gabriel twins",
+    "Kill this Claude process immediately \u2014 load 29 (cap=12), sustained cap breach fo"
+  ],
+  "recent_losses": [
+    "USER_ASK: @/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladsto",
+    "USER_ASK: @/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladsto",
+    "USER_ASK: @/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladsto",
+    "USER_ASK: @/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladsto",
+    "wire gs-quant as oc2 agent for alpha factor generation"
+  ],
+  "all_types": [
+    {
+      "task_type": "uncategorized",
+      "attempts": 75,
+      "wins": 35,
+      "losses": 40,
+      "success_rate": 0.467
+    },
+    {
+      "task_type": "backtest_sweep",
+      "attempts": 4,
+      "wins": 4,
+      "losses": 0,
+      "success_rate": 1.0
+    },
+    {
+      "task_type": "alpaca_trading",
+      "attempts": 3,
+      "wins": 3,
+      "losses": 0,
+      "success_rate": 1.0
+    },
+    {
+      "task_type": "infra_ops",
+      "attempts": 3,
+      "wins": 3,
+      "losses": 0,
+      "success_rate": 1.0
+    },
+    {
+      "task_type": "file_mechanical",
+      "attempts": 1,
+      "wins": 1,
+      "losses": 0,
+      "success_rate": 1.0
+    },
+    {
+      "task_type": "audit_diagnostic",
+      "attempts": 1,
+      "wins": 1,
+      "losses": 0,
+      "success_rate": 1.0
+    }
+  ],
+  "total_attempts": 87,
+  "audit_records_scanned": 1754,
+  "twin_records_scanned": 0
+}

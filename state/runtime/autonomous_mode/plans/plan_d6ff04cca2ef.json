@@ -1,0 +1,21 @@
+{
+  "plan_id": "d6ff04cca2ef",
+  "cycle_id": "fffc83e6",
+  "ts": "2026-05-20T23:50:26.093825+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Fix 5 applied: stale_memory_audit plist updated to use local ~/scripts/ path. paper_trade_startup requires launchctl start after session ends. Session requires external termination to break the cross-session event delivery loop.",
+      "target": "~/Library/LaunchAgents/com.zg.stale_memory_audit.plist + ~/scripts/stale_memory_audit.py",
+      "estimated_min": 10,
+      "depends_on": [],
+      "success_criteria": "stale_memory_audit plist validates with plutil -lint OK. Script copied to local path. Remaining: launchctl restart after session ends.",
+      "priority": 7
+    }
+  ],
+  "goals_addressed": [
+    "Apply mega-builder Fix 5 (crashdaemon recovery)",
+    "Document remaining fixes for next session"
+  ]
+}

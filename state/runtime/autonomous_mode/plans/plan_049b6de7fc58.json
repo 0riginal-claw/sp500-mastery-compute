@@ -1,0 +1,20 @@
+{
+  "plan_id": "049b6de7fc58",
+  "cycle_id": "27738c97",
+  "ts": "2026-05-21T00:47:07.191035+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Kill this Claude process NOW \u2014 Mac load 14.69 exceeds 12 cap, same VM compressor exhaustion pattern that caused the kernel panic",
+      "target": "process:claude",
+      "estimated_min": 1,
+      "depends_on": [],
+      "success_criteria": "Mac load drops below 8 within 2 minutes of process termination. VM compressor decompresses.",
+      "priority": 10
+    }
+  ],
+  "goals_addressed": [
+    "Emergency: Mac load at 14.69 \u2014 cap breach. Same pre-panic pattern as 16:37:11 CDT kernel panic."
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "updated_utc": "2026-05-21T02:00:00Z",
+  "description": "Decentralized agent network manifest. Every node clones this repo, reads nodes.json, self-registers as new entry, posts heartbeats to state/heartbeats/<node_id>.json. Failover: if a node misses 3 heartbeats (180s), promotion list elects next-in-line.",
+  "schema": {
+    "node_id": "unique stable id (hostname-shortuuid)",
+    "role": "primary_live_trade | research_compute | merkle_witness | failover_standby",
+    "platform": "mac | modal | gh_actions | oracle | kaggle | beam | ipfs",
+    "endpoints": {
+      "heartbeat_path": "state/heartbeats/<node_id>.json",
+      "health_check": "optional URL"
+    },
+    "last_seen_utc": "ISO8601",
+    "promotion_priority": "integer (lower = sooner)",
+    "capabilities": ["live_trade", "backtest", "research", "merkle_verify", "consensus_vote"]
+  },
+  "nodes": [
+    {
+      "node_id": "mac-mini-orginal",
+      "role": "primary_live_trade",
+      "platform": "mac",
+      "hostname": "Orginals-Mac-mini",
+      "endpoints": {
+        "heartbeat_path": "state/heartbeats/mac-mini-orginal.json"
+      },
+      "last_seen_utc": "2026-05-21T02:00:00Z",
+      "promotion_priority": 0,
+      "capabilities": ["live_trade", "backtest", "research", "merkle_verify", "consensus_vote"],
+      "notes": "Source-of-truth Mac node. Owns AI-Tools/ Drive root. Loses primary on Mac shutdown >180s."
+    },
+    {
+      "node_id": "gh-actions-self-hosted",
+      "role": "failover_standby",
+      "platform": "gh_actions",
+      "endpoints": {
+        "heartbeat_path": "state/heartbeats/gh-actions-self-hosted.json"
+      },
+      "last_seen_utc": null,
+      "promotion_priority": 1,
+      "capabilities": ["backtest", "research", "merkle_verify"],
+      "notes": "GH Actions runner. Picks up live_trade only if Mac heartbeat stale >5min."
+    },
+    {
+      "node_id": "modal-pool",
+      "role": "research_compute",
+      "platform": "modal",
+      "endpoints": {
+        "heartbeat_path": "state/heartbeats/modal-pool.json"
+      },
+      "last_seen_utc": null,
+      "promotion_priority": 2,
+      "capabilities": ["backtest", "research"],
+      "notes": "Modal ephemeral. Spend-cap aware. Does not vote consensus (no persistent identity)."
+    }
+  ],
+  "consensus": {
+    "quorum": "2_of_3",
+    "voters": ["claude_main", "openclaw_main", "ollama_local"],
+    "destructive_actions_require_quorum": ["rm -rf", "git push --force", "launchctl bootout", "drop table", "kill -9"]
+  },
+  "failover_policy": {
+    "heartbeat_interval_sec": 60,
+    "miss_threshold": 3,
+    "stale_window_sec": 180,
+    "promotion": "lowest promotion_priority among live nodes with capability"
+  }
+}

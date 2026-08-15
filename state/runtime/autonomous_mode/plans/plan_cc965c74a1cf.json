@@ -1,0 +1,84 @@
+{
+  "plan_id": "cc965c74a1cf",
+  "cycle_id": "a82fb750",
+  "ts": "2026-05-20T06:38:08.269916+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Batch-restart all 21 IDLE daemons via launchctl kickstart loop (groups of 5, 5s between groups), starting with data-writers (dw_market, dw_features, dw_risks, dw_strategies)",
+      "target": "daemon fleet (launchctl loop)",
+      "estimated_min": 8,
+      "depends_on": [],
+      "success_criteria": "Fleet UP count rises from 13/34 to 28/34 within 60s; dw_market and dw_features both show PID > 0",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Add None-guard at yahoo_self_provision.py line 418, then run playwright install chromium to fix async browser crash",
+      "target": "scripts/yahoo_self_provision.py",
+      "estimated_min": 8,
+      "depends_on": [],
+      "success_criteria": "yahoo_self_provision imports without error; playwright install chromium exits 0; dry-run with AAPL via yfinance (no browser) succeeds",
+      "priority": 9
+    },
+    {
+      "step_id": "s3",
+      "action": "Add launchd WatchPaths to 3 crashed daemon plists pointing at Google Drive mount to prevent remount cascade",
+      "target": "~/Library/LaunchAgents/com.zg.{openclaw_session_watcher,mem0_auto_capture,paper_trade_startup}.plist",
+      "estimated_min": 12,
+      "depends_on": [],
+      "success_criteria": "All 3 plists saved with WatchPaths, launchctl load succeeds, each daemon shows PID > 0 within 10s",
+      "priority": 9
+    },
+    {
+      "step_id": "s4",
+      "action": "Check exit status of the 3 in-flight helpers (daily AAPL resample, daily RSI<30 WF, cross-sectional momentum) \u2014 collect output or error from each",
+      "target": "spawned helper outputs",
+      "estimated_min": 5,
+      "depends_on": [],
+      "success_criteria": "CSV or error message retrieved for each of the 3 helpers; if completed, results logged to research/notes/",
+      "priority": 8
+    },
+    {
+      "step_id": "s5",
+      "action": "Restart agent_watchdog daemon with KeepAlive enabled so future crashes auto-recover without manual intervention",
+      "target": "~/Library/LaunchAgents/com.zg.agent_watchdog.plist",
+      "estimated_min": 10,
+      "depends_on": [
+        "s3"
+      ],
+      "success_criteria": "agent_watchdog shows PID > 0 and com.zg.* fleet count stays at 34/34 after 120s observation",
+      "priority": 8
+    },
+    {
+      "step_id": "s6",
+      "action": "Run daemon fleet health check: poll overseer 3 times at 30s intervals, log UP/IDLE/CRASHED counts per poll to confirm stability",
+      "target": "mission overseer state",
+      "estimated_min": 5,
+      "depends_on": [
+        "s1",
+        "s5"
+      ],
+      "success_criteria": "3 consecutive polls show fleet count >= 30/34 with no new CRASHED entries",
+      "priority": 7
+    },
+    {
+      "step_id": "s7",
+      "action": "If any helper completed with a promising signal (daily WR>=52% or cross-sectional Sharpe>0.5), expand to MSFT and NVDA daily for replication check",
+      "target": "ticker:MSFT, NVDA daily strategy",
+      "estimated_min": 15,
+      "depends_on": [
+        "s4",
+        "s6"
+      ],
+      "success_criteria": "Both MSFT and NVDA daily WF reports generated and compared against AAPL baseline in a single CSV",
+      "priority": 6
+    }
+  ],
+  "goals_addressed": [
+    "Restore daemon fleet from 13/34 to 34/34 uptime",
+    "Fix yahoo data pipeline and Drive-mount cascade failure",
+    "Collect research results from spawned helpers and determine daily-horizon viability"
+  ]
+}

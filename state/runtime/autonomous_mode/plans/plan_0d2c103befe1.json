@@ -1,0 +1,55 @@
+{
+  "plan_id": "0d2c103befe1",
+  "cycle_id": "7db3654c",
+  "ts": "2026-05-20T06:52:37.576235+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Wait for USER_FIX to complete, then verify: count Python processes (`ps aux | grep python | wc -l`), measure load (`uptime`), and tally fleet UP count",
+      "target": "system state verification post-FIX",
+      "estimated_min": 2,
+      "depends_on": [],
+      "success_criteria": "Python process count < 10, load < 8.0, fleet UP count >= 30/34 (up from 13)",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "If fleet still < 30/34 after USER_FIX, use launchctl bootout/bootstrap on each remaining IDLE daemon (clean stops, no re-spawn), then fix yahoo_provision.py line 419 None guard",
+      "target": "remaining IDLE daemons + scripts/yahoo_self_provision.py",
+      "estimated_min": 6,
+      "depends_on": [
+        "s1"
+      ],
+      "success_criteria": "Fleet >= 32/34 UP; yahoo_self_provision.py None guard added and file saved",
+      "priority": 10
+    },
+    {
+      "step_id": "s3",
+      "action": "Add launchd WatchPaths + KeepAlive to 3 crashed daemon plists (openclaw_session_watcher, mem0_auto_capture, paper_trade_startup) then launchctl bootstrap each",
+      "target": "~/Library/LaunchAgents/com.zg.{openclaw_session_watcher,mem0_auto_capture,paper_trade_startup}.plist",
+      "estimated_min": 8,
+      "depends_on": [
+        "s2"
+      ],
+      "success_criteria": "All 3 daemons show PID > 0; WatchPaths point at Google Drive mount root",
+      "priority": 9
+    },
+    {
+      "step_id": "s4",
+      "action": "Write scripts/daemon_recovery.sh one-liner that bootout+bootstrap all com.zg.* daemons, then verify it runs in <10s",
+      "target": "scripts/daemon_recovery.sh",
+      "estimated_min": 5,
+      "depends_on": [
+        "s2"
+      ],
+      "success_criteria": "scripts/daemon_recovery.sh written, executable, dry-run produces valid launchctl commands",
+      "priority": 7
+    }
+  ],
+  "goals_addressed": [
+    "Cleanly restart daemon fleet using launchctl bootout/bootstrap (not kill -9) to prevent re-spawn loops",
+    "Wait for USER_FIX to complete before launching SEARCH helpers to avoid load spike",
+    "Fix yahoo_provision NoneType crash permanently this cycle"
+  ]
+}

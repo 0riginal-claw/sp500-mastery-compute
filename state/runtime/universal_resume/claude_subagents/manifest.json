@@ -1,0 +1,437 @@
+{
+  "class": "claude_subagents",
+  "ts": "2026-05-21T00:17:35.152465+00:00",
+  "session_id": "d2489079",
+  "files": {
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/af176d3656512df39.output": {
+      "size": 155487,
+      "sha256": "5e196bec80035534002a187f2c81e3f0e262efe760c7bcd427964bc1c9975a13",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/af176d3656512df39.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/abad43ce0c98e78b3.output": {
+      "size": 139776,
+      "sha256": "8758aba3e7ffc11edd083c50ebd59a7865b32a4a020a624d8940f3842b6033fb",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/abad43ce0c98e78b3.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ae0ab970834555ef3.output": {
+      "size": 385078,
+      "sha256": "029ee2dd1378d31a0bb3e36cfc2a119500c9764a8e047bc4edcbc2f8501b18c8",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ae0ab970834555ef3.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a16717605197946bb.output": {
+      "size": 81211,
+      "sha256": "890678e93a27407526ee5132fdee1e117d39e79a2f59946e38046cb2f91ca142",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a16717605197946bb.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ac931a44189dd5f8a.output": {
+      "size": 165420,
+      "sha256": "a3fb19a45106e131e012157add8f23607921b0f6256ce49baadc08826f81f34e",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ac931a44189dd5f8a.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bb00hov3g.output": {
+      "size": 666,
+      "sha256": "116be1ee00efe8620ce889c9581a9734747eb7eba260ff6f2511bdf663776ffa",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bb00hov3g.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/abf32ccc90d991d4f.output": {
+      "size": 164485,
+      "sha256": "32b06282f4d2a81fa0a450d0d2977c24fa16a282f8cd8c04c8c87cf430b5ae03",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/abf32ccc90d991d4f.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ab46c6d1ecd312acb.output": {
+      "size": 151470,
+      "sha256": "ce3d3929451631c8bc4f822e32c2ee93b289f925474d91f5384edc45566064e7",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ab46c6d1ecd312acb.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a6a0f648d555aa40f.output": {
+      "size": 303972,
+      "sha256": "461ffbd5695f01f3d18b0af1ecb2e46f6c6c87a04e65e1db44a10a2fb0908594",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a6a0f648d555aa40f.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bd1xf1mdj.output": {
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bd1xf1mdj.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bqzkgrke8.output": {
+      "size": 154,
+      "sha256": "3d683d523f53e3840d7918c1ab706d8250c7f29b2ec187b6d68fdefcbc13d976",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bqzkgrke8.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a772f98a4f36252b8.output": {
+      "size": 352359,
+      "sha256": "5b95bc67165ab98264dfe6aac70ab210d0fa4ccb21039b4fe4dcae6bae893a52",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a772f98a4f36252b8.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ad911695d1e84ac8e.output": {
+      "size": 159418,
+      "sha256": "826c204002590aa1310724252a0e745f36dd8a849ad4247991dd713c043287c8",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ad911695d1e84ac8e.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ad7c497493dd771b1.output": {
+      "size": 400139,
+      "sha256": "e8d5455fa65554aee0f9df85a35653827be60d273e5af224fe6c2326c3e8f519",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ad7c497493dd771b1.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bb5p71o9k.output": {
+      "size": 114,
+      "sha256": "563ea48c52d3e822af1c3c5ed5ecebc58a681153c7c5d09c656244c9be84f73e",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bb5p71o9k.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a8349273b1d6f553f.output": {
+      "size": 198357,
+      "sha256": "5af2de5eaad8d8cc218bd399a4543807ee8b34dffead87045b51a45a050a5e40",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a8349273b1d6f553f.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/byzwxt9uu.output": {
+      "size": 33,
+      "sha256": "b05a337d5254525f3ef3ac805a91f3559a7eabd4d155e900ae0c0979f7817869",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/byzwxt9uu.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bml2umtp7.output": {
+      "size": 2521,
+      "sha256": "373decd198815aa7345effc6ff66c5ad1451cde0892c6a6e3f361d3d94d46b34",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bml2umtp7.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bj8x3nhvk.output": {
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bj8x3nhvk.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a46404cf5888fb181.output": {
+      "size": 319604,
+      "sha256": "2fb1618e3e60fd5f132551e570351d88c30c3f569f5ebfca114f69de3ba95822",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a46404cf5888fb181.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bjl3oqmdf.output": {
+      "size": 7931,
+      "sha256": "d50a66f2a896753cb8472463a731482de16e7365c8cf65cff055e056a2d02e8b",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bjl3oqmdf.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ad14bbf5ac5623bb2.output": {
+      "size": 400921,
+      "sha256": "b57078a34dd03ec43a8eb6a1934ac449257c74439b03742074204c452d2e7d31",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ad14bbf5ac5623bb2.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a6a9ebbb4339f3789.output": {
+      "size": 218155,
+      "sha256": "fde6ccae0875795eec49acbcc8b05641ee64ae4da6c9a61fdec0b11166059842",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a6a9ebbb4339f3789.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/blzxj16jk.output": {
+      "size": 395,
+      "sha256": "3668d90706f13fd9265de98b0f80523558637d61f9c382cc043badf15eee386d",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/blzxj16jk.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a946ad29715f49484.output": {
+      "size": 135723,
+      "sha256": "b14e4acf1c67d7c1525fe84c70f723ec9249c8ba3fca7a91a1d7b24e8b6f5b99",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a946ad29715f49484.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bd5bgve4t.output": {
+      "size": 7120,
+      "sha256": "132765aa25b6ccbcff3a3896904c89f098a22a7943dfa2e417d359c85b2bf9fc",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bd5bgve4t.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bwmpdr3ia.output": {
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bwmpdr3ia.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a124b5eb6b36337cc.output": {
+      "size": 412462,
+      "sha256": "729dc97cc68a0b8b6d536cc7d3f7934285f2b5d2c2dbf822f35f4d711ef313d8",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a124b5eb6b36337cc.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a4b78c76bc03aad3f.output": {
+      "size": 87518,
+      "sha256": "707642d93b2b19617a5af0ad9942f49cbc58c937dec7a20e2aec53e2bcb20460",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a4b78c76bc03aad3f.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bpv0mgufk.output": {
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bpv0mgufk.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a8dfbeed1fe6b4549.output": {
+      "size": 332378,
+      "sha256": "052139597be6b77f7f8df47e135acbc6ae576725618f1c473af17e53f27a743e",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a8dfbeed1fe6b4549.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/b4r60dncv.output": {
+      "size": 2236,
+      "sha256": "43db181bdf0470a3d65519de4a62c17f18d18b60009ce9af6dc01d93869d3a78",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/b4r60dncv.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a38c9891982a2f994.output": {
+      "size": 189127,
+      "sha256": "59001aa7e55ade62f9a2ff6a37a3aa41c3609800a56e63a46446245165afc1ef",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a38c9891982a2f994.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a95b150286e8a9148.output": {
+      "size": 77918,
+      "sha256": "553db28e7f81815ed179a0cddcefebc2fe09b69675e62237a8a95ca9dd94be63",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a95b150286e8a9148.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a9e7b6c3806f1d7d3.output": {
+      "size": 89398,
+      "sha256": "2739d058b21b1cb1f43a26db6a41a852d8a24c4bf17d76b8bd5f1a21d69391d6",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a9e7b6c3806f1d7d3.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aac3da3ed05861dcb.output": {
+      "size": 79477,
+      "sha256": "0bcab407391bdf846f03d3d661a2f34e6f749e9d9e835502d38398e4197e45e0",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aac3da3ed05861dcb.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a37f84be2ee639a61.output": {
+      "size": 205790,
+      "sha256": "fd25f2c45d03a8f9825a74b2b5cac0dba481f351b024a9a557c914b3cdc76cd3",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a37f84be2ee639a61.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aac8a697569b97faa.output": {
+      "size": 237503,
+      "sha256": "f08ed437d301176295bd0960b444db2eb11ceb727ee5eb31e98d7d759432d003",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aac8a697569b97faa.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a95b858f752761720.output": {
+      "size": 320412,
+      "sha256": "bad76ac3bd26fb9f31b9ed8b1c3e742683b9f5f96b7662e5205b49b719a40df2",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a95b858f752761720.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a106b737312b89920.output": {
+      "size": 75117,
+      "sha256": "dd453c6651f6ebaba06be52894fc1570be31e48cfec0558c076d109b66681561",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a106b737312b89920.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aa2bc385ff054e192.output": {
+      "size": 288734,
+      "sha256": "82da1b4f713daf5b784b931282eb9f52feab871766c1c83f7a98a32599b82788",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aa2bc385ff054e192.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bd7zge2j5.output": {
+      "size": 160014,
+      "sha256": "dfbf31e39afa6a2e7d400b86d43750d2bf487afffe2e15e2a5a6dda08c7d595c",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bd7zge2j5.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a2bc49ef7744b7351.output": {
+      "size": 243831,
+      "sha256": "6570bf7ac3b83ce70391cff2fc94dcebc5b2d190b1ad62a469ad9154d521ae70",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a2bc49ef7744b7351.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a5cbaba6372b14593.output": {
+      "size": 385719,
+      "sha256": "1a4001dd7ee80484eabfda47a4abb318dd1da34744b7c0d2c67b8e162d2d338b",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a5cbaba6372b14593.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aba250448df6cee84.output": {
+      "size": 166034,
+      "sha256": "bbcf45db5a1c14e8147778bb1a9469804b393c6ed6b1010fdaf8b1d76a6fac02",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aba250448df6cee84.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a0f42baf12edc4c84.output": {
+      "size": 331235,
+      "sha256": "0705943453c9962e4ace9a2e8e811183510d4ad5da87dd983e7ceaa81ed9a381",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a0f42baf12edc4c84.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a8198b2f877bf7f3b.output": {
+      "size": 492479,
+      "sha256": "fc32952d0c1197d0e365cc3e75b2fb227d45461bb355745724a7145d272a4b26",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a8198b2f877bf7f3b.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ac2d37feb7527e544.output": {
+      "size": 146278,
+      "sha256": "631400aa54bc19467f871f02866c0d1dc73dce76df79802e4ce92b0bf57147be",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ac2d37feb7527e544.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bvr9cuw8m.output": {
+      "size": 75,
+      "sha256": "d3b5b958e3d96d7ba14fa482883adf94a6873f4c4bb32a327af9ec5988f1f3b3",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bvr9cuw8m.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aea28853c2d707622.output": {
+      "size": 426611,
+      "sha256": "43bae69427e54fc450c3948c123110b53450c262f244ec20bf2e8d47dbf44585",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aea28853c2d707622.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a65485a7b5a4c4892.output": {
+      "size": 209828,
+      "sha256": "211340fa6a410f5fe01076258652db11aee5ee3b03ba76d29ff8dfac4a1f55b5",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a65485a7b5a4c4892.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ac2e8c8c7c1febf1c.output": {
+      "size": 217706,
+      "sha256": "29c64ebad4664d79a5fd2eb73349c201c8394ba4bfaa4c82488374933e631d4c",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ac2e8c8c7c1febf1c.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a173c6ba8ae6202bf.output": {
+      "size": 296378,
+      "sha256": "15ce26856417b78cbf281cf0856cad0ed64a812cbd6e74fa97a997b3fdf4307f",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a173c6ba8ae6202bf.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a8011cdb112ab614a.output": {
+      "size": 102645,
+      "sha256": "774710c4abab2d2c24fbf10bcaed69108da283ba84212dd74e91d39688c7e256",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a8011cdb112ab614a.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ba9gq3gqo.output": {
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ba9gq3gqo.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ba1it8ssy.output": {
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ba1it8ssy.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aee5ace1f02a6f5e1.output": {
+      "size": 165777,
+      "sha256": "7021998b71237d93e4ad05679994029263ba950e921f05efdf9567bcde3b1812",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aee5ace1f02a6f5e1.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a02592dfd2a67d7a1.output": {
+      "size": 122143,
+      "sha256": "58c9276c9f85338edf8df4155e05807870827eec74c8a46945272eb3c726f8cc",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a02592dfd2a67d7a1.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a20fcfa8866065e68.output": {
+      "size": 144275,
+      "sha256": "510889647eaf7d07371fcab5c3bd82812371beaaef7d2e328054a4aac060dfed",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a20fcfa8866065e68.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a6495665f9229b36e.output": {
+      "size": 85155,
+      "sha256": "72fdedee942dc2d778de386f3b6dfc71936383354ded6cc45d91ad0dcb24a775",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a6495665f9229b36e.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a034e50ea4f79d99a.output": {
+      "size": 55542,
+      "sha256": "a96cc101be41c2fe7432ea524a1abcee334c5ffa1fa4384102b3ad74a63f57f8",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a034e50ea4f79d99a.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a08003b514db73883.output": {
+      "size": 316215,
+      "sha256": "f80cfff1f5e081fb210c510e25d1d0e3c3cdc3aa3bd0efc372b48a0815b6489a",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a08003b514db73883.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a71721a78ac5ad224.output": {
+      "size": 160806,
+      "sha256": "3367aba4e368251032fdd9e2d809be7e69ac5eaccb74fc04b67e89c853064e68",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a71721a78ac5ad224.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a45df3f413ff60b76.output": {
+      "size": 370027,
+      "sha256": "aad99dc42d67bc18306bf8c775d52300985ab105181879ddcc95512abc36c8ed",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a45df3f413ff60b76.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ae5399505aeb9c12e.output": {
+      "size": 339528,
+      "sha256": "2fa6fdf85b9d5db4dd46706c1b072381f1507985090290c97cc8990e7b012306",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ae5399505aeb9c12e.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/b2jyc8vet.output": {
+      "size": 7120,
+      "sha256": "132765aa25b6ccbcff3a3896904c89f098a22a7943dfa2e417d359c85b2bf9fc",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/b2jyc8vet.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aaa14b1b18315c7e5.output": {
+      "size": 378309,
+      "sha256": "20ec938b3d08f07730bb2cc9f639819620c58c7a126df2d42add6c68f98e28c0",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aaa14b1b18315c7e5.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a3dfdc49efb88fb57.output": {
+      "size": 73253,
+      "sha256": "aed22ee80aed5724df0746f34b02e1b260026688c08a4f3d732c3670fe276c30",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a3dfdc49efb88fb57.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a963c46d17c7ac6b9.output": {
+      "size": 341756,
+      "sha256": "84757fdc22892f13e1e7257c131b579940e452964e011074fbf4f9939772bcc1",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a963c46d17c7ac6b9.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a61b3f3aafdbc149e.output": {
+      "size": 226179,
+      "sha256": "242b197ed67f9e9183333463136069474346f88d2efa960c9df65ceffd00d44e",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a61b3f3aafdbc149e.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a64337c77c7a622b4.output": {
+      "size": 220993,
+      "sha256": "9326467a1a387685cdda5302154f40767802f15a94132c9c92090432b691ec7a",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a64337c77c7a622b4.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a46f15c4d285e9119.output": {
+      "size": 416549,
+      "sha256": "2bd5dc816ec4bbc5c1e85050d92459a05e812a7b3641246033b045f3cd9d1407",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a46f15c4d285e9119.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ae8a4fa71abffeb3f.output": {
+      "size": 200322,
+      "sha256": "62aa41308867a6dd15183045338e41b3d066694e4d40719d3c354aacd16fa32b",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ae8a4fa71abffeb3f.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a394b26cb41919f1c.output": {
+      "size": 184673,
+      "sha256": "cdc5c394141f078a899e96673fcd55245d6e82174b36f3b8dd7777b762662535",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a394b26cb41919f1c.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bjg4n6cnw.output": {
+      "size": 3194,
+      "sha256": "60f8114a46696c8e0797908d3f014b5d5530d30c7a162794be6a94eec6920def",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/bjg4n6cnw.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a6923cd80eb9d0eaf.output": {
+      "size": 128314,
+      "sha256": "2edf8f051a17a2fecccb20188139e1e69596e5629990706635dad0ef2d83f445",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a6923cd80eb9d0eaf.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a9d8e49faa425c5dd.output": {
+      "size": 65879,
+      "sha256": "8d5d4750e5073d9684c332e920a53343794a7c5c74c7b884a2e0ce4aeb86331d",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a9d8e49faa425c5dd.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/af3edfe21f4d3b547.output": {
+      "size": 86715,
+      "sha256": "31deb3cdf14910cf15f430adf05992946f4eb9a6666f3d8fd96a554f2f64288e",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/af3edfe21f4d3b547.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/b8h8hdknk.output": {
+      "size": 170,
+      "sha256": "01c889cdbc664e7f0c19731519266e123e39ec0646803f20d4db05930700596f",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/b8h8hdknk.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aa094d8cb3b87f87f.output": {
+      "size": 170605,
+      "sha256": "f29664c745920fed887107bd5d19547842e370f5837228f21f850b31db4ea807",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/aa094d8cb3b87f87f.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ab4416679b0b4a817.output": {
+      "size": 182203,
+      "sha256": "d0abcf46fecc57ca38b35359b479eaf3995e69aa051a7e7a8b4457ba9a3cbb6a",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/ab4416679b0b4a817.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a3a10f0ff0064d74c.output": {
+      "size": 162426,
+      "sha256": "334f4b67540240edfe597a266ca9062e83f03c73ee57df839e691b1e824da4fb",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/a3a10f0ff0064d74c.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/b1yg1c0yp.output": {
+      "size": 504,
+      "sha256": "976cd9360c9e3f952a7408a382bbe2926e1804ddfb0fec6e17667869ae4152d9",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/b1yg1c0yp.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/af9cabf4882c0f41c.output": {
+      "size": 130950,
+      "sha256": "7f7451992d76dc2f031b24f40607a3b59945fe7b5c34e401941e96afabb864aa",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/eea6dd87-676d-4754-a5e7-38474f234909/tasks/af9cabf4882c0f41c.output"
+    },
+    "claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/4c3bdac3-7869-4f7a-9e1d-4d8e898f5e3a/tasks/bpapljjqt.output": {
+      "size": 4257,
+      "sha256": "2ff248f9b34e294ce1653610549a95b7fee57a0c9f6175a24c86b462d3de0453",
+      "src": "/private/tmp/claude-501/-Users-orginal-Library-CloudStorage-GoogleDrive-zachgladstone-gmail-com-My-Drive-AI-Tools-ClaudeCode-projects/4c3bdac3-7869-4f7a-9e1d-4d8e898f5e3a/tasks/bpapljjqt.output"
+    }
+  },
+  "skipped_too_large": 0,
+  "errors": 0,
+  "sources_seen": [
+    "/private/tmp/claude-501"
+  ]
+}

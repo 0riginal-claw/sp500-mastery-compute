@@ -1,0 +1,63 @@
+{
+  "plan_id": "f2296b986bf6",
+  "cycle_id": "082c515f",
+  "ts": "2026-05-20T07:08:46.122342+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "KILL 6 of 9 in-flight helpers (all USER_SEARCH_GH) \u2014 they were producing stale results. Keep yahoo fix, Alpaca curl, and WatchPaths only.",
+      "target": "in-flight helper PIDs",
+      "estimated_min": 1,
+      "depends_on": [],
+      "success_criteria": "helper count drops from 9 to \u22643 within 15s",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "VERIFY yahoo_provision.py edit: confirm line 419 has the None guard, then run `pip show patchright` to check playwright variant is installed",
+      "target": "scripts/yahoo_self_provision.py",
+      "estimated_min": 1,
+      "depends_on": [],
+      "success_criteria": "grep confirms line 419 guard; patchright installed (playwright variant)",
+      "priority": 10
+    },
+    {
+      "step_id": "s3",
+      "action": "FIND Alpaca API keys \u2014 check Keychain via `security find-internet-password -s paper-api.alpaca.markets` or locate in config files",
+      "target": "macOS Keychain / config files",
+      "estimated_min": 5,
+      "depends_on": [],
+      "success_criteria": "Alpaca paper API key found and usable, or confirmed missing (needs regeneration at dashboard)",
+      "priority": 9
+    },
+    {
+      "step_id": "s4",
+      "action": "KICKSTART all IDLE daemons after yahoo fix and WatchPaths are in place \u2014 fleet should reach 30+/34",
+      "target": "daemon fleet launchctl restart batch",
+      "estimated_min": 3,
+      "depends_on": [
+        "s2",
+        "s3"
+      ],
+      "success_criteria": "Fleet UP count rises from 13/34 to 30/34 within 60s",
+      "priority": 9
+    },
+    {
+      "step_id": "s5",
+      "action": "POLL overseer once, log final fleet count, write EXECUTION_LOG.md entry confirming yahoo fix and fleet recovery",
+      "target": "EXECUTION_LOG.md + overseer verification",
+      "estimated_min": 2,
+      "depends_on": [
+        "s4"
+      ],
+      "success_criteria": "EXECUTION_LOG.md shows yahoo fix = completed; fleet >= 30/34; 3 previously-crashed daemons PID > 0",
+      "priority": 10
+    }
+  ],
+  "goals_addressed": [
+    "Break the 2.5-hour analysis-without-execution loop by making the first confirmed file edit (yahoo_provision.py line 419)",
+    "Count full S&P 500 parquet inventory (502 files found \u2014 all tickers present)",
+    "Identify Alpaca key location gap for paper_trade_startup debugging"
+  ]
+}

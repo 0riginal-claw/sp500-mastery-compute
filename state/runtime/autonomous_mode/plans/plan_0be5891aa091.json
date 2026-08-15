@@ -1,0 +1,85 @@
+{
+  "plan_id": "0be5891aa091",
+  "cycle_id": "ec642818",
+  "ts": "2026-05-20T06:45:54.503282+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Batch-restart all 18 remaining IDLE daemons via launchctl kickstart loop (5 at a time, 3s gaps), then verify fleet count rises from 16/34",
+      "target": "daemon fleet (launchctl loop: auto_action, dashboard, dw_features, dw_market, dw_strategies, feature_discovery, etc.)",
+      "estimated_min": 8,
+      "depends_on": [],
+      "success_criteria": "Fleet UP count rises from 16/34 to 30/34 within 90s; dw_market shows PID > 0",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Add None-guard at yahoo_self_provision.py line 418, run playwright install chromium, then restart the yahoo_provision daemon",
+      "target": "scripts/yahoo_self_provision.py",
+      "estimated_min": 8,
+      "depends_on": [],
+      "success_criteria": "playwright install chromium exits 0; yahoo_self_provision.py imports without error; daemon restarts with PID > 0",
+      "priority": 9
+    },
+    {
+      "step_id": "s3",
+      "action": "Add launchd WatchPaths to 3 crashed daemon plists (openclaw_session_watcher, mem0_auto_capture, paper_trade_startup) to prevent Drive-remount cascade, then launchctl load each",
+      "target": "~/Library/LaunchAgents/com.zg.{openclaw_session_watcher,mem0_auto_capture,paper_trade_startup}.plist",
+      "estimated_min": 12,
+      "depends_on": [],
+      "success_criteria": "All 3 plists saved with WatchPaths; launchctl load exits 0; all 3 daemons show PID > 0 within 10s",
+      "priority": 9
+    },
+    {
+      "step_id": "s4",
+      "action": "Check and capture output from the 3 c857fa80 research helpers (daily AAPL RSI<30 WF, cross-sectional momentum, daily resample) \u2014 log to research/notes/20260520_helpers.md",
+      "target": "helper output collection from launchd/completion queue",
+      "estimated_min": 5,
+      "depends_on": [],
+      "success_criteria": "3 entries logged with either result data or specific error; at a minimum, confirms whether daily strategy output exists",
+      "priority": 9
+    },
+    {
+      "step_id": "s5",
+      "action": "Add KeepAlive to agent_watchdog plist so it auto-recovers future crashes, then launchctl load and verify PID > 0",
+      "target": "~/Library/LaunchAgents/com.zg.agent_watchdog.plist",
+      "estimated_min": 8,
+      "depends_on": [
+        "s3"
+      ],
+      "success_criteria": "agent_watchdog PID > 0; 60s observation shows no new CRASHED entries across fleet",
+      "priority": 8
+    },
+    {
+      "step_id": "s6",
+      "action": "Create a one-shot daemon recovery script at scripts/daemon_recovery.sh that batch-restarts all IDLE com.zg.* daemons with a single command",
+      "target": "scripts/daemon_recovery.sh",
+      "estimated_min": 12,
+      "depends_on": [
+        "s1"
+      ],
+      "success_criteria": "Script exists, executable, tested; running it restores all IDLE daemons to UP in <30s; committed to repo",
+      "priority": 7
+    },
+    {
+      "step_id": "s7",
+      "action": "Poll overseer once after all fixes, log final fleet count and confirm all 3 crashed daemons recovered; flag any remaining IDLE",
+      "target": "mission overseer state verification",
+      "estimated_min": 3,
+      "depends_on": [
+        "s1",
+        "s2",
+        "s3",
+        "s5"
+      ],
+      "success_criteria": "Overseer poll shows fleet >= 32/34 UP, 0 CRASHED, previously-crashed daemons show PID > 0",
+      "priority": 10
+    }
+  ],
+  "goals_addressed": [
+    "Execute the known fixes that have been planned but never run across 6+ cycles",
+    "Recover remaining 18 IDLE + 3 CRASHED daemons to bring fleet to 34/34",
+    "Fix yahoo_provision and collect research helper results before further ideation"
+  ]
+}

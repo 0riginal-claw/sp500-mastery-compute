@@ -1,0 +1,86 @@
+{
+  "plan_id": "156c99f45e63",
+  "cycle_id": "b9e89007",
+  "ts": "2026-05-20T06:40:40.006783+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Fix yahoo_self_provision.py NoneType crash: add `if browser is None: return` guard at line 418, then run `playwright install chromium`",
+      "target": "scripts/yahoo_self_provision.py",
+      "estimated_min": 5,
+      "depends_on": [],
+      "success_criteria": "playwright install chromium exits 0; yahoo_self_provision.py imports without error; single-ticker yfinance smoke-test succeeds",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Batch-restart all 21 IDLE daemons via launchctl kickstart loop (groups of 5, 5s between groups), prioritize dw_market, dw_features, dw_risks, dw_strategies first",
+      "target": "daemon fleet (launchctl loop)",
+      "estimated_min": 8,
+      "depends_on": [],
+      "success_criteria": "Fleet UP count rises from 13/34 to 30/34 within 90s; dw_market PID > 0 confirmed",
+      "priority": 10
+    },
+    {
+      "step_id": "s3",
+      "action": "Add launchd WatchPaths to 3 crashed daemon plists pointing at Google Drive mount root to prevent remount cascade, then launchctl load each",
+      "target": "~/Library/LaunchAgents/com.zg.{openclaw_session_watcher,mem0_auto_capture,paper_trade_startup}.plist",
+      "estimated_min": 12,
+      "depends_on": [],
+      "success_criteria": "All 3 plists written with WatchPaths, launchctl load exits 0, all 3 daemons show PID > 0 within 10s",
+      "priority": 9
+    },
+    {
+      "step_id": "s4",
+      "action": "Add KeepAlive to agent_watchdog plist, launchctl load, confirm it starts monitoring and fleet stays stable for 120s",
+      "target": "~/Library/LaunchAgents/com.zg.agent_watchdog.plist",
+      "estimated_min": 8,
+      "depends_on": [
+        "s3"
+      ],
+      "success_criteria": "agent_watchdog PID > 0; 120s observation shows no new CRASHED entries across fleet",
+      "priority": 9
+    },
+    {
+      "step_id": "s5",
+      "action": "Write and test a one-shot daemon recovery script that batch-restarts all IDLE launchd services in a single command",
+      "target": "scripts/daemon_recovery.sh",
+      "estimated_min": 15,
+      "depends_on": [
+        "s2"
+      ],
+      "success_criteria": "scripts/daemon_recovery.sh exists, executable, and running it restores all com.zg.* daemons to UP state in <30s",
+      "priority": 8
+    },
+    {
+      "step_id": "s6",
+      "action": "Check stdout/stderr of the 3 c857fa80 helpers \u2014 collect output or error from each, log findings to research/notes/20260520_helpers.md",
+      "target": "helper output collection",
+      "estimated_min": 5,
+      "depends_on": [],
+      "success_criteria": "3 entries logged: either output captured (daily WR/PF, cross-sectional Sharpe) or specific error message recorded for re-try",
+      "priority": 8
+    },
+    {
+      "step_id": "s7",
+      "action": "Assert post-fix state: poll overseer once, log final fleet count, confirm 3 crashed daemons recovered, flag any remaining IDLE",
+      "target": "mission overseer state validation",
+      "estimated_min": 3,
+      "depends_on": [
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5"
+      ],
+      "success_criteria": "Overseer poll shows fleet >= 32/34 UP, 0 CRASHED, all 3 previously-crashed daemons show PID > 0",
+      "priority": 10
+    }
+  ],
+  "goals_addressed": [
+    "Break the 2-hour planning loop \u2014 execute known fixes instead of re-analyzing stale state",
+    "Restore daemon fleet and data pipeline so research helpers can produce results",
+    "Create a one-shot recovery script to prevent future multi-hour dead cycles"
+  ]
+}
