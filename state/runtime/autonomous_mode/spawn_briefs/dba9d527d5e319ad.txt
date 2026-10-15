@@ -1,0 +1,36 @@
+# origin: autonomous_daemon
+# user_session_yielding: enabled (do not run if last_user_prompt < 60s)
+# autonomous_mode spawn
+# model_reason: haiku (mechanical helper task, cost-bias)
+# scope_estimate_min: 10
+# decomposition_plan: single-helper slice
+# autosolve_skip: spawned via autonomous_mode_daemon safety/budget-gated flow
+
+Workspace inherits standing authorization. Safety boundaries apply.
+Pre-approved: routine read/write/script/install/log/backup inside My Drive.
+
+## Task
+USER_ASK: Lets call you Gabriel and openclaw Gabriel twins
+
+## Why
+User asked via inbox CLI (id=u_1ff3fe0f8c57). Direct answer requested.
+
+## Brief
+# user_inbox_item: u_1ff3fe0f8c57
+# intent: ask
+# answer_path: /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/u_1ff3fe0f8c57.md
+
+USER QUESTION:
+Lets call you Gabriel and openclaw Gabriel twins
+
+TASK: Research and answer concisely. Write the answer to:
+  /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/u_1ff3fe0f8c57.md
+Use OpenClaw+DeepSeek for cheap large-context reasoning if helpful:
+  bin/openclaw-gdrive agent --local --model deepseek/deepseek-v4-flash --json --message '...'
+Answer format: ## Question / ## Short answer / ## Detail / ## Sources.
+
+## Expected lift
+Direct answer to user question written to /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/dashboard/inbox_answers/u_1ff3fe0f8c57.md
+
+## Proof of work
+Return: commands run, paths accessed, files changed, backups, sub-agents, final status.

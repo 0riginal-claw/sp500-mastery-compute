@@ -1,0 +1,2554 @@
+{
+  "class": "openclaw_subagents",
+  "ts": "2026-05-21T00:17:35.244981+00:00",
+  "session_id": "d2489079",
+  "files": {
+    "agents/web-scraper/workspace/IDENTITY.md": {
+      "size": 696,
+      "sha256": "d93cd095ac3b8d8135110230bc6f09738fb8029ca6f270001a928a1c1614bffb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/IDENTITY.md"
+    },
+    "agents/web-scraper/workspace/HEARTBEAT.md": {
+      "size": 226,
+      "sha256": "5a840ad5adc7bb6140b955bfb7a9fa2f47365e1cb7087ac9197831fbfef79888",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/HEARTBEAT.md"
+    },
+    "agents/web-scraper/workspace/BOOTSTRAP.md": {
+      "size": 1531,
+      "sha256": "72be44b65f8d7b7331548398826e4be70544fbcc6e86dfc1f12684e0f796d4f4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/BOOTSTRAP.md"
+    },
+    "agents/web-scraper/workspace/USER.md": {
+      "size": 537,
+      "sha256": "e418ca9a680553b3ad8f54aecb0d403330810bb77826ab5251cc1dc13368fe16",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/USER.md"
+    },
+    "agents/web-scraper/workspace/SOUL.md": {
+      "size": 1806,
+      "sha256": "daab0d62045d0a00ea0f968f4463ea09fd06c71f59066f686b0e9b361f929b43",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/SOUL.md"
+    },
+    "agents/web-scraper/workspace/AGENTS.md": {
+      "size": 7835,
+      "sha256": "240d299fe05a0984b916ed386328e0b7e6307bcd7fb9d8ed710defc0057e97c0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/AGENTS.md"
+    },
+    "agents/web-scraper/workspace/TOOLS.md": {
+      "size": 920,
+      "sha256": "15cdfe57fcfa6d83888e215176f40b415ff2b9a51afe96b4d4134f2f5a8cfe68",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/TOOLS.md"
+    },
+    "agents/web-scraper/workspace/.openclaw/workspace-state.json": {
+      "size": 70,
+      "sha256": "9cf5f6dc321354a9f6fc1eb0d77009fa2fe11b3aa9440560cc431df51d5082ae",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.openclaw/workspace-state.json"
+    },
+    "agents/web-scraper/workspace/.git/config": {
+      "size": 137,
+      "sha256": "cae33efdb02cf774435c1ff9cb16bcc1014606908530c6e1dc727615fe3e8cda",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/config"
+    },
+    "agents/web-scraper/workspace/.git/HEAD": {
+      "size": 21,
+      "sha256": "28d25bf82af4c0e2b72f50959b2beb859e3e60b9630a5e8c603dad4ddb2b6e80",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/HEAD"
+    },
+    "agents/web-scraper/workspace/.git/description": {
+      "size": 73,
+      "sha256": "85ab6c163d43a17ea9cf7788308bca1466f1b0a8d1cc92e26e9bf63da4062aee",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/description"
+    },
+    "agents/web-scraper/workspace/.git/info/exclude": {
+      "size": 240,
+      "sha256": "6671fe83b7a07c8932ee89164d1f2793b2318058eb8b98dc5c06ee0a5a3b0ec1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/info/exclude"
+    },
+    "agents/web-scraper/workspace/.git/hooks/commit-msg.sample": {
+      "size": 896,
+      "sha256": "1f74d5e9292979b573ebd59741d46cb93ff391acdd083d340b94370753d92437",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/commit-msg.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/pre-rebase.sample": {
+      "size": 4898,
+      "sha256": "4febce867790052338076f4e66cc47efb14879d18097d1d61c8261859eaaa7b3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/pre-rebase.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/pre-commit.sample": {
+      "size": 1643,
+      "sha256": "f9af7d95eb1231ecf2eba9770fedfa8d4797a12b02d7240e98d568201251244a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/pre-commit.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/applypatch-msg.sample": {
+      "size": 478,
+      "sha256": "0223497a0b8b033aa58a3a521b8629869386cf7ab0e2f101963d328aa62193f7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/applypatch-msg.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/fsmonitor-watchman.sample": {
+      "size": 4726,
+      "sha256": "e0549964e93897b519bd8e333c037e51fff0f88ba13e086a331592bf801fa1d0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/fsmonitor-watchman.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/pre-receive.sample": {
+      "size": 544,
+      "sha256": "a4c3d2b9c7bb3fd8d1441c31bd4ee71a595d66b44fcf49ddb310252320169989",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/pre-receive.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/prepare-commit-msg.sample": {
+      "size": 1492,
+      "sha256": "e9ddcaa4189fddd25ed97fc8c789eca7b6ca16390b2392ae3276f0c8e1aa4619",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/prepare-commit-msg.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/post-update.sample": {
+      "size": 189,
+      "sha256": "81765af2daef323061dcbc5e61fc16481cb74b3bac9ad8a174b186523586f6c5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/post-update.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/pre-merge-commit.sample": {
+      "size": 416,
+      "sha256": "d3825a70337940ebbd0a5c072984e13245920cdf8898bd225c8d27a6dfc9cb53",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/pre-merge-commit.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/pre-applypatch.sample": {
+      "size": 424,
+      "sha256": "e15c5b469ea3e0a695bea6f2c82bcf8e62821074939ddd85b77e0007ff165475",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/pre-applypatch.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/pre-push.sample": {
+      "size": 1374,
+      "sha256": "ecce9c7e04d3f5dd9d8ada81753dd1d549a9634b26770042b58dda00217d086a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/pre-push.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/update.sample": {
+      "size": 3650,
+      "sha256": "8d5f2fa83e103cf08b57eaa67521df9194f45cbdbcb37da52ad586097a14d106",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/update.sample"
+    },
+    "agents/web-scraper/workspace/.git/hooks/push-to-checkout.sample": {
+      "size": 2783,
+      "sha256": "a53d0741798b287c6dd7afa64aee473f305e65d3f49463bb9d7408ec3b12bf5f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/web-scraper/workspace/.git/hooks/push-to-checkout.sample"
+    },
+    "agents/data-ingest/workspace/IDENTITY.md": {
+      "size": 696,
+      "sha256": "d93cd095ac3b8d8135110230bc6f09738fb8029ca6f270001a928a1c1614bffb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/IDENTITY.md"
+    },
+    "agents/data-ingest/workspace/HEARTBEAT.md": {
+      "size": 226,
+      "sha256": "5a840ad5adc7bb6140b955bfb7a9fa2f47365e1cb7087ac9197831fbfef79888",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/HEARTBEAT.md"
+    },
+    "agents/data-ingest/workspace/BOOTSTRAP.md": {
+      "size": 1531,
+      "sha256": "72be44b65f8d7b7331548398826e4be70544fbcc6e86dfc1f12684e0f796d4f4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/BOOTSTRAP.md"
+    },
+    "agents/data-ingest/workspace/USER.md": {
+      "size": 537,
+      "sha256": "e418ca9a680553b3ad8f54aecb0d403330810bb77826ab5251cc1dc13368fe16",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/USER.md"
+    },
+    "agents/data-ingest/workspace/SOUL.md": {
+      "size": 1806,
+      "sha256": "daab0d62045d0a00ea0f968f4463ea09fd06c71f59066f686b0e9b361f929b43",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/SOUL.md"
+    },
+    "agents/data-ingest/workspace/AGENTS.md": {
+      "size": 7835,
+      "sha256": "240d299fe05a0984b916ed386328e0b7e6307bcd7fb9d8ed710defc0057e97c0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/AGENTS.md"
+    },
+    "agents/data-ingest/workspace/TOOLS.md": {
+      "size": 920,
+      "sha256": "15cdfe57fcfa6d83888e215176f40b415ff2b9a51afe96b4d4134f2f5a8cfe68",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/TOOLS.md"
+    },
+    "agents/data-ingest/workspace/.openclaw/workspace-state.json": {
+      "size": 70,
+      "sha256": "3563827f9561e32e0838265933d3ac199fab429fb1b02185bc16c336ff05ff24",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.openclaw/workspace-state.json"
+    },
+    "agents/data-ingest/workspace/.git/config": {
+      "size": 137,
+      "sha256": "cae33efdb02cf774435c1ff9cb16bcc1014606908530c6e1dc727615fe3e8cda",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/config"
+    },
+    "agents/data-ingest/workspace/.git/HEAD": {
+      "size": 21,
+      "sha256": "28d25bf82af4c0e2b72f50959b2beb859e3e60b9630a5e8c603dad4ddb2b6e80",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/HEAD"
+    },
+    "agents/data-ingest/workspace/.git/description": {
+      "size": 73,
+      "sha256": "85ab6c163d43a17ea9cf7788308bca1466f1b0a8d1cc92e26e9bf63da4062aee",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/description"
+    },
+    "agents/data-ingest/workspace/.git/info/exclude": {
+      "size": 240,
+      "sha256": "6671fe83b7a07c8932ee89164d1f2793b2318058eb8b98dc5c06ee0a5a3b0ec1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/info/exclude"
+    },
+    "agents/data-ingest/workspace/.git/hooks/commit-msg.sample": {
+      "size": 896,
+      "sha256": "1f74d5e9292979b573ebd59741d46cb93ff391acdd083d340b94370753d92437",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/commit-msg.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/pre-rebase.sample": {
+      "size": 4898,
+      "sha256": "4febce867790052338076f4e66cc47efb14879d18097d1d61c8261859eaaa7b3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/pre-rebase.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/pre-commit.sample": {
+      "size": 1643,
+      "sha256": "f9af7d95eb1231ecf2eba9770fedfa8d4797a12b02d7240e98d568201251244a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/pre-commit.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/applypatch-msg.sample": {
+      "size": 478,
+      "sha256": "0223497a0b8b033aa58a3a521b8629869386cf7ab0e2f101963d328aa62193f7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/applypatch-msg.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/fsmonitor-watchman.sample": {
+      "size": 4726,
+      "sha256": "e0549964e93897b519bd8e333c037e51fff0f88ba13e086a331592bf801fa1d0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/fsmonitor-watchman.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/pre-receive.sample": {
+      "size": 544,
+      "sha256": "a4c3d2b9c7bb3fd8d1441c31bd4ee71a595d66b44fcf49ddb310252320169989",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/pre-receive.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/prepare-commit-msg.sample": {
+      "size": 1492,
+      "sha256": "e9ddcaa4189fddd25ed97fc8c789eca7b6ca16390b2392ae3276f0c8e1aa4619",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/prepare-commit-msg.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/post-update.sample": {
+      "size": 189,
+      "sha256": "81765af2daef323061dcbc5e61fc16481cb74b3bac9ad8a174b186523586f6c5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/post-update.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/pre-merge-commit.sample": {
+      "size": 416,
+      "sha256": "d3825a70337940ebbd0a5c072984e13245920cdf8898bd225c8d27a6dfc9cb53",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/pre-merge-commit.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/pre-applypatch.sample": {
+      "size": 424,
+      "sha256": "e15c5b469ea3e0a695bea6f2c82bcf8e62821074939ddd85b77e0007ff165475",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/pre-applypatch.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/pre-push.sample": {
+      "size": 1374,
+      "sha256": "ecce9c7e04d3f5dd9d8ada81753dd1d549a9634b26770042b58dda00217d086a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/pre-push.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/update.sample": {
+      "size": 3650,
+      "sha256": "8d5f2fa83e103cf08b57eaa67521df9194f45cbdbcb37da52ad586097a14d106",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/update.sample"
+    },
+    "agents/data-ingest/workspace/.git/hooks/push-to-checkout.sample": {
+      "size": 2783,
+      "sha256": "a53d0741798b287c6dd7afa64aee473f305e65d3f49463bb9d7408ec3b12bf5f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/data-ingest/workspace/.git/hooks/push-to-checkout.sample"
+    },
+    "agents/trading-research/workspace/IDENTITY.md": {
+      "size": 696,
+      "sha256": "d93cd095ac3b8d8135110230bc6f09738fb8029ca6f270001a928a1c1614bffb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/IDENTITY.md"
+    },
+    "agents/trading-research/workspace/HEARTBEAT.md": {
+      "size": 226,
+      "sha256": "5a840ad5adc7bb6140b955bfb7a9fa2f47365e1cb7087ac9197831fbfef79888",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/HEARTBEAT.md"
+    },
+    "agents/trading-research/workspace/BOOTSTRAP.md": {
+      "size": 1531,
+      "sha256": "72be44b65f8d7b7331548398826e4be70544fbcc6e86dfc1f12684e0f796d4f4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/BOOTSTRAP.md"
+    },
+    "agents/trading-research/workspace/USER.md": {
+      "size": 537,
+      "sha256": "e418ca9a680553b3ad8f54aecb0d403330810bb77826ab5251cc1dc13368fe16",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/USER.md"
+    },
+    "agents/trading-research/workspace/SOUL.md": {
+      "size": 1806,
+      "sha256": "daab0d62045d0a00ea0f968f4463ea09fd06c71f59066f686b0e9b361f929b43",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/SOUL.md"
+    },
+    "agents/trading-research/workspace/AGENTS.md": {
+      "size": 7835,
+      "sha256": "240d299fe05a0984b916ed386328e0b7e6307bcd7fb9d8ed710defc0057e97c0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/AGENTS.md"
+    },
+    "agents/trading-research/workspace/TOOLS.md": {
+      "size": 920,
+      "sha256": "15cdfe57fcfa6d83888e215176f40b415ff2b9a51afe96b4d4134f2f5a8cfe68",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/TOOLS.md"
+    },
+    "agents/trading-research/workspace/.clawhub/lock.json": {
+      "size": 2393,
+      "sha256": "6f1a8d40857c70a25a5ac8fbf0ce595be35113a6a68551d1a1da791b05ce9077",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.clawhub/lock.json"
+    },
+    "agents/trading-research/workspace/.openclaw/workspace-state.json": {
+      "size": 70,
+      "sha256": "96165b0e12163b5c62d07af5ec07eee6eb5061090549c246a48d60be8df92687",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.openclaw/workspace-state.json"
+    },
+    "agents/trading-research/workspace/skills/akshare-stock-temp/_meta.json": {
+      "size": 137,
+      "sha256": "403fa1e141e4789b31f22c7879ca35d7498b9104f677826b3d56ca1fec56733f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/akshare-stock-temp/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/akshare-stock-temp/SKILL.md": {
+      "size": 2890,
+      "sha256": "eaf0dfd766c0fef85f37c06f4856f1f0addb943716ddad0b7141d2fa1986d503",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/akshare-stock-temp/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/akshare-stock-temp/.clawhub/origin.json": {
+      "size": 150,
+      "sha256": "1c4eae140ade8da1d7ea0f425e4a58d7429e0fe416800ff186519ac025222580",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/akshare-stock-temp/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/akshare-stock-temp/scripts/stock_cli.py": {
+      "size": 3578,
+      "sha256": "7ce250f9921f0d0ecee0a74c36ad577970370402af31dbb3088fcce9e29eee14",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/akshare-stock-temp/scripts/stock_cli.py"
+    },
+    "agents/trading-research/workspace/skills/camoufox-tools/_meta.json": {
+      "size": 133,
+      "sha256": "e4640d0408d4144b26ca07192e41b910b20f653f4ae325f7434ae0ce30a2bc63",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/camoufox-tools/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/camoufox-tools/install.sh": {
+      "size": 1822,
+      "sha256": "bbf76488f407af6995129d63cde1a02fdf0037e6ca6ef7c281e962131aa848ba",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/camoufox-tools/install.sh"
+    },
+    "agents/trading-research/workspace/skills/camoufox-tools/SKILL.md": {
+      "size": 4114,
+      "sha256": "6c8c62816d0d832b82429e7d99da77d5f2acb8a18b45fd0b58818070e1b07809",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/camoufox-tools/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/camoufox-tools/.clawhub/origin.json": {
+      "size": 146,
+      "sha256": "b42dc654e8cfa1678eb507d111e826df0ce2f77756ab95072eab7a70aca2bd27",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/camoufox-tools/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/yfinance/_meta.json": {
+      "size": 127,
+      "sha256": "21bcfdf11e54bff4287a088e7b19e9e23d2fcde02fc563dcc4c80f32e55465cf",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/yfinance/requirements.txt": {
+      "size": 74,
+      "sha256": "97f875f485b3f95a24044ba6ef76ea5fb8426ae22030a5b3358e528a9b0284cd",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance/requirements.txt"
+    },
+    "agents/trading-research/workspace/skills/yfinance/README.md": {
+      "size": 5382,
+      "sha256": "81f1a1fec8809096b4c495534885d0a5c3da5c77cc5aab8ab9eee44e7f4cde04",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance/README.md"
+    },
+    "agents/trading-research/workspace/skills/yfinance/SKILL.md": {
+      "size": 2911,
+      "sha256": "433c4f8ec6ee78b2fd68866871782ee76d0e6bee327631e676105f0eb03d9c00",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/yfinance/main.py": {
+      "size": 12360,
+      "sha256": "993bd328848bd4d23c2f57b39a12a31cd13e93714443b5a24c7e7a69a017994c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance/main.py"
+    },
+    "agents/trading-research/workspace/skills/yfinance/openapi.json": {
+      "size": 6690,
+      "sha256": "5fc3755edbb05a9000e0c3d5fab108c3ab512fad659480d20acbe38d51acc1a3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance/openapi.json"
+    },
+    "agents/trading-research/workspace/skills/yfinance/.clawhub/origin.json": {
+      "size": 140,
+      "sha256": "17d9e41a401e5a65110d63ae827ca61a0d986632f4e15e99fed1c242f39b9758",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/financial-analyzer-lite/_meta.json": {
+      "size": 142,
+      "sha256": "37838ea2a74bd9ffdcdf435e161ad883c1a0a6212ff560a373d585b832b95d03",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/financial-analyzer-lite/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/financial-analyzer-lite/SKILL.md": {
+      "size": 1544,
+      "sha256": "ac42ef813eb493e42b4af314aa5745bb880a8f6ca7935359d090060607a719cc",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/financial-analyzer-lite/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/financial-analyzer-lite/.clawhub/origin.json": {
+      "size": 155,
+      "sha256": "6b828129ebd64d2381f4bab55f0676b169aeb2bef7dc39a6f4b998540bd14bd9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/financial-analyzer-lite/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/yfinance-client/_meta.json": {
+      "size": 134,
+      "sha256": "f31041e4966142d97d3dfe6a4d7fa6c30af401a635e30254fa6a9cac4b1b9d95",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance-client/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/yfinance-client/client.py": {
+      "size": 14766,
+      "sha256": "574cffc22aa35df7839398eadddc313df38b5cb131e29d305c986cd0d1823eea",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance-client/client.py"
+    },
+    "agents/trading-research/workspace/skills/yfinance-client/__init__.py": {
+      "size": 500,
+      "sha256": "87c2d9fbe99215d92d4165e9feccb8ce99233d86f49eb327beb5baf7729721e4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance-client/__init__.py"
+    },
+    "agents/trading-research/workspace/skills/yfinance-client/skill.md": {
+      "size": 3688,
+      "sha256": "c36d5e89288f689eab8853d4afa398de41955be4a24dc87f9ca8b13307c1000a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance-client/skill.md"
+    },
+    "agents/trading-research/workspace/skills/yfinance-client/.clawhub/origin.json": {
+      "size": 147,
+      "sha256": "a944bcdad19f93e7a522018fc49d9f79423abf7e1be2c9b1ef33f9a24385bdd7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yfinance-client/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/mx-stocks-screener/_meta.json": {
+      "size": 138,
+      "sha256": "25056cdfedbad22805d36b45a7789dc8418b5d1adbb1650a96c78998fe0191a4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/mx-stocks-screener/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/mx-stocks-screener/SKILL.md": {
+      "size": 5511,
+      "sha256": "e138343f46be0d253a5d289548354207f87c50d765ce3955743cabb7bc05ad9e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/mx-stocks-screener/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/mx-stocks-screener/.clawhub/origin.json": {
+      "size": 151,
+      "sha256": "e099e2c5b4cc74a2cde0759ab1bdb0e850187157662117f2a945b62bbab1acd9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/mx-stocks-screener/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/mx-stocks-screener/scripts/get_data.py": {
+      "size": 17162,
+      "sha256": "e46df6fdd014eb465fc26fe40537d8416a3a12296cf26c5c510983e8e8034bdd",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/mx-stocks-screener/scripts/get_data.py"
+    },
+    "agents/trading-research/workspace/skills/market-sentiment-pulse-lite/_meta.json": {
+      "size": 146,
+      "sha256": "57a73de25a299d71a32a6b4824c2caa924421d942427c1e59e99a0e539c7225c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/market-sentiment-pulse-lite/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/market-sentiment-pulse-lite/SKILL.md": {
+      "size": 7446,
+      "sha256": "0ec97f5a70f72970f2e71c40b63bfad0cde7cde0c079005f3d0876eee7f6447b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/market-sentiment-pulse-lite/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/market-sentiment-pulse-lite/.clawhub/origin.json": {
+      "size": 159,
+      "sha256": "ec7c7eebceff8bceb8096cb3fd7d1adbbf366142ef911f76f8458641c247b160",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/market-sentiment-pulse-lite/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/china-stock-analysis/_meta.json": {
+      "size": 139,
+      "sha256": "70e0edafa5221520aead06923af5820bbe25037df05447d2f7af59fdfae43b08",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/china-stock-analysis/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/china-stock-analysis/SKILL.md": {
+      "size": 2107,
+      "sha256": "274b88c93b57f711d17e0123007d5aac7a8c00caf11e71ef350f99b350c882a1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/china-stock-analysis/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/china-stock-analysis/.clawhub/origin.json": {
+      "size": 152,
+      "sha256": "b0707a8f2c074b5dd95e853bce6124c7a595ef8a7be3fbd4d590d518e0f29c97",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/china-stock-analysis/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/china-stock-analysis/references/china-stocks.md": {
+      "size": 2618,
+      "sha256": "07d8845ce8e0896685386a1d05bd7c155de7100357bda21ddf4988afa6ffb18f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/china-stock-analysis/references/china-stocks.md"
+    },
+    "agents/trading-research/workspace/skills/earnings-financials-agent/_meta.json": {
+      "size": 144,
+      "sha256": "9542be353628bafa9f690c752a565e590736391a69b3c9af29bb8161112e895d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/earnings-financials-agent/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/earnings-financials-agent/logic.py": {
+      "size": 1380,
+      "sha256": "ae2563be965e3c56d3f7ead141263d80a273ce91b6995518f830ab5c282a8dcf",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/earnings-financials-agent/logic.py"
+    },
+    "agents/trading-research/workspace/skills/earnings-financials-agent/SKILL.md": {
+      "size": 1997,
+      "sha256": "24b5c11ac451c007fb7d85fa4ba014d44a9fc3ea8e0219d2b590af6ccab167d0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/earnings-financials-agent/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/earnings-financials-agent/.clawhub/origin.json": {
+      "size": 157,
+      "sha256": "7c439534ffe1c3fc4c2be052cdacff44639178011ad9204b5da732b50d94607f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/earnings-financials-agent/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/captcha-auto/_meta.json": {
+      "size": 131,
+      "sha256": "c0da6dbe463b5e2ef71a7f2f6cacf537dad4a67b1df041185938494cb644b7a4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/captcha-auto/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/captcha-auto/package.json": {
+      "size": 748,
+      "sha256": "822a08db898340f7e8ea2a46fd7f07c3c5c0291e69294c33b00254c180249cdf",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/captcha-auto/package.json"
+    },
+    "agents/trading-research/workspace/skills/captcha-auto/SKILL.md": {
+      "size": 10939,
+      "sha256": "e72c1087d83b7b9db92938d3350402ebc70258bb1f1af926f2e7ddf48158e91f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/captcha-auto/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/captcha-auto/index.mjs": {
+      "size": 27386,
+      "sha256": "cfe5b6f9b7d98292c0748c6f3e08a817a70034abd560408210072c8eb178be7e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/captcha-auto/index.mjs"
+    },
+    "agents/trading-research/workspace/skills/captcha-auto/.clawhub/origin.json": {
+      "size": 144,
+      "sha256": "7ab6c46b5bcb6380f7270efaa6987ec944819c600866ba6bdd366a86dc389755",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/captcha-auto/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/captcha-auto/scripts/run.mjs": {
+      "size": 3609,
+      "sha256": "2eb62c04316af3097fed914989d604cc3d1b59707c862881355d31decaf67209",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/captcha-auto/scripts/run.mjs"
+    },
+    "agents/trading-research/workspace/skills/duckdb-cli-ai-skills/_meta.json": {
+      "size": 139,
+      "sha256": "11841961e49f8376b0925e04c168131fc8ba1c29f8746bac67b81c2845c2c164",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/duckdb-cli-ai-skills/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/duckdb-cli-ai-skills/README.md": {
+      "size": 2392,
+      "sha256": "11f03e2c4729aa8304750bb1af4bf76df4eb75336550449ec7d420ab25c4a20d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/duckdb-cli-ai-skills/README.md"
+    },
+    "agents/trading-research/workspace/skills/duckdb-cli-ai-skills/SKILL.md": {
+      "size": 6541,
+      "sha256": "abfa85cbbc2be6483990f4a73358ad5ed44fa4ae9a1bd5b89893d8f2cd135a90",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/duckdb-cli-ai-skills/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/duckdb-cli-ai-skills/.clawhub/origin.json": {
+      "size": 152,
+      "sha256": "3f5ade0af2f41f192992207266503689329d57b71179f32497b93ef5d0d43d99",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/duckdb-cli-ai-skills/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/duckdb-cli/_meta.json": {
+      "size": 129,
+      "sha256": "ab43a12cdb722ff8b5971a4f1bb09b2aa6abcefeb79fb4b5efc98337233e3058",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/duckdb-cli/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/duckdb-cli/README.md": {
+      "size": 2392,
+      "sha256": "11f03e2c4729aa8304750bb1af4bf76df4eb75336550449ec7d420ab25c4a20d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/duckdb-cli/README.md"
+    },
+    "agents/trading-research/workspace/skills/duckdb-cli/SKILL.md": {
+      "size": 6541,
+      "sha256": "abfa85cbbc2be6483990f4a73358ad5ed44fa4ae9a1bd5b89893d8f2cd135a90",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/duckdb-cli/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/duckdb-cli/.clawhub/origin.json": {
+      "size": 142,
+      "sha256": "39c8e1f2fe4639f880f14fe8c0ae8ed8f6211ef7878aac5bfca225acbb6c53a4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/duckdb-cli/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/_meta.json": {
+      "size": 135,
+      "sha256": "0053ca63ce242c01fc4234c797427c690886a724463b42bb3126820cabe09f8e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/requirements.txt": {
+      "size": 185,
+      "sha256": "89d2e68520b5124338c72f31d3302a4e79b89f053d2bf7860b66156016517268",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/requirements.txt"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/CHANGELOG.md": {
+      "size": 4090,
+      "sha256": "c4ccf11ec2455505944f90c214aecf79f449c93b01e7ae9947e55257a0b43409",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/CHANGELOG.md"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/README.md": {
+      "size": 8071,
+      "sha256": "4f64d16529adf21e6a8b580b0bb87da112124b9d0648d16848b061017ff3e641",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/README.md"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/setup.py": {
+      "size": 2505,
+      "sha256": "4fef89f5084e3fcf9cd5e769e35b482d9131721e2afb3a6140e795c95a94292f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/setup.py"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/cli.py": {
+      "size": 9180,
+      "sha256": "d9f795eefd8ef2047dd4255b3f4229d4cb98cf8d9bd2d49babc451a387c14de8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/cli.py"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/SKILL.md": {
+      "size": 4143,
+      "sha256": "00c1ef5bd8a8f04b8743a776d376534717fe7c3d3ec873f5b3d7174e880ac20a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/skill.json": {
+      "size": 1680,
+      "sha256": "00f210069a39093cdf15225a59c7030d813ef5cb689f6b8009b6cb73ea1968c2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/skill.json"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/test/simulation_test.py": {
+      "size": 14526,
+      "sha256": "0daca3d1cfe27b5029e59a1be8fefcdc3ad1bf86e4b3939d0f4116a4f54d540c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/test/simulation_test.py"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/.clawhub/origin.json": {
+      "size": 148,
+      "sha256": "65d5707ce2da990d54fc433fa3a8e2a21c54aa7bfb96ebafe6197c9bad12b7cd",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/templates/OPTIMIZATION-RULES.md": {
+      "size": 1913,
+      "sha256": "64eb0ba775b3f848470ac7473d8dce7c27c682dfd628418c143e034be15b5324",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/templates/OPTIMIZATION-RULES.md"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/templates/USER.md": {
+      "size": 1520,
+      "sha256": "61762eee11bd6b9ababf8f2a5e76be380306145104ea2bc63028e05b8e8da630",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/templates/USER.md"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/templates/SOUL.md": {
+      "size": 2353,
+      "sha256": "b902640e01b470d28e1862dfa0fd3b1543704b71bb71620ef317fd7ed4afd181",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/templates/SOUL.md"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/templates/openclaw-config-optimized.json": {
+      "size": 1853,
+      "sha256": "a96cb48cf25e8829acebec219d4881d6d50859dd591927859f04821e6532af90",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/templates/openclaw-config-optimized.json"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/src/analyzer.py": {
+      "size": 15929,
+      "sha256": "ea8b1f6d6bba888dd1fd5d5c616585b8719faf9834e56ae1104e0e5d7d0da76d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/src/analyzer.py"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/src/__init__.py": {
+      "size": 341,
+      "sha256": "8a6c4e44e3b08c1a27acd3f8ff8b7a8f82da0a6ce6eb50b88de57715a352dfdb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/src/__init__.py"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/src/optimizer.py": {
+      "size": 24415,
+      "sha256": "1798c7bab1fb396b174d1d309b02ea653876d0b287358476c8dd95f1bd1b44a8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/src/optimizer.py"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/src/verify.py": {
+      "size": 15506,
+      "sha256": "6f1916ea23de99aaf2abdf311cc89da5d21008ef409c0439e589765eb81e7e21",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/src/verify.py"
+    },
+    "agents/trading-research/workspace/skills/token-optimizer/src/colors.py": {
+      "size": 667,
+      "sha256": "00de70b751372656b37fc573a24ab7f45af654ab6efea19f0cc285e45c7ac51c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/token-optimizer/src/colors.py"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/README.zh.md": {
+      "size": 9464,
+      "sha256": "89960d891da65b0d73670fb617e65560f955f7958f90a6ff8e07378ef8158d72",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/README.zh.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/_meta.json": {
+      "size": 150,
+      "sha256": "542ea5a93746ae9a00e70184e2dfbc44c838baa3524b88eea54709181ac9d8b2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/CHANGELOG.md": {
+      "size": 1557,
+      "sha256": "a6787180c0ef8762388331ea5fea6aad58b2ed2bd7f16ca62faf986bd38d42c5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/CHANGELOG.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/README.md": {
+      "size": 10339,
+      "sha256": "580ce56eefbaee92fe71008c494d352ffed6783a3f4e662e799879d5799e67f4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/README.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/CHANGELOG.zh.md": {
+      "size": 1272,
+      "sha256": "bdff7f579d97b812db66b1aac543f1d4d2bb07240ddccc4dcdb3915ecf92d0b3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/CHANGELOG.zh.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/SKILL.md": {
+      "size": 4996,
+      "sha256": "b70af3bf5b6a2cbc824de772ebea948a7c9c2bff4c792ef9fbfd7b23fc0b34d2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/SECURITY.md": {
+      "size": 4126,
+      "sha256": "f8ccf5bd0898a2339c10be0f535f9f13c52d2b4d6cf618b354610c3ed33fcc44",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/SECURITY.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/.clawhub/origin.json": {
+      "size": 163,
+      "sha256": "56598dd4e773bdbf1059327b283e68270753b1183ab179650698e6db1170cbf3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/technical-analysis.md": {
+      "size": 9821,
+      "sha256": "24ff26d42058298ccc4a7947b6faa080b7c1a2fcc55212370c3a27e97c4e89e3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/technical-analysis.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/mcp-tools-guide.md": {
+      "size": 7321,
+      "sha256": "1d72f6b4fee109523f1731138da9fdcff4c297772cee03ab6edf4966fa6a253a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/mcp-tools-guide.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/api-documentation.md": {
+      "size": 23716,
+      "sha256": "2ef2e09952de0390e375a6597e30fa13acb23ae9fdd08424ddb6b4f7c3c3b833",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/api-documentation.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/risk-management.md": {
+      "size": 15006,
+      "sha256": "4a310e8fa56e188936ae73e0626fbaeffa27f867c5434ed54959eba4b68afc28",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/risk-management.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/china-a-stock-examples.md": {
+      "size": 2064,
+      "sha256": "617305375e4ddc95fb6fe229d21c0963ffca4a9a0d508bcca55b76703bab59d7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/china-a-stock-examples.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/pattern-library.md": {
+      "size": 13811,
+      "sha256": "87a15becedfdd0c831ad6cdb9db1f06930cd3cdf3068961d7a0c685b5865dad7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/pattern-library.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/us-stock-examples.md": {
+      "size": 7113,
+      "sha256": "951259458788e80843a7dcf7dccb2af54e4733100c63ee62860c6e5e41490f72",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/references/us-stock-examples.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/calendar-tracking.md": {
+      "size": 3134,
+      "sha256": "899e3fb7c00562fb31ab10cae4271c758d43f0f7ec155b4443e8776e5a0db07a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/calendar-tracking.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/news-briefing.md": {
+      "size": 2335,
+      "sha256": "1cfea8d3c52513bc74f6b197ef78a094a890ae6e609b2236fe917cd46a730a1d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/news-briefing.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/event-analysis.md": {
+      "size": 4277,
+      "sha256": "a4e5cb22dea2d059a900231f5dd348a6a9e8431a1ee8a555640194d3722bea82",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/event-analysis.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/risk-assessment.md": {
+      "size": 4160,
+      "sha256": "18c685622d009d439cb539a69515633b697c3f604f80d783f0bb3f72f1303e23",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/risk-assessment.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/deep-stock-analysis.md": {
+      "size": 3378,
+      "sha256": "70ab6979b38dc41ffca5e7aa16a26caea38cbef42fbc1bf56e0a229ce4aa3dcd",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/deep-stock-analysis.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/exchange-overview.md": {
+      "size": 2987,
+      "sha256": "340400d45e508d9ddb1b68b5b5d45af571608d08f16d408c244b44a74e21a050",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/exchange-overview.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/multi-timeframe-analysis.md": {
+      "size": 3722,
+      "sha256": "f60ac01f1eb1d77402b0e5c4b3b4713d8b203fa8a0f1c3e56bb8f8ab385bb6d1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/multi-timeframe-analysis.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/sector-rotation.md": {
+      "size": 3532,
+      "sha256": "940e82745d3ae66e3597e821043f5907f552176eb9072b7888053e6157811a81",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/sector-rotation.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/pattern-recognition.md": {
+      "size": 3831,
+      "sha256": "5a6d5f6ed8cbd97a69e2afa19be32a53d31ce1ee76a769767e942a06dc6315dc",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/pattern-recognition.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/smart-screening.md": {
+      "size": 3417,
+      "sha256": "ff9d761414a9b7f8d76ff3cd840e5268bf8257b5610d21816b0e6b422166cf54",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/smart-screening.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/symbol-search.md": {
+      "size": 2055,
+      "sha256": "efdcc2376bb70104d31a65189a8ddbc99b2289123cd605b54a275abdae8f6da6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/symbol-search.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/realtime-monitor.md": {
+      "size": 2467,
+      "sha256": "8343f4cd47a98eb642ac0648c18584d32e5f94fadd6b08e2be0da2f04139aea5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/realtime-monitor.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/market-review.md": {
+      "size": 3295,
+      "sha256": "7042e66b6ea1720f9b48e18dcf21af06aadeeff6d7b12df9ab2d1c0b5d7ff657",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/market-review.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/fundamental-screening.md": {
+      "size": 3414,
+      "sha256": "a5d79acda7312666d7aacd1921cb99296fdeed9e2dfc1c28407e802f64f57813",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/fundamental-screening.md"
+    },
+    "agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/multi-symbol-analysis.md": {
+      "size": 2719,
+      "sha256": "1f92e4a04d54429378982dbf854529c66c1375f741b44aaefbf67c98b035cb66",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tradingview-quantitative-skills/workflows/multi-symbol-analysis.md"
+    },
+    "agents/trading-research/workspace/skills/jarvis-stock-price/_meta.json": {
+      "size": 137,
+      "sha256": "35137c2a0553833f75fa447020c042666ecf6392a7e030f076298bfbb29e8047",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/jarvis-stock-price/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/jarvis-stock-price/index.js": {
+      "size": 1368,
+      "sha256": "fb5ce11c723bd502b5d932bea340b42f5314dca354de632209f30bfd990e545d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/jarvis-stock-price/index.js"
+    },
+    "agents/trading-research/workspace/skills/jarvis-stock-price/SKILL.md": {
+      "size": 932,
+      "sha256": "1a73e569952d0f5798e81bf955b9b71227324edc3dff6d3cb30e1e7aec1dcae1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/jarvis-stock-price/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/jarvis-stock-price/.clawhub/origin.json": {
+      "size": 150,
+      "sha256": "441a37e8d6d2fdee15ec93f8c2b1604c7123eafb5792cf75a127d8c6630d273a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/jarvis-stock-price/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/_meta.json": {
+      "size": 138,
+      "sha256": "ca5727dc0664d35a9e77cd8f60f96e974e20633878816382191e2f6e7ca3c2ae",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/requirements.txt": {
+      "size": 39,
+      "sha256": "595596ba7397a6fd320e4944e4af279a1ae05961deb8a9504bb23b7af995a79e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/requirements.txt"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/README.md": {
+      "size": 5403,
+      "sha256": "4f3924dc32ae788e73a3b578d876fda6c1113c5696ec49e5d4dcee3f3ff2e7b0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/README.md"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/SKILL.md": {
+      "size": 6653,
+      "sha256": "2107a848d8af8116bb391eef0cfef0e4a8bc69ee68ad2bfacf7aca36df3956db",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/.clawhub/origin.json": {
+      "size": 151,
+      "sha256": "1ac2c06d93548d6e26ad9e7f8df605912780ca1bdfc4ff309d9928c9c2808ebe",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/references/stock_endpoints.md": {
+      "size": 14296,
+      "sha256": "87937cf72862ba2908706095e8032ef52711882269e57a8ba90b3b515405182d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/references/stock_endpoints.md"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/references/stock_endpoints.json": {
+      "size": 431641,
+      "sha256": "8548687ac64e5919711cf7626e55bef20660bc003cfce75d0873819d743bf7e1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/references/stock_endpoints.json"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/agents/openai.yaml": {
+      "size": 313,
+      "sha256": "34047a0b9d1f43a091220a8cd8ac18f8691eb2c9e4d6a5e43e4d4d948b4111de",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/agents/openai.yaml"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/scripts/tushare_stock.py": {
+      "size": 85035,
+      "sha256": "020b60c3a47df54a8d216810b95bbf9503a61996873dea7b5d0e8f3b6fdba4a9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/scripts/tushare_stock.py"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/scripts/build_catalog.py": {
+      "size": 8850,
+      "sha256": "cf3608a39c1f7fc8ffa56ef959d9be437ca55c59006598b98b6db4463df5de1d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/scripts/build_catalog.py"
+    },
+    "agents/trading-research/workspace/skills/tushare-stock-skill/scripts/trading_analysis.py": {
+      "size": 18581,
+      "sha256": "62c6447bf1ab433b7a0e8f2a11715da7db9a04313192110752a15df9e3390c1f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/tushare-stock-skill/scripts/trading_analysis.py"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/mx_data.json": {
+      "size": 6657,
+      "sha256": "7e1c73e040fd88f300260c00a4d04f01ddb9f55fb951acc91b03983c651f2f81",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/mx_data.json"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/_meta.json": {
+      "size": 127,
+      "sha256": "1bff4ecbc6ceab186017d8c419d3a7a07506b1a4f957cc10c7c580ea8ccc6c08",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/mx_select_stock.json": {
+      "size": 5241,
+      "sha256": "15a83652258ae8634bacbde03aa7852fe925a5599836901bec16dd67bff846b1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/mx_select_stock.json"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/mx_data.md": {
+      "size": 7574,
+      "sha256": "865eaf8397fddc69bc6c6c905287703aab84340acf6a34a01095fc36900e4ff2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/mx_data.md"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/mx_select_stock.md": {
+      "size": 5055,
+      "sha256": "5fce860262511aa6265cdc3ca49fbfe3668c5f1362b88b1da7e5b56b88eeffc9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/mx_select_stock.md"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/mx_search.md": {
+      "size": 2568,
+      "sha256": "973109642db28ff7be56fda647dfbe27c9562a4ed128f6f6da35760208712551",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/mx_search.md"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/mx_search.json": {
+      "size": 2966,
+      "sha256": "762366596b8e3fd357136fd749f261bc7e3bd15b5e8ef2d58a0e10d2ec7aedc8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/mx_search.json"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/SKILL.md": {
+      "size": 7909,
+      "sha256": "32bb45d2fe0b5ca42f539c693db4ae3e61bcfc226eabee58568f7fc78c057a0a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/stock-mx/.clawhub/origin.json": {
+      "size": 140,
+      "sha256": "80991a3aea4eddf7126b318a4cdcd2d685b0f935e2c6d57fe97004daa3270231",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/stock-mx/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/context-compactor/_meta.json": {
+      "size": 136,
+      "sha256": "a1a8211cff0c7c4d01d98b79678ebedbb3b14a5180194c7b655c2ec0f4c8a50c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/context-compactor/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/context-compactor/openclaw.plugin.json": {
+      "size": 1809,
+      "sha256": "28fe60e739b0ec6efefbb502d1d7918c4574ad55a0caf2bd92a214d45de6d171",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/context-compactor/openclaw.plugin.json"
+    },
+    "agents/trading-research/workspace/skills/context-compactor/README.md": {
+      "size": 4060,
+      "sha256": "6d6552553bc0045c856b3660d1e918cc08c90831e3ce7b8dc976fac952989f16",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/context-compactor/README.md"
+    },
+    "agents/trading-research/workspace/skills/context-compactor/package.json": {
+      "size": 809,
+      "sha256": "ebab3cf690c57b594e1eeaea0e658910ab022e44d684f8c7d5fef21051b15665",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/context-compactor/package.json"
+    },
+    "agents/trading-research/workspace/skills/context-compactor/SKILL.md": {
+      "size": 5606,
+      "sha256": "f2d7428fbea6a0eb5962959691b3cb3ececbe1f83dd689361a89feee92522d0b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/context-compactor/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/context-compactor/cli.js": {
+      "size": 14976,
+      "sha256": "098d89724fff22e99483781397c7bb65e273f9f0bedb484109fad5eadcdefbe8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/context-compactor/cli.js"
+    },
+    "agents/trading-research/workspace/skills/context-compactor/index.ts": {
+      "size": 13502,
+      "sha256": "d6c4b3e24303d125886502f965fd43a5893cc25872b2bf67d32ac6e20a21dc8d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/context-compactor/index.ts"
+    },
+    "agents/trading-research/workspace/skills/context-compactor/.clawhub/origin.json": {
+      "size": 149,
+      "sha256": "438286a67aa203de7c9c0b9d6cc0d3f62fc295437ff5d969c43b964e809a0914",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/context-compactor/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/compression/_meta.json": {
+      "size": 130,
+      "sha256": "153768268cf33309252f8673ac99e1f678ba712f94a9eb4895769ed3b01a820b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/compression/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/compression/CHANGELOG.md": {
+      "size": 139,
+      "sha256": "4210c4e5430c4bf770510a941a179991c4d3b52dd0f85f97cc1a93bfeabc2b15",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/compression/CHANGELOG.md"
+    },
+    "agents/trading-research/workspace/skills/compression/README.md": {
+      "size": 1967,
+      "sha256": "54b4f56561629cd7e4f6aa33c6f20304f797e80cb6714fcee28f16d798e40854",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/compression/README.md"
+    },
+    "agents/trading-research/workspace/skills/compression/SKILL.md": {
+      "size": 1134,
+      "sha256": "356df5b779dc6da57cb3b72fab2390ea19a6654cfc697eb33c7e7e1287dcc0c0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/compression/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/compression/UPLOAD_CHECKLIST.md": {
+      "size": 1243,
+      "sha256": "893c7c630e9786d382e46cfe3a8faa3d44f7213d9268aad3bb3deefe76257bba",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/compression/UPLOAD_CHECKLIST.md"
+    },
+    "agents/trading-research/workspace/skills/compression/skill.json": {
+      "size": 300,
+      "sha256": "1dcdc0714383b90aee04ffd6fdff9b0d4ebf70fed4ee0ba80a6caa83908f1fdb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/compression/skill.json"
+    },
+    "agents/trading-research/workspace/skills/compression/.clawhub/origin.json": {
+      "size": 143,
+      "sha256": "034a34ba48a2e1e0388e723427525fa2a042e9c913963d9bb74ae564aced6277",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/compression/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/compression/assets/trinity-compress.config.json": {
+      "size": 3767,
+      "sha256": "14f65663b14b2f1b5735fb4427e0ad22d3515f60466627b42b343dc1cd0f1414",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/compression/assets/trinity-compress.config.json"
+    },
+    "agents/trading-research/workspace/skills/finance-data/_meta.json": {
+      "size": 131,
+      "sha256": "4fd29b68fcc2b73437ef46739c07e1ce1f5adc01287b1bbd792b0c772d48cfa5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finance-data/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/finance-data/SKILL.md": {
+      "size": 9093,
+      "sha256": "e1c2de6a4f1cc380e2db6c5957ac0507ed38928e09a18f01e79dfd3118c74a2a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finance-data/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/finance-data/.clawhub/origin.json": {
+      "size": 144,
+      "sha256": "4b6129d77fa74fdd9db9a40a74d49727f7505e47bbcc08980c2c7c5ecff44ddb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finance-data/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/finance-data/scripts/yfinance_query.py": {
+      "size": 8152,
+      "sha256": "8c79c384571a29a4014222b877dbe646eaf5da48ff43a7b9d428f9ad21f4bc7c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finance-data/scripts/yfinance_query.py"
+    },
+    "agents/trading-research/workspace/skills/finance-data/scripts/requirements.txt": {
+      "size": 17,
+      "sha256": "34e2b6ced249da8359aa66d75ef8436f688fa128b0738ec050b2070eca4c9f65",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finance-data/scripts/requirements.txt"
+    },
+    "agents/trading-research/workspace/skills/finance-data/scripts/sec_edgar.py": {
+      "size": 16145,
+      "sha256": "29335a9fca9af67465a8b6b6f1945ab90b60acb21d291cbc310007e6ad0b4f7e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finance-data/scripts/sec_edgar.py"
+    },
+    "agents/trading-research/workspace/skills/finviz-crawler/_meta.json": {
+      "size": 133,
+      "sha256": "3dc83b6b4f358a92267d88ecae03ebef29204945bc570eca990a40db9a4c4ca2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finviz-crawler/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/finviz-crawler/README.md": {
+      "size": 2150,
+      "sha256": "da3cbf567c19ed492dae91c9d8217e6c46235f353f04f3498d9dfc0ed3856607",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finviz-crawler/README.md"
+    },
+    "agents/trading-research/workspace/skills/finviz-crawler/SKILL.md": {
+      "size": 6871,
+      "sha256": "dee2884f19a7eb4e9ac5c367a355eb29441e223979d100b616a1579e561828de",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finviz-crawler/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/finviz-crawler/.clawhub/origin.json": {
+      "size": 146,
+      "sha256": "8cc479330ea349afa06409084a87004ed93e3b3a96fae75c78a88fd019feb187",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finviz-crawler/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/finviz-crawler/scripts/finviz_crawler.py": {
+      "size": 32164,
+      "sha256": "ed4e171b56f20ebe71541c383c5bfa6678af4947e44d488a75804c01a415d50b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finviz-crawler/scripts/finviz_crawler.py"
+    },
+    "agents/trading-research/workspace/skills/finviz-crawler/scripts/install.py": {
+      "size": 8140,
+      "sha256": "1ef471ccc25b2c95201251fd989e980891cf192fcd50872d3308afc8f321d788",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finviz-crawler/scripts/install.py"
+    },
+    "agents/trading-research/workspace/skills/finviz-crawler/scripts/finviz_query.py": {
+      "size": 10503,
+      "sha256": "2eaf1bbbfc2dc606f6da823de45f699d36e02e93472e3baea3d42dfbbbc96f51",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/finviz-crawler/scripts/finviz_query.py"
+    },
+    "agents/trading-research/workspace/skills/browser-use/_meta.json": {
+      "size": 130,
+      "sha256": "9fce44b3f9b69dd35a904cd8395135033c37f1b5f9be8d86bcc3e7111c284fa1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/browser-use/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/browser-use/SKILL.md": {
+      "size": 9587,
+      "sha256": "a8cdeb87bf175560613183071a60c82b6224230ead100ede025e8658b8d410ec",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/browser-use/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/browser-use/.clawhub/origin.json": {
+      "size": 143,
+      "sha256": "32c86916add18529eff4448703e0549ec40a66aca27a52fce36219d44bbb6708",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/browser-use/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/browser-use/references/cdp-python.md": {
+      "size": 3621,
+      "sha256": "97dff18b0b2f788a15787e9462ffa920201fa2ebc3dcb100b63d605b8af96338",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/browser-use/references/cdp-python.md"
+    },
+    "agents/trading-research/workspace/skills/browser-use/references/multi-session.md": {
+      "size": 2846,
+      "sha256": "6320cac141a19f8fd6ba33018c7aad9558b228a77bd1a7da5ca272124fb9f28f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/browser-use/references/multi-session.md"
+    },
+    "agents/trading-research/workspace/skills/xiaoding-stock/_meta.json": {
+      "size": 133,
+      "sha256": "6e814a73db52829f367ff423647e4e692c9d9b0b01a7bc0dc9ef3f8c23f19205",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/xiaoding-stock/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/xiaoding-stock/package.json": {
+      "size": 257,
+      "sha256": "0cb143aa3ebe0b271635f2497f7ae2bca2e723b30e0604190ab5549f36291dbd",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/xiaoding-stock/package.json"
+    },
+    "agents/trading-research/workspace/skills/xiaoding-stock/SKILL.md": {
+      "size": 698,
+      "sha256": "2042bf0d4329f856151abff83475ae94b15841f2e48936c82d51add886e671a6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/xiaoding-stock/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/xiaoding-stock/bin/stock.js": {
+      "size": 3994,
+      "sha256": "249960a2bcfa1ec44670cce21d938e08c8806553bd2347a118bb18ba71452448",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/xiaoding-stock/bin/stock.js"
+    },
+    "agents/trading-research/workspace/skills/xiaoding-stock/.clawhub/origin.json": {
+      "size": 146,
+      "sha256": "bb9a7e37730014a3750de8a9ed98ce765f7c0b2b736beb1f220dbfb66f18f89f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/xiaoding-stock/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/agent-stock/_meta.json": {
+      "size": 130,
+      "sha256": "2c996d21d6eb0bbfa300a042da3e20c7e5ab0b82944d0c771848df9de18b7005",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/agent-stock/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/agent-stock/SKILL.md": {
+      "size": 1348,
+      "sha256": "c8454fb1efaaa25e610c975a190749b97695b76b2c7dc853c1490c7a95bc941f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/agent-stock/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/agent-stock/.clawhub/origin.json": {
+      "size": 143,
+      "sha256": "452a063a857098d6b8e4aa5bbb8998246c25eb50d29d4a673aa66130a6627d67",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/agent-stock/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/skills/agent-stock/references/holdings.md": {
+      "size": 2583,
+      "sha256": "210306255ec7d4409987706504e87f31a4bdfd05739e0ca25f5859a0a95df7ef",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/agent-stock/references/holdings.md"
+    },
+    "agents/trading-research/workspace/skills/agent-stock/references/quant.md": {
+      "size": 6267,
+      "sha256": "0138e6ca8123f25c43fbcef8ce59bb5a025888b4e3c8e68a53ec426d4851832c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/agent-stock/references/quant.md"
+    },
+    "agents/trading-research/workspace/skills/agent-stock/references/trade.md": {
+      "size": 7648,
+      "sha256": "f8c7c3927c91d0bf99f3f776099ab3544e3412eca244b9d6ec72fca14b774be5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/agent-stock/references/trade.md"
+    },
+    "agents/trading-research/workspace/skills/agent-stock/references/quant_rule.md": {
+      "size": 7294,
+      "sha256": "1dcc795264d46315e6f6da523c9a8d5db9ec4a3bd55b2debadc5f2ef07b6eaa6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/agent-stock/references/quant_rule.md"
+    },
+    "agents/trading-research/workspace/skills/agent-stock/references/screen.md": {
+      "size": 4516,
+      "sha256": "d6bf806cba94411a9938fc4c69977abca99fc5eec16d0ef19b80a7038faf412a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/agent-stock/references/screen.md"
+    },
+    "agents/trading-research/workspace/skills/yahoo-finance/_meta.json": {
+      "size": 132,
+      "sha256": "3cc6bcd2f4ada9a7fe4c5cbac1181a96db0b56471fe360885fc5ffbe7742a591",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yahoo-finance/_meta.json"
+    },
+    "agents/trading-research/workspace/skills/yahoo-finance/SKILL.md": {
+      "size": 3964,
+      "sha256": "ee459f2b634cf904b14826fa7920b2e5f8d93648219399a67275fa1b9989fdfe",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yahoo-finance/SKILL.md"
+    },
+    "agents/trading-research/workspace/skills/yahoo-finance/.clawhub/origin.json": {
+      "size": 145,
+      "sha256": "e3e7e2efcc60e09232635fdebb12610f4ed76ae9e7195420656988fee7b03ad0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/skills/yahoo-finance/.clawhub/origin.json"
+    },
+    "agents/trading-research/workspace/.git/config": {
+      "size": 137,
+      "sha256": "cae33efdb02cf774435c1ff9cb16bcc1014606908530c6e1dc727615fe3e8cda",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/config"
+    },
+    "agents/trading-research/workspace/.git/HEAD": {
+      "size": 21,
+      "sha256": "28d25bf82af4c0e2b72f50959b2beb859e3e60b9630a5e8c603dad4ddb2b6e80",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/HEAD"
+    },
+    "agents/trading-research/workspace/.git/description": {
+      "size": 73,
+      "sha256": "85ab6c163d43a17ea9cf7788308bca1466f1b0a8d1cc92e26e9bf63da4062aee",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/description"
+    },
+    "agents/trading-research/workspace/.git/info/exclude": {
+      "size": 240,
+      "sha256": "6671fe83b7a07c8932ee89164d1f2793b2318058eb8b98dc5c06ee0a5a3b0ec1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/info/exclude"
+    },
+    "agents/trading-research/workspace/.git/hooks/commit-msg.sample": {
+      "size": 896,
+      "sha256": "1f74d5e9292979b573ebd59741d46cb93ff391acdd083d340b94370753d92437",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/commit-msg.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/pre-rebase.sample": {
+      "size": 4898,
+      "sha256": "4febce867790052338076f4e66cc47efb14879d18097d1d61c8261859eaaa7b3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/pre-rebase.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/pre-commit.sample": {
+      "size": 1643,
+      "sha256": "f9af7d95eb1231ecf2eba9770fedfa8d4797a12b02d7240e98d568201251244a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/pre-commit.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/applypatch-msg.sample": {
+      "size": 478,
+      "sha256": "0223497a0b8b033aa58a3a521b8629869386cf7ab0e2f101963d328aa62193f7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/applypatch-msg.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/fsmonitor-watchman.sample": {
+      "size": 4726,
+      "sha256": "e0549964e93897b519bd8e333c037e51fff0f88ba13e086a331592bf801fa1d0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/fsmonitor-watchman.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/pre-receive.sample": {
+      "size": 544,
+      "sha256": "a4c3d2b9c7bb3fd8d1441c31bd4ee71a595d66b44fcf49ddb310252320169989",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/pre-receive.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/prepare-commit-msg.sample": {
+      "size": 1492,
+      "sha256": "e9ddcaa4189fddd25ed97fc8c789eca7b6ca16390b2392ae3276f0c8e1aa4619",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/prepare-commit-msg.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/post-update.sample": {
+      "size": 189,
+      "sha256": "81765af2daef323061dcbc5e61fc16481cb74b3bac9ad8a174b186523586f6c5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/post-update.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/pre-merge-commit.sample": {
+      "size": 416,
+      "sha256": "d3825a70337940ebbd0a5c072984e13245920cdf8898bd225c8d27a6dfc9cb53",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/pre-merge-commit.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/pre-applypatch.sample": {
+      "size": 424,
+      "sha256": "e15c5b469ea3e0a695bea6f2c82bcf8e62821074939ddd85b77e0007ff165475",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/pre-applypatch.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/pre-push.sample": {
+      "size": 1374,
+      "sha256": "ecce9c7e04d3f5dd9d8ada81753dd1d549a9634b26770042b58dda00217d086a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/pre-push.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/update.sample": {
+      "size": 3650,
+      "sha256": "8d5f2fa83e103cf08b57eaa67521df9194f45cbdbcb37da52ad586097a14d106",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/update.sample"
+    },
+    "agents/trading-research/workspace/.git/hooks/push-to-checkout.sample": {
+      "size": 2783,
+      "sha256": "a53d0741798b287c6dd7afa64aee473f305e65d3f49463bb9d7408ec3b12bf5f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/workspace/.git/hooks/push-to-checkout.sample"
+    },
+    "agents/trading-research/agent/auth-profiles.json": {
+      "size": 37,
+      "sha256": "4dead6b10a7ddd16822584aa07c29b9452a4ff0f2409b78f9c83d9e6bcd5e4f9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/agent/auth-profiles.json"
+    },
+    "agents/trading-research/sessions/62d35ec5-fc0b-47b3-987b-7a00530473f6.jsonl": {
+      "size": 1962,
+      "sha256": "bf8c68023882c75e0c0d166a541e8c996d2a3ae618d08cf85b90ae51158d5c13",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/sessions/62d35ec5-fc0b-47b3-987b-7a00530473f6.jsonl"
+    },
+    "agents/trading-research/sessions/sessions.json": {
+      "size": 23610,
+      "sha256": "9329ce59482d7ebcf694fb0bc0f52fdbcf57cde0d047990e0a2ffee9d9eb7c67",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/sessions/sessions.json"
+    },
+    "agents/trading-research/sessions/62d35ec5-fc0b-47b3-987b-7a00530473f6.trajectory.jsonl": {
+      "size": 127096,
+      "sha256": "a62bc8607a50d7f14b3ba42ff2a63d8781b8c59340d85964bd997c3769563664",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/sessions/62d35ec5-fc0b-47b3-987b-7a00530473f6.trajectory.jsonl"
+    },
+    "agents/trading-research/sessions/62d35ec5-fc0b-47b3-987b-7a00530473f6.trajectory-path.json": {
+      "size": 340,
+      "sha256": "07f39c12ef68866cfe60ab4743f6ee79174307c72977cd0e3b55e3294ab8efb9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/trading-research/sessions/62d35ec5-fc0b-47b3-987b-7a00530473f6.trajectory-path.json"
+    },
+    "agents/main/agent/models.json": {
+      "size": 2664,
+      "sha256": "f0f114cc5eb8d0f080fb7469557426073e600b13b2b91bae5935004630907eec",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/agent/models.json"
+    },
+    "agents/main/agent/auth-state.json": {
+      "size": 185,
+      "sha256": "dbb916193c18c922576900b6afbd2bcc5ef03051bfb89eef719013beefdd4769",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/agent/auth-state.json"
+    },
+    "agents/main/agent/auth-profiles.json": {
+      "size": 178,
+      "sha256": "6e9dc0dd1578dc54a1c1ad4bf203bee142d605a8f9114b7e8711f697ad1c6009",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/agent/auth-profiles.json"
+    },
+    "agents/main/sessions/876871D8-FDA9-486F-91C7-EA16083A4CC1.jsonl": {
+      "size": 256904,
+      "sha256": "6464d996c56df793a971000a3906f070febd96ef272a543e186acb584d1e85f6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/876871D8-FDA9-486F-91C7-EA16083A4CC1.jsonl"
+    },
+    "agents/main/sessions/D20815AC-4BD4-42A0-923C-09A47016B78B.trajectory.jsonl": {
+      "size": 173914,
+      "sha256": "40daf655645cc6de2deafecfd34ba0f3cde910551ec2e833f71f18e32e7ba8c4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/D20815AC-4BD4-42A0-923C-09A47016B78B.trajectory.jsonl"
+    },
+    "agents/main/sessions/92B3B7F5-6E2D-4E48-9EB8-148FBE7EBF6B.trajectory.jsonl": {
+      "size": 434194,
+      "sha256": "935a7008ea7fa80160501aa2b577fbe2cadefdcf1f45d2ef1b6c41b25a948176",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/92B3B7F5-6E2D-4E48-9EB8-148FBE7EBF6B.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778953500.trajectory.jsonl": {
+      "size": 163080,
+      "sha256": "d933d65e5ab5d9859ad0575a5288d690ebd1683ecadf76d6bcaff5da42503a9f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778953500.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-xgb-data-1778804635.trajectory.jsonl": {
+      "size": 212966,
+      "sha256": "d3ec5aec17eab065ba63e13a0095e9d003f5e03f51a23cd9216d21514712b857",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-xgb-data-1778804635.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778953500.jsonl": {
+      "size": 5131,
+      "sha256": "083398fc81da4190b2c0d45a1557fae1a49ca8de6b598418e805a5f8ae8e4fb3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778953500.jsonl"
+    },
+    "agents/main/sessions/claude-internet-1778808635.trajectory-path.json": {
+      "size": 308,
+      "sha256": "b6b1fc7bd9a06e403c8f97abc707c66eb467df64e6932c407056d3f5a19cf284",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-internet-1778808635.trajectory-path.json"
+    },
+    "agents/main/sessions/91ca8e8b-31f6-4f5d-9adf-110996c7c493.jsonl": {
+      "size": 285073,
+      "sha256": "72c0e5142e206f347e21dd74f13f93e8eb19ac718f87741dc96eb5952d56e6a0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/91ca8e8b-31f6-4f5d-9adf-110996c7c493.jsonl"
+    },
+    "agents/main/sessions/claude-new-data-sources-1778824017.jsonl": {
+      "size": 40900,
+      "sha256": "565588c73d0506ef4d1eae4bcbc37f487a7021fe8488d907dfe0ed713e09ac38",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-new-data-sources-1778824017.jsonl"
+    },
+    "agents/main/sessions/discovery-1778948479.jsonl": {
+      "size": 12952,
+      "sha256": "a12463f9ed5d9f6d0d9d3cbdd9ef06f0730624eef673b762109dd26e72f80e68",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778948479.jsonl"
+    },
+    "agents/main/sessions/508A88F1-C87C-4EBA-97D2-566D6181CA7C.jsonl": {
+      "size": 380132,
+      "sha256": "cbb222f479b2040e3e56506b1113f09fe79b2cb5f79853478cd0363875f33bcf",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/508A88F1-C87C-4EBA-97D2-566D6181CA7C.jsonl"
+    },
+    "agents/main/sessions/discovery-1778906168.trajectory-path.json": {
+      "size": 296,
+      "sha256": "abdb45ed1d1370ec30163e42f4f03ce1e2eaac3e127ba6dc27979a1617215c06",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778906168.trajectory-path.json"
+    },
+    "agents/main/sessions/B00F3E32-623B-48D6-9EDE-67C6A0A0C357.trajectory-path.json": {
+      "size": 328,
+      "sha256": "9837f48439148e1af4eb047d79e1ac272813bca51231c67b39dd25a85369f9f9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/B00F3E32-623B-48D6-9EDE-67C6A0A0C357.trajectory-path.json"
+    },
+    "agents/main/sessions/52B7D8B4-64F7-4C5E-8102-4D772450E824.trajectory.jsonl": {
+      "size": 303655,
+      "sha256": "f890fc22a30ab0b737884566f48e7ef942f751f44dc43b7ff8c1e79b4a9b4a5a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/52B7D8B4-64F7-4C5E-8102-4D772450E824.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778823994.trajectory.jsonl": {
+      "size": 183293,
+      "sha256": "d026def5557dfc784d96a9af792dff8f12f1860fe694eeb42ad201a8c757a30f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778823994.trajectory.jsonl"
+    },
+    "agents/main/sessions/80ac2a32-cff8-4ec3-8bc2-d3ca546615f1.trajectory.jsonl": {
+      "size": 173641,
+      "sha256": "27e6cfa5aa67b976d1fd0c563caa3cd1eb83d27ebac6124020ad3659655ef97a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/80ac2a32-cff8-4ec3-8bc2-d3ca546615f1.trajectory.jsonl"
+    },
+    "agents/main/sessions/52B7D8B4-64F7-4C5E-8102-4D772450E824.jsonl": {
+      "size": 183124,
+      "sha256": "65cb49127dad156b9d63507ce20f9ae69fb5af0c9c6c7eab19fa322b0c20c583",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/52B7D8B4-64F7-4C5E-8102-4D772450E824.jsonl"
+    },
+    "agents/main/sessions/discovery-1778944824.trajectory.jsonl": {
+      "size": 191081,
+      "sha256": "c9a9a0363951c238959fddb6ba6871fe824fa6d361c7580829ebfcd281dd4fa8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778944824.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778869887.trajectory.jsonl": {
+      "size": 187066,
+      "sha256": "f695204a590dbf705c83d8e24d0b407d8f19ed1586c3e24fdaea22bbedd18805",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778869887.trajectory.jsonl"
+    },
+    "agents/main/sessions/349D157D-5744-4B82-8A18-11055F61AC0A.trajectory.jsonl": {
+      "size": 266822,
+      "sha256": "62df27e5ae4a3c37cd6736212c81bf07c39489c6d04cb94275945dfc82f697cd",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/349D157D-5744-4B82-8A18-11055F61AC0A.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778949001.trajectory.jsonl": {
+      "size": 190623,
+      "sha256": "88244ab73e17f901c7581fb9598c827c7c25ed12d44782a2bbc5e53961944dd1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949001.trajectory.jsonl"
+    },
+    "agents/main/sessions/D20815AC-4BD4-42A0-923C-09A47016B78B.jsonl": {
+      "size": 220565,
+      "sha256": "c65434244a2be9faaf88906d345f67e31ed11802d2cb4e7489ff3b6c54d79109",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/D20815AC-4BD4-42A0-923C-09A47016B78B.jsonl"
+    },
+    "agents/main/sessions/78C23ECA-A88F-463A-B5ED-52C7CC2BB3F1.jsonl": {
+      "size": 360210,
+      "sha256": "c21c67673a30e808cc757b6ee6a974cdd1e85f9b7b2e7b443252a2efacdeca09",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/78C23ECA-A88F-463A-B5ED-52C7CC2BB3F1.jsonl"
+    },
+    "agents/main/sessions/f2fdf753-b0cb-4019-9d97-3dbce8e3bcb1.trajectory-path.json": {
+      "size": 328,
+      "sha256": "df2062b2803e9d9346c795386307b4e51c3a6aca6a5c33775c829355410df6b9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/f2fdf753-b0cb-4019-9d97-3dbce8e3bcb1.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778947412.jsonl": {
+      "size": 5476,
+      "sha256": "9af3f91d534261422b57eba5693f36e0485a13736d643764e11bb35c1a9d9c0c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778947412.jsonl"
+    },
+    "agents/main/sessions/C42C3245-2945-43E3-AA1A-316D76495A4E.trajectory.jsonl": {
+      "size": 241953,
+      "sha256": "29a8f6695548fe6c4109d6a2bd4b30a39f4a5bab87674a45496159279dc5e39e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C42C3245-2945-43E3-AA1A-316D76495A4E.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778871687.trajectory.jsonl": {
+      "size": 188442,
+      "sha256": "c5daea44ec5700bb3727ee512a9c3c84f4c5c8f1fb3ce58a29f825e9afc9d2ef",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778871687.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778942700.jsonl": {
+      "size": 20285,
+      "sha256": "dfca50538230977df81ee462572a994e3a01bde544bc73d289cfcdb052d3af4a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778942700.jsonl"
+    },
+    "agents/main/sessions/BE4B9247-B286-4C07-BD4E-6699813756B1.jsonl": {
+      "size": 286516,
+      "sha256": "9b1616319de73d55b0917961c75d8e33b307ea0881261de534a2d4c5c50793bb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/BE4B9247-B286-4C07-BD4E-6699813756B1.jsonl"
+    },
+    "agents/main/sessions/B00F3E32-623B-48D6-9EDE-67C6A0A0C357.trajectory.jsonl": {
+      "size": 353810,
+      "sha256": "d42f8c672ae98867bd8eaf6b79ab191d1df1792f320c2f4e37c3d48bfdc7d626",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/B00F3E32-623B-48D6-9EDE-67C6A0A0C357.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778866200.jsonl": {
+      "size": 14616,
+      "sha256": "d6d87e9f4b1bdfb780b9b1f0ac353aa8f356e98415b13729a5f2e3e6f5b9ed4b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778866200.jsonl"
+    },
+    "agents/main/sessions/57d918f3-eb42-418f-9b9c-0864e1f7382e.trajectory-path.json": {
+      "size": 328,
+      "sha256": "a745b318bea992cd8e3fd4237da24c9aee7904c843096a6353bc0c5141a3c0a2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/57d918f3-eb42-418f-9b9c-0864e1f7382e.trajectory-path.json"
+    },
+    "agents/main/sessions/c35148ed-3a67-4894-bccf-8d60274f61eb.trajectory-path.json": {
+      "size": 328,
+      "sha256": "16de70035246e5c20c56add46bd2e6dac64c98a4435a65c9fea95757365809d1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/c35148ed-3a67-4894-bccf-8d60274f61eb.trajectory-path.json"
+    },
+    "agents/main/sessions/c35148ed-3a67-4894-bccf-8d60274f61eb.trajectory.jsonl": {
+      "size": 184126,
+      "sha256": "679737962ff92ed796468c5b1a499f3bc75ac78d12fe26efafb61ecc0ac0eebd",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/c35148ed-3a67-4894-bccf-8d60274f61eb.trajectory.jsonl"
+    },
+    "agents/main/sessions/f2fdf753-b0cb-4019-9d97-3dbce8e3bcb1.trajectory.jsonl": {
+      "size": 373507,
+      "sha256": "ba242436a17a8cef38767acbda92b7c17402a73271eae041f6630f47ac6d5517",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/f2fdf753-b0cb-4019-9d97-3dbce8e3bcb1.trajectory.jsonl"
+    },
+    "agents/main/sessions/sessions.json": {
+      "size": 951028,
+      "sha256": "69a42b8e5a8369d91da66c8e21485ff164184635e5c088f7d2677d966a09c0e7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/sessions.json"
+    },
+    "agents/main/sessions/2c797fc4-cf22-4034-a854-9db9a6e92b91.trajectory-path.json": {
+      "size": 328,
+      "sha256": "cda47d404ef97b765b40d0f6b3503f8ebe252103e1f25cdebcde1019ddcdfecb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/2c797fc4-cf22-4034-a854-9db9a6e92b91.trajectory-path.json"
+    },
+    "agents/main/sessions/C12FBDF6-E4A6-4C4B-AE05-9457DF8F8765.jsonl": {
+      "size": 201983,
+      "sha256": "44f9ebbf2c6cdd4350887edddac329a616e1353832b90a272085296676e36d44",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C12FBDF6-E4A6-4C4B-AE05-9457DF8F8765.jsonl"
+    },
+    "agents/main/sessions/discovery-1778948479.trajectory.jsonl": {
+      "size": 182125,
+      "sha256": "493321f4f982f077c7c8e8dde2c8a8d094438cdb9cdb74caf1f5968eb8ffcaeb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778948479.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778868001.trajectory.jsonl": {
+      "size": 201387,
+      "sha256": "8af16b1f82a9ebe2ba7b4b766b5200881146606b91f25325e2195e267143fb5a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778868001.trajectory.jsonl"
+    },
+    "agents/main/sessions/EAA49F42-BFC0-4A74-B78C-5062E8D4A939.trajectory.jsonl": {
+      "size": 322287,
+      "sha256": "e61ac8050541b594119208a517d4293144c6155495c5ba2258d53d0805c78a0a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/EAA49F42-BFC0-4A74-B78C-5062E8D4A939.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778866345.jsonl": {
+      "size": 19644,
+      "sha256": "1021f7d3f9316009d48a6325d4049daefb3501acc3e7099c12b9aa2c4990e355",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778866345.jsonl"
+    },
+    "agents/main/sessions/b5079a50-167b-41bd-a09c-804f43d1ab0f.trajectory.jsonl": {
+      "size": 350369,
+      "sha256": "8778ed5b1d8044daa29ab5c4a7062c871704353bf81b8275bbf4dbb914c86751",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/b5079a50-167b-41bd-a09c-804f43d1ab0f.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778952600.trajectory-path.json": {
+      "size": 294,
+      "sha256": "e718b0dead4d37130191438415a3a48802ed1bbaa5945af27735e7a5b36df144",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778952600.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778872500.jsonl": {
+      "size": 21840,
+      "sha256": "4648a817008ec6a2ee818d4ddbe6e9efa862419d20ebdd3ff8bc6f17a6b38c6e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778872500.jsonl"
+    },
+    "agents/main/sessions/claude-gh-harvest-1778949466.jsonl": {
+      "size": 3400,
+      "sha256": "8c328e62708e7248a9912567d13eba8876d8ce764af437e1d24c093e51b14a58",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-gh-harvest-1778949466.jsonl"
+    },
+    "agents/main/sessions/overseer-1778871601.trajectory-path.json": {
+      "size": 294,
+      "sha256": "babef8c2507aa3c37534c424d9006b0fa77ac0518276ff5e291ff39e1ec566d6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778871601.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778947412.trajectory.jsonl": {
+      "size": 163315,
+      "sha256": "a2c56e15a915ae608b6506ace009dacda55b8167af26a72dc298adfe8cbf0700",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778947412.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778952600.trajectory.jsonl": {
+      "size": 161860,
+      "sha256": "90a032d4341f72390d735f1cd419d66a6bd4e911c3a726a95a362bdd589ecac4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778952600.trajectory.jsonl"
+    },
+    "agents/main/sessions/b5079a50-167b-41bd-a09c-804f43d1ab0f.jsonl": {
+      "size": 213593,
+      "sha256": "ad930d8105c26b756dd9d645bfc17752316c9c505065c3f86d6489b07b4c7e6b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/b5079a50-167b-41bd-a09c-804f43d1ab0f.jsonl"
+    },
+    "agents/main/sessions/overseer-1778872500.trajectory.jsonl": {
+      "size": 197920,
+      "sha256": "3f20cd96cae5e49cecc76a558934f065fcd2ea13744959d46810a3312953f237",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778872500.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778948479.trajectory-path.json": {
+      "size": 296,
+      "sha256": "1d6d6561e7993debf5b753f53fe0f9d375682c3acd077f267a751fc8f6825b28",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778948479.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778865301.trajectory-path.json": {
+      "size": 294,
+      "sha256": "e1f9ff43d5c9289409550b7cd3ef48702fcf18e1c937d260491f738ea2f179c1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778865301.trajectory-path.json"
+    },
+    "agents/main/sessions/5594F3E5-B4B8-45B9-82C1-D9E9CD93AD8F.trajectory.jsonl": {
+      "size": 177337,
+      "sha256": "f5c2da87f02f0ee5862f7cc072b5330547669a15c7979206fa7d87d78867f7dc",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/5594F3E5-B4B8-45B9-82C1-D9E9CD93AD8F.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-gh-harvest-1778949499.jsonl": {
+      "size": 414244,
+      "sha256": "eecfb6edb8db32a9feddf6f7752c9a02e3f6c1a9ca7454b7e4ae6c94259ce58a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-gh-harvest-1778949499.jsonl"
+    },
+    "agents/main/sessions/BBCDC3BC-761D-4EF5-9AFA-2C9FFFE9F7FF.trajectory-path.json": {
+      "size": 328,
+      "sha256": "fe4cebd8acf768d6d41f2d491de7e0d490ef90f01e28703a8b574ae9d68fcd5d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/BBCDC3BC-761D-4EF5-9AFA-2C9FFFE9F7FF.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778869801.trajectory-path.json": {
+      "size": 294,
+      "sha256": "bf8be3e24a2bea412f45e756691ed63835930336b59b4e94702bde671f58200b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778869801.trajectory-path.json"
+    },
+    "agents/main/sessions/5e2336d2-c76e-4d22-aa9c-76840ea946ca.trajectory-path.json": {
+      "size": 328,
+      "sha256": "2e5848b28d0b43c9e329d2f77835b68218e1c2dcbb890376ca6547fc1c393804",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/5e2336d2-c76e-4d22-aa9c-76840ea946ca.trajectory-path.json"
+    },
+    "agents/main/sessions/discovery-1778906168.trajectory.jsonl": {
+      "size": 161593,
+      "sha256": "06911491a2722c01e7bd48117bdb67a69a2c036bd6895ac938859ec8e4dd9a28",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778906168.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-local-1778757976.trajectory-path.json": {
+      "size": 302,
+      "sha256": "7d0676b6e45181d3f35514c84cf5405472eac2836c0b7db4e6a2ae8e23364be4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-local-1778757976.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778907686.trajectory-path.json": {
+      "size": 294,
+      "sha256": "98079e76fba5fdfa87b2880c761d288fd00a2a9f76342dccd46ed64fb3c3a602",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778907686.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778949900.trajectory-path.json": {
+      "size": 294,
+      "sha256": "4b89b7951b9f2c8ce12bfe2e42e41743491f0d47ec496998d6330c51101d0bbc",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949900.trajectory-path.json"
+    },
+    "agents/main/sessions/3dd89c6c-1f85-4532-85fa-75857a7c1371.trajectory-path.json": {
+      "size": 328,
+      "sha256": "7993e346f86f155b2b58ee32e5f0b2c563b605f92a8673e1fe3c9c7458ee7665",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/3dd89c6c-1f85-4532-85fa-75857a7c1371.trajectory-path.json"
+    },
+    "agents/main/sessions/BBCDC3BC-761D-4EF5-9AFA-2C9FFFE9F7FF.trajectory.jsonl": {
+      "size": 174545,
+      "sha256": "5f69a019610fdfcc9b5ec9ddb28de6e812d9b1ef7617e7d66d8f74662b728f2a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/BBCDC3BC-761D-4EF5-9AFA-2C9FFFE9F7FF.trajectory.jsonl"
+    },
+    "agents/main/sessions/cdaf0418-0c4a-493f-a992-53b4dc8ad2a2.jsonl": {
+      "size": 366557,
+      "sha256": "2e980b62fe744f54c575da6cbbfbff2da7a942b6ef2d5f77cc91f441563f65f6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/cdaf0418-0c4a-493f-a992-53b4dc8ad2a2.jsonl"
+    },
+    "agents/main/sessions/overseer-1778942700.trajectory-path.json": {
+      "size": 294,
+      "sha256": "daef86d62d0b0f39359577a64faa72108dc1a748d26abfc2fc6017b31c2b2c80",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778942700.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778872500.trajectory-path.json": {
+      "size": 294,
+      "sha256": "944c255e164a6232a22d32740230a85e2e2884c5488edc17b2ea58f33066361d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778872500.trajectory-path.json"
+    },
+    "agents/main/sessions/06870F0F-0D98-4936-A60E-61DEBD1C8262.trajectory-path.json": {
+      "size": 328,
+      "sha256": "c7b107f192011d66852915800db0cd929552ef69fbafdc0569f7874a3f9bd372",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/06870F0F-0D98-4936-A60E-61DEBD1C8262.trajectory-path.json"
+    },
+    "agents/main/sessions/06870F0F-0D98-4936-A60E-61DEBD1C8262.jsonl": {
+      "size": 181282,
+      "sha256": "e2997b6e214fae3db36e2a42dcce693711613c36854f4371f017bb9369de6178",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/06870F0F-0D98-4936-A60E-61DEBD1C8262.jsonl"
+    },
+    "agents/main/sessions/80ac2a32-cff8-4ec3-8bc2-d3ca546615f1.jsonl": {
+      "size": 269461,
+      "sha256": "26d834d07c88738fcc0fa9bd8a219eeec7c066ff53583475f224cd954c17cb74",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/80ac2a32-cff8-4ec3-8bc2-d3ca546615f1.jsonl"
+    },
+    "agents/main/sessions/DE8C6795-9B28-4C16-BDD0-6231F278B114.trajectory.jsonl": {
+      "size": 317759,
+      "sha256": "14f9313c5b26f150e9bf9f53cd9ab59107f910d3d975e9a370993b315cbdd81f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/DE8C6795-9B28-4C16-BDD0-6231F278B114.trajectory.jsonl"
+    },
+    "agents/main/sessions/BE4B9247-B286-4C07-BD4E-6699813756B1.trajectory-path.json": {
+      "size": 328,
+      "sha256": "b2cf2a5ed4ab70f7228f727ddb4c48b37c27cf37108925af7a635578470e7f26",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/BE4B9247-B286-4C07-BD4E-6699813756B1.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778943729.trajectory-path.json": {
+      "size": 294,
+      "sha256": "ddf2d14eac9644c2d3be75185489869ef85c5f0b859ea00c7d21264e13b7d679",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778943729.trajectory-path.json"
+    },
+    "agents/main/sessions/8A1A8B1C-369A-49FC-9F84-6F1E54602F93.jsonl": {
+      "size": 115080,
+      "sha256": "3d8715f885504a39ebe5921bca9ee4e2eeba3e74a34ae3b5fef114c15656613c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/8A1A8B1C-369A-49FC-9F84-6F1E54602F93.jsonl"
+    },
+    "agents/main/sessions/30ca8b4c-955f-4564-84a1-4160c17a24ff.trajectory.jsonl": {
+      "size": 180652,
+      "sha256": "629cad7498854283d6bc19dfb6467651c6745916166b4e85cd2851a2d72a3535",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/30ca8b4c-955f-4564-84a1-4160c17a24ff.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-gh-harvest-1778949499.trajectory.jsonl": {
+      "size": 176141,
+      "sha256": "151d8fdd70b586a5c2a420b0137453319e4fa123f8a8258e6094d3e940289680",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-gh-harvest-1778949499.trajectory.jsonl"
+    },
+    "agents/main/sessions/EAA49F42-BFC0-4A74-B78C-5062E8D4A939.trajectory-path.json": {
+      "size": 328,
+      "sha256": "21f64a66561b8a99578a0243e9f9069e0de3daa42684de443b26aa26a131291a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/EAA49F42-BFC0-4A74-B78C-5062E8D4A939.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778943729.trajectory.jsonl": {
+      "size": 165554,
+      "sha256": "a959ede817b4f4675b5c867274d2a155caad71874ad139a5c7ee1e642423801b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778943729.trajectory.jsonl"
+    },
+    "agents/main/sessions/f2fdf753-b0cb-4019-9d97-3dbce8e3bcb1.jsonl": {
+      "size": 172065,
+      "sha256": "37a9631c8edcde81ef7b465a0f537df02e778ea7d96619eea4469e6dbb0a5399",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/f2fdf753-b0cb-4019-9d97-3dbce8e3bcb1.jsonl"
+    },
+    "agents/main/sessions/overseer-1778823994.trajectory-path.json": {
+      "size": 294,
+      "sha256": "1431fce7bad7036e14181d103296685136d269bb96653392e06bb8a35c11eedb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778823994.trajectory-path.json"
+    },
+    "agents/main/sessions/claude-megaresearch-r2-1778846069.jsonl": {
+      "size": 9602,
+      "sha256": "645d168fc365f70a1dcf7174c97f72104197cc5a95cf4e62784f94bb20be4ce2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-megaresearch-r2-1778846069.jsonl"
+    },
+    "agents/main/sessions/discovery-1778868087.trajectory.jsonl": {
+      "size": 190712,
+      "sha256": "5b36a86e17a1e217a0b2b8b636e287e21a591be622946d9ac3dc092c03908105",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778868087.trajectory.jsonl"
+    },
+    "agents/main/sessions/3928314F-9D34-40CB-AB02-6A553B191287.trajectory-path.json": {
+      "size": 328,
+      "sha256": "5e197ebe97eb807147ffb4f78a427a96612d993b5ac2d7d6b4613115212a0f74",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/3928314F-9D34-40CB-AB02-6A553B191287.trajectory-path.json"
+    },
+    "agents/main/sessions/discovery-1778944824.trajectory-path.json": {
+      "size": 296,
+      "sha256": "a36b857422153e707954c23d4c7cf159e976c9b04a559ab9a5f59b398369bdcb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778944824.trajectory-path.json"
+    },
+    "agents/main/sessions/8A134FB3-BA9B-4ACD-A10A-D4B0B8FFCC41.trajectory-path.json": {
+      "size": 328,
+      "sha256": "0526ba339289c428632bb8550d8e61e90e946082ccf5df45e5ddaaabb27d88e5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/8A134FB3-BA9B-4ACD-A10A-D4B0B8FFCC41.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778952600.jsonl": {
+      "size": 4643,
+      "sha256": "b801a90fbff9ae6fd603825ce5c2f1a38bb048881d307cfd0aefdb4c3a6271b0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778952600.jsonl"
+    },
+    "agents/main/sessions/876871D8-FDA9-486F-91C7-EA16083A4CC1.trajectory.jsonl": {
+      "size": 378256,
+      "sha256": "eee4cf8b555d3c5f5f5c9d6239c4c10865ee30d942a39d6ad622527c319264e5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/876871D8-FDA9-486F-91C7-EA16083A4CC1.trajectory.jsonl"
+    },
+    "agents/main/sessions/508A88F1-C87C-4EBA-97D2-566D6181CA7C.trajectory-path.json": {
+      "size": 328,
+      "sha256": "86b52f0e4ac16405f71695c62f1ada51bf2192649008098847032bbc45ef4111",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/508A88F1-C87C-4EBA-97D2-566D6181CA7C.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778904054.trajectory-path.json": {
+      "size": 294,
+      "sha256": "070d34906d495e751e2db17eeac566ebafd73ba33addf214cca77da0e0f42b8d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778904054.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778871601.trajectory.jsonl": {
+      "size": 196337,
+      "sha256": "f9a5675f7397bd51373cb982574f630040c381e3af7417f4cfafa1c89a4c03f5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778871601.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778906168.jsonl": {
+      "size": 11862,
+      "sha256": "9f40c2c227538b03e9d72a897b8bb76ee48b75a557765fb4ce2b3f6abb39c4b6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778906168.jsonl"
+    },
+    "agents/main/sessions/overseer-1778904054.trajectory.jsonl": {
+      "size": 163619,
+      "sha256": "a7b4b2331f6f47e7307625fec69b1787e118c6f63c50c2804f83ace621d7bb66",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778904054.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-internet-1778808635.trajectory.jsonl": {
+      "size": 350218,
+      "sha256": "4cd17e875b7449618df87b3c94de7adce89c90dc44ef8ec80b37a39e04fa192d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-internet-1778808635.trajectory.jsonl"
+    },
+    "agents/main/sessions/C42C3245-2945-43E3-AA1A-316D76495A4E.trajectory-path.json": {
+      "size": 328,
+      "sha256": "51fc740cbd52762584f88d6305bd596474f50031d6cc1aa0b78e12dcce3ce7a5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C42C3245-2945-43E3-AA1A-316D76495A4E.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778949001.trajectory-path.json": {
+      "size": 294,
+      "sha256": "fe9c2271eaaa53379a967eb46de2ff9b65619620260519c5a2c45a98bb43c88d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949001.trajectory-path.json"
+    },
+    "agents/main/sessions/C12FBDF6-E4A6-4C4B-AE05-9457DF8F8765.trajectory-path.json": {
+      "size": 328,
+      "sha256": "cb244a6e2524083cf6aba113413a2b166e3164d33d653e606cf524584ad2c9f7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C12FBDF6-E4A6-4C4B-AE05-9457DF8F8765.trajectory-path.json"
+    },
+    "agents/main/sessions/discovery-1778823088.trajectory.jsonl": {
+      "size": 187255,
+      "sha256": "87854ca9d0993c635caedb6dce784df6b72c3b955c2d846857728acd2bae298f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778823088.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-megaresearch-1778823886.trajectory-path.json": {
+      "size": 316,
+      "sha256": "fc11f817edc718e0d0823f4e401dadb1a43e69cd095024fd5bfc01913957ab6d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-megaresearch-1778823886.trajectory-path.json"
+    },
+    "agents/main/sessions/discovery-1778952685.jsonl": {
+      "size": 22384,
+      "sha256": "9bb2669a0eead2cb8bef6e69462391c0186d31712312f4d563eb0537be1a23d5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778952685.jsonl"
+    },
+    "agents/main/sessions/overseer-1778866200.trajectory-path.json": {
+      "size": 294,
+      "sha256": "24bb98b3b75bdb06968ec0e504d881599cc23fdea331e0075b3b9a774ea57d14",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778866200.trajectory-path.json"
+    },
+    "agents/main/sessions/8A134FB3-BA9B-4ACD-A10A-D4B0B8FFCC41.trajectory.jsonl": {
+      "size": 396061,
+      "sha256": "883676d7c7c1bce520c56174c172a08739927b32333816618ef098016e040e8c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/8A134FB3-BA9B-4ACD-A10A-D4B0B8FFCC41.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778871687.trajectory-path.json": {
+      "size": 296,
+      "sha256": "15523a299b8b4f7195345069318a42487b376628b6b57e52b70f1cee55f0800a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778871687.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778865301.trajectory.jsonl": {
+      "size": 187275,
+      "sha256": "44d3dde51b20bfc9f8808ffe499ea70d092952434483b0e7d443f9954165861b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778865301.trajectory.jsonl"
+    },
+    "agents/main/sessions/C0D401B1-2CA6-48C0-B184-6ECA60BDDAF6.trajectory-path.json": {
+      "size": 328,
+      "sha256": "726b0c937a94b812e37e51b38db17796100df3cbf8f2960b946e4ecfc7211f69",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C0D401B1-2CA6-48C0-B184-6ECA60BDDAF6.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778869801.trajectory.jsonl": {
+      "size": 198453,
+      "sha256": "2496298e9d562e3a8e667b6142a2ce9615e56b208b52be061be802f449b7f30e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778869801.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778907686.trajectory.jsonl": {
+      "size": 793,
+      "sha256": "3a0eace3ae210795cdb2f455640c59cd6d2c309970dd9cf4c3e101fb511c2e5a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778907686.trajectory.jsonl"
+    },
+    "agents/main/sessions/2c797fc4-cf22-4034-a854-9db9a6e92b91.jsonl": {
+      "size": 434565,
+      "sha256": "4a71bf8eefb81f7524595ee06f019b6bc12e5a1623b29459ca8e12e759337f70",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/2c797fc4-cf22-4034-a854-9db9a6e92b91.jsonl"
+    },
+    "agents/main/sessions/discovery-1778866345.trajectory.jsonl": {
+      "size": 190729,
+      "sha256": "ee75db8c4c44a4f7d5746abec785ebd060ea3cbff920e3cfb46edce28f07d90d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778866345.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778867100.jsonl": {
+      "size": 10930,
+      "sha256": "05da48bfb50201b1c4b19538da30ee961603c10566d7347bae9e6d45c41a00d7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778867100.jsonl"
+    },
+    "agents/main/sessions/discovery-1778869887.trajectory-path.json": {
+      "size": 296,
+      "sha256": "daf4102f0bb92e2c55faba9ebb50e6956e0a5819da76f14d11ccd2c9bb808cc7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778869887.trajectory-path.json"
+    },
+    "agents/main/sessions/DE8C6795-9B28-4C16-BDD0-6231F278B114.trajectory-path.json": {
+      "size": 328,
+      "sha256": "7f5303b25be2289123fc9af810c2665ab4f7980125e316ae043c8dc257150f1b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/DE8C6795-9B28-4C16-BDD0-6231F278B114.trajectory-path.json"
+    },
+    "agents/main/sessions/06870F0F-0D98-4936-A60E-61DEBD1C8262.trajectory.jsonl": {
+      "size": 387738,
+      "sha256": "b5751c1b94ee1336addff99943ffe87bae65ec6775be3a9a49c1a8d79e48c666",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/06870F0F-0D98-4936-A60E-61DEBD1C8262.trajectory.jsonl"
+    },
+    "agents/main/sessions/508A88F1-C87C-4EBA-97D2-566D6181CA7C.trajectory.jsonl": {
+      "size": 432294,
+      "sha256": "0261487540331aa1ea0976924a7c9b90c7b27c33cd9c88da54b44c835a6915c6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/508A88F1-C87C-4EBA-97D2-566D6181CA7C.trajectory.jsonl"
+    },
+    "agents/main/sessions/21EE45F1-1DE1-455F-B50E-9D89ED241208.trajectory-path.json": {
+      "size": 328,
+      "sha256": "baf46568182ddeb3b51b4d3107a7bf30d3192a337c15eec3ab912de7f097a0be",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/21EE45F1-1DE1-455F-B50E-9D89ED241208.trajectory-path.json"
+    },
+    "agents/main/sessions/50880623-A85A-4EBF-A089-DA42CE1ED09C.trajectory-path.json": {
+      "size": 328,
+      "sha256": "52dd0a90fdfb905cea556113e33b952e682ddf3f20b249753b4bec1f111f128c",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/50880623-A85A-4EBF-A089-DA42CE1ED09C.trajectory-path.json"
+    },
+    "agents/main/sessions/claude-gh-harvest-1778949466.trajectory-path.json": {
+      "size": 312,
+      "sha256": "4a1ce1177ee20f21b9cdc689b98bab156958ddd718a1862bdce6702b1ca725fd",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-gh-harvest-1778949466.trajectory-path.json"
+    },
+    "agents/main/sessions/3B9F20E6-82ED-4FE2-8AF5-2ED17A261360.trajectory-path.json": {
+      "size": 328,
+      "sha256": "4e4fe3933aa7165239662a48dfe86acad26b0a06f16d7e660c10dd342a3e8f7e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/3B9F20E6-82ED-4FE2-8AF5-2ED17A261360.trajectory-path.json"
+    },
+    "agents/main/sessions/f32c3a84-c959-4d1d-b02f-055cc5827bc4.jsonl": {
+      "size": 152095,
+      "sha256": "a2de698cb6a779bbd11214c282009b421405e9ac57bba94bc080a7b9f9b26f53",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/f32c3a84-c959-4d1d-b02f-055cc5827bc4.jsonl"
+    },
+    "agents/main/sessions/BE4B9247-B286-4C07-BD4E-6699813756B1.trajectory.jsonl": {
+      "size": 174246,
+      "sha256": "6ed4477820c2cfe5357b37724d173cffcdb188afaa920abfb53ead01498196da",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/BE4B9247-B286-4C07-BD4E-6699813756B1.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-megaresearch-r2-1778846069.trajectory-path.json": {
+      "size": 322,
+      "sha256": "b2e00aa714fe3f374854a6b87d7c930dc4ec80e8947499c06aeb03b4d5f7d74d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-megaresearch-r2-1778846069.trajectory-path.json"
+    },
+    "agents/main/sessions/349D157D-5744-4B82-8A18-11055F61AC0A.jsonl": {
+      "size": 296499,
+      "sha256": "394be552c374c5e25163e8f9c8f3372fdfea10230dc6bdd55c17d3d6fe1cc8ae",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/349D157D-5744-4B82-8A18-11055F61AC0A.jsonl"
+    },
+    "agents/main/sessions/discovery-1778868087.trajectory-path.json": {
+      "size": 296,
+      "sha256": "fdac0d9e2ef8cbf6a3fe82194938f302eb001654e5bc7a06f7e5e355d4633aa0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778868087.trajectory-path.json"
+    },
+    "agents/main/sessions/claude-megaresearch-1778823886.jsonl": {
+      "size": 217840,
+      "sha256": "4a6fbf8272cf063e910f12d2441554e6fc8499d8ca4c632b4a902176a2dc3739",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-megaresearch-1778823886.jsonl"
+    },
+    "agents/main/sessions/discovery-1778869887.jsonl": {
+      "size": 18109,
+      "sha256": "f3acbae1b759a11dfa0b42272d230a931284601090f8162ae95109eb131b6757",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778869887.jsonl"
+    },
+    "agents/main/sessions/overseer-1778943729.jsonl": {
+      "size": 8629,
+      "sha256": "a454c96e1187eceb2a5637719e3f2769a5f907e9efff985045fde85d63f832a3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778943729.jsonl"
+    },
+    "agents/main/sessions/overseer-1778949591.trajectory-path.json": {
+      "size": 294,
+      "sha256": "9c98f8a4dcceacdab63a1d3bfe12dfed4de719c034f757912b483f64a3c39fcf",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949591.trajectory-path.json"
+    },
+    "agents/main/sessions/C42C3245-2945-43E3-AA1A-316D76495A4E.jsonl": {
+      "size": 55333,
+      "sha256": "77bbab6ccc93b45927ce7abda5abcc98ef2e8e83461d4579b0c7ef3650d835ac",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C42C3245-2945-43E3-AA1A-316D76495A4E.jsonl"
+    },
+    "agents/main/sessions/80ac2a32-cff8-4ec3-8bc2-d3ca546615f1.trajectory-path.json": {
+      "size": 328,
+      "sha256": "b0ff4ee951ebc798265622924161b190633f825f088e82eb9dd98281614f66f9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/80ac2a32-cff8-4ec3-8bc2-d3ca546615f1.trajectory-path.json"
+    },
+    "agents/main/sessions/f32c3a84-c959-4d1d-b02f-055cc5827bc4.trajectory-path.json": {
+      "size": 328,
+      "sha256": "b6e4b75dfaf755c763b7f9cefafde6f32812a2d7573a2c79f49f9606db6246d8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/f32c3a84-c959-4d1d-b02f-055cc5827bc4.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778942700.trajectory.jsonl": {
+      "size": 195552,
+      "sha256": "159168b8f998d01cb54614ba41d79808dcde8857a8c03336b58c800598bf3004",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778942700.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778952685.trajectory-path.json": {
+      "size": 296,
+      "sha256": "995a6f38dba4268cdc3221a8d2d9686f55988d78d82f71dfc1f4b5fb2a2b4f7a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778952685.trajectory-path.json"
+    },
+    "agents/main/sessions/cdaf0418-0c4a-493f-a992-53b4dc8ad2a2.trajectory.jsonl": {
+      "size": 395939,
+      "sha256": "c8ef7cb46b98af2d54aabf27bbd36bbadcf5166b884cb329228407155cad5898",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/cdaf0418-0c4a-493f-a992-53b4dc8ad2a2.trajectory.jsonl"
+    },
+    "agents/main/sessions/b5079a50-167b-41bd-a09c-804f43d1ab0f.trajectory-path.json": {
+      "size": 328,
+      "sha256": "2bf0a87a00f1861e26302835ca336d80c6aea563a4b9bcf6b1407eb9aa9b6c67",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/b5079a50-167b-41bd-a09c-804f43d1ab0f.trajectory-path.json"
+    },
+    "agents/main/sessions/claude-self-review-1778953595.jsonl": {
+      "size": 246619,
+      "sha256": "8c086e4f9473cbff3806634483ae397e36819c6d6c24f3dd6400307b1504c038",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-self-review-1778953595.jsonl"
+    },
+    "agents/main/sessions/78C23ECA-A88F-463A-B5ED-52C7CC2BB3F1.trajectory.jsonl": {
+      "size": 175812,
+      "sha256": "c71e76e5ddf58f73a2507037d5926bf113f79d00bfa2122e2e7ca76dfef5822d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/78C23ECA-A88F-463A-B5ED-52C7CC2BB3F1.trajectory.jsonl"
+    },
+    "agents/main/sessions/00AC8404-FDAD-4BC7-BA43-E6373E9688F3.jsonl": {
+      "size": 212865,
+      "sha256": "6e8d93fe08bff78d4ffa9870a78b7ec52bcbace4b9c73333d42770ba27ba756b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/00AC8404-FDAD-4BC7-BA43-E6373E9688F3.jsonl"
+    },
+    "agents/main/sessions/3B9F20E6-82ED-4FE2-8AF5-2ED17A261360.jsonl": {
+      "size": 228119,
+      "sha256": "c7f614fa1a0f6524ec617ea1cbda2daeb455043a2d4a64ae63e5d6d7c970f92a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/3B9F20E6-82ED-4FE2-8AF5-2ED17A261360.jsonl"
+    },
+    "agents/main/sessions/discovery-1778949085.jsonl": {
+      "size": 19389,
+      "sha256": "92e898941bc36d3047cecbce55d62376741a07d07769fbf29f4791f192579d3a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778949085.jsonl"
+    },
+    "agents/main/sessions/claude-self-review-1778953595.trajectory.jsonl": {
+      "size": 171366,
+      "sha256": "45143eed52d4e5c9eb5e00a423e9814f367522700fb98866ed299f209f9c6ab3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-self-review-1778953595.trajectory.jsonl"
+    },
+    "agents/main/sessions/a94b3356-5b47-4514-9e36-c81fb93c566d.jsonl": {
+      "size": 379705,
+      "sha256": "dd6e1619ac4cec5e9eda314c27b5626962f6df92be42a571565a666e6a1c835d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/a94b3356-5b47-4514-9e36-c81fb93c566d.jsonl"
+    },
+    "agents/main/sessions/A8538A86-9BB1-4BD8-83AE-8E0C024AC9FB.jsonl": {
+      "size": 278355,
+      "sha256": "5e22757fb2a2e096ebdf29f861f8f5cca0e74ed7f6b2ef3964845785f09a6ae5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/A8538A86-9BB1-4BD8-83AE-8E0C024AC9FB.jsonl"
+    },
+    "agents/main/sessions/discovery-1778952685.trajectory.jsonl": {
+      "size": 192305,
+      "sha256": "39527898fb5142eb1271243a197ed3583b8fc0fee2865b7732cd028c4b87f682",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778952685.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-gh-harvest-1778949499.trajectory-path.json": {
+      "size": 312,
+      "sha256": "aa79feb08fbb3539b8f9f2a66d45073511d4495cd9bc34d997e3ab64df021e82",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-gh-harvest-1778949499.trajectory-path.json"
+    },
+    "agents/main/sessions/30ca8b4c-955f-4564-84a1-4160c17a24ff.jsonl": {
+      "size": 328363,
+      "sha256": "ccdda8931a7f30e8dcd07b74a59ad0c746679a71ad081c78b0ed8741158462a4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/30ca8b4c-955f-4564-84a1-4160c17a24ff.jsonl"
+    },
+    "agents/main/sessions/00AC8404-FDAD-4BC7-BA43-E6373E9688F3.trajectory-path.json": {
+      "size": 328,
+      "sha256": "80fb47f053721db9f1cb9e81e5899a51f987124b684f39c907e8a2438ea2c9a2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/00AC8404-FDAD-4BC7-BA43-E6373E9688F3.trajectory-path.json"
+    },
+    "agents/main/sessions/3928314F-9D34-40CB-AB02-6A553B191287.trajectory.jsonl": {
+      "size": 171850,
+      "sha256": "4ae18c8fc7b5c60484985a9d87641c68ea5337b97705fbbc3481c38a3007b450",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/3928314F-9D34-40CB-AB02-6A553B191287.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-megaresearch-1778823886.trajectory.jsonl": {
+      "size": 411451,
+      "sha256": "59030ea82e003b531fe2dfab98843d8b09ea9b43ca21e269e7682a38d665437e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-megaresearch-1778823886.trajectory.jsonl"
+    },
+    "agents/main/sessions/D20815AC-4BD4-42A0-923C-09A47016B78B.trajectory-path.json": {
+      "size": 328,
+      "sha256": "10250a73313c8b96e6659dbcbcaf7e289f6e0e84111f3be146182d08ee382010",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/D20815AC-4BD4-42A0-923C-09A47016B78B.trajectory-path.json"
+    },
+    "agents/main/sessions/claude-internet-1778808635.jsonl": {
+      "size": 157050,
+      "sha256": "d8fae7d86d0ad4b5a827f082235c752b954be5a44b1ace953a659f063a53bbce",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-internet-1778808635.jsonl"
+    },
+    "agents/main/sessions/overseer-1778871601.jsonl": {
+      "size": 22508,
+      "sha256": "02b7ae6357012cc083496e80e02b4de4718de7deb79ac3f85b7591b5ebdc3cf4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778871601.jsonl"
+    },
+    "agents/main/sessions/21EE45F1-1DE1-455F-B50E-9D89ED241208.trajectory.jsonl": {
+      "size": 407611,
+      "sha256": "b67a99c303dd7fe345fe9c62df84bb0e57c0702b2d660557521c96c32ef2f570",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/21EE45F1-1DE1-455F-B50E-9D89ED241208.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778949591.trajectory.jsonl": {
+      "size": 161509,
+      "sha256": "793b31dc3fd89abb3f01ae2a74fd7d8f4bb7162aed00b0aa0d93acaca4b24c2a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949591.trajectory.jsonl"
+    },
+    "agents/main/sessions/E23B38A8-EE1D-47A8-BAE3-58A02D5F00AC.trajectory.jsonl": {
+      "size": 170559,
+      "sha256": "a090b0afb53f4b224f51eb529599b872a07259aacfd503b1987eca5c615370d5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/E23B38A8-EE1D-47A8-BAE3-58A02D5F00AC.trajectory.jsonl"
+    },
+    "agents/main/sessions/3928314F-9D34-40CB-AB02-6A553B191287.jsonl": {
+      "size": 326181,
+      "sha256": "c2c96668cab589e73f26066313fa0bbb668d4c69e281c3bc711963672001125e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/3928314F-9D34-40CB-AB02-6A553B191287.jsonl"
+    },
+    "agents/main/sessions/AED84D7A-501E-4285-AEC6-012F6C3D637C.trajectory.jsonl": {
+      "size": 414008,
+      "sha256": "611fd64e920ef42275ae357c0cf66d67ab63ab81c08ff929be2320275bfee25d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/AED84D7A-501E-4285-AEC6-012F6C3D637C.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778947412.trajectory-path.json": {
+      "size": 294,
+      "sha256": "f818f52cf656fa41291ce6b2fab42f7febd895b9a370e4dddfdbf4dad75513e1",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778947412.trajectory-path.json"
+    },
+    "agents/main/sessions/discovery-1778868087.jsonl": {
+      "size": 17971,
+      "sha256": "0d5d8a2b7b1e98ce495c8a7353f6a38984e8b862f812f24527fc1342c72b0f7a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778868087.jsonl"
+    },
+    "agents/main/sessions/discovery-1778909877.jsonl": {
+      "size": 10862,
+      "sha256": "98fbb3473cf73b308d249505c5b4ffe03f2620d12f721ea3688ba290e90be6af",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778909877.jsonl"
+    },
+    "agents/main/sessions/discovery-1778909877.trajectory-path.json": {
+      "size": 296,
+      "sha256": "85183028b4b8b98ceb0007a4eae2b2271945a61c7fd51e8a48abae9190eb40d9",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778909877.trajectory-path.json"
+    },
+    "agents/main/sessions/discovery-1778823088.jsonl": {
+      "size": 19385,
+      "sha256": "c1fa58a3e758685ecf0c39b3aaceee96868fb63e80ea0f52862121dbe82edd39",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778823088.jsonl"
+    },
+    "agents/main/sessions/A8538A86-9BB1-4BD8-83AE-8E0C024AC9FB.trajectory.jsonl": {
+      "size": 176833,
+      "sha256": "bc7b085b77e95fe3fd76c9262c9b511dc02b88dfbbeb3587bfdd4a218958cb58",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/A8538A86-9BB1-4BD8-83AE-8E0C024AC9FB.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778953500.trajectory-path.json": {
+      "size": 294,
+      "sha256": "6b226862377c007e42d91e6492f9ea203fb0712788114f4c2054a7951f238786",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778953500.trajectory-path.json"
+    },
+    "agents/main/sessions/AED84D7A-501E-4285-AEC6-012F6C3D637C.jsonl": {
+      "size": 256477,
+      "sha256": "330d084af744739c964344a6030b807835a8d02d0a10fe6f68b3ef5cee45df86",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/AED84D7A-501E-4285-AEC6-012F6C3D637C.jsonl"
+    },
+    "agents/main/sessions/AED84D7A-501E-4285-AEC6-012F6C3D637C.trajectory-path.json": {
+      "size": 328,
+      "sha256": "eb955a7dcba0c5d0d1fb3d1d378343d27fe9cc594a0f4aa06ba64906ff73c669",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/AED84D7A-501E-4285-AEC6-012F6C3D637C.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778856300.trajectory-path.json": {
+      "size": 294,
+      "sha256": "cba2727523ad3f306226c343471fb5780a68e83a8fac08c417e81ee80af3ce90",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778856300.trajectory-path.json"
+    },
+    "agents/main/sessions/21EE45F1-1DE1-455F-B50E-9D89ED241208.jsonl": {
+      "size": 241171,
+      "sha256": "5aff44b59e43df0ffefc09575f89997746a5b939cc459c6c708057806f4bfa5e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/21EE45F1-1DE1-455F-B50E-9D89ED241208.jsonl"
+    },
+    "agents/main/sessions/E23B38A8-EE1D-47A8-BAE3-58A02D5F00AC.jsonl": {
+      "size": 193021,
+      "sha256": "53e95a0be0f4551faa978664942ac4997d842213bf54651d6d35259082dbed10",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/E23B38A8-EE1D-47A8-BAE3-58A02D5F00AC.jsonl"
+    },
+    "agents/main/sessions/a94b3356-5b47-4514-9e36-c81fb93c566d.trajectory-path.json": {
+      "size": 328,
+      "sha256": "94d829583bbb421b605c8abdbb0e8e1ae23c4bdad30f03a364218944ce1d0c45",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/a94b3356-5b47-4514-9e36-c81fb93c566d.trajectory-path.json"
+    },
+    "agents/main/sessions/claude-local-1778757976.trajectory.jsonl": {
+      "size": 187166,
+      "sha256": "bd72fa798beabb41c46abf8a9c37acb3b6ccc61a22c62e3deb794bdd921012f7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-local-1778757976.trajectory.jsonl"
+    },
+    "agents/main/sessions/91ca8e8b-31f6-4f5d-9adf-110996c7c493.trajectory-path.json": {
+      "size": 328,
+      "sha256": "102177779cb828adf165cae1c88170f35b8173c870cd370cfbbb74b436709605",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/91ca8e8b-31f6-4f5d-9adf-110996c7c493.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778870701.jsonl": {
+      "size": 14040,
+      "sha256": "9923c866ff52cd2b254cbcf0c6146cb40990eaef0ed28ee63d2cdd2c11bdbe20",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778870701.jsonl"
+    },
+    "agents/main/sessions/30ca8b4c-955f-4564-84a1-4160c17a24ff.trajectory-path.json": {
+      "size": 328,
+      "sha256": "8ef56f9cace1953212174f2ea57b0a4694499af3ba934187a427b57c236e2769",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/30ca8b4c-955f-4564-84a1-4160c17a24ff.trajectory-path.json"
+    },
+    "agents/main/sessions/c35148ed-3a67-4894-bccf-8d60274f61eb.jsonl": {
+      "size": 440524,
+      "sha256": "184de47ff33e99fd362c18b2aaa037fa6f25a4e02b317838bb26a1939db2cb17",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/c35148ed-3a67-4894-bccf-8d60274f61eb.jsonl"
+    },
+    "agents/main/sessions/57d918f3-eb42-418f-9b9c-0864e1f7382e.trajectory.jsonl": {
+      "size": 290680,
+      "sha256": "66b068c747e1bf3596634e3fd2f7ce9fb8251a7a53ff344e15f2b6963398640a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/57d918f3-eb42-418f-9b9c-0864e1f7382e.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778823088.trajectory-path.json": {
+      "size": 296,
+      "sha256": "f04b23f5684a7e61fecd7557de016fc7442d7e65b33c3d05ef92c0aed37e7e89",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778823088.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778904054.jsonl": {
+      "size": 6778,
+      "sha256": "62d76126049add315a98a1643d383186ae4070227bf8c96f4eb32107f818c8c5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778904054.jsonl"
+    },
+    "agents/main/sessions/claude-local-1778757976.jsonl": {
+      "size": 24319,
+      "sha256": "267d5c7165b194cdff4cff4ad277ca6cdf4edf8e17a867aa1c69178f760d82f6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-local-1778757976.jsonl"
+    },
+    "agents/main/sessions/ac3672e2-5dbd-4a30-996f-bcfb763dab9e.jsonl": {
+      "size": 236623,
+      "sha256": "f55bf7ef5e2ede182c5f928b6838382c3e3db387963a9a7702649ceabe03a064",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/ac3672e2-5dbd-4a30-996f-bcfb763dab9e.jsonl"
+    },
+    "agents/main/sessions/B00F3E32-623B-48D6-9EDE-67C6A0A0C357.jsonl": {
+      "size": 150110,
+      "sha256": "2a6d419273abf6072c1476bc01db846dde55ed3bb2a120cf71f7cad7d1aed983",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/B00F3E32-623B-48D6-9EDE-67C6A0A0C357.jsonl"
+    },
+    "agents/main/sessions/discovery-1778949085.trajectory-path.json": {
+      "size": 296,
+      "sha256": "5524d98256fb751f3eec1142d2941747edb27bd24bbb1d74f0454f7eccde0cb8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778949085.trajectory-path.json"
+    },
+    "agents/main/sessions/92B3B7F5-6E2D-4E48-9EB8-148FBE7EBF6B.trajectory-path.json": {
+      "size": 328,
+      "sha256": "e88c3d2bb4e1c8da8621c4ef17e5e323c131a3c025077a126b751a63d845cb60",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/92B3B7F5-6E2D-4E48-9EB8-148FBE7EBF6B.trajectory-path.json"
+    },
+    "agents/main/sessions/5594F3E5-B4B8-45B9-82C1-D9E9CD93AD8F.jsonl": {
+      "size": 354703,
+      "sha256": "f8354a48d51e1afba074d9a49665fb28bc9c7176214770bb8ead67c3369daad5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/5594F3E5-B4B8-45B9-82C1-D9E9CD93AD8F.jsonl"
+    },
+    "agents/main/sessions/DE8C6795-9B28-4C16-BDD0-6231F278B114.jsonl": {
+      "size": 382967,
+      "sha256": "070406e7a129c0bacc4f33b68d70c9f46a1716f89af0f2e1dfd64c7ad1e481c2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/DE8C6795-9B28-4C16-BDD0-6231F278B114.jsonl"
+    },
+    "agents/main/sessions/overseer-1778870701.trajectory.jsonl": {
+      "size": 186355,
+      "sha256": "b5bafdb2aaa405e9b61657dc38565fc6dc701739211207cd286bf36ce9f4ed41",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778870701.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778949900.jsonl": {
+      "size": 3663,
+      "sha256": "c20bcf2268925dc0dc000cc9072dc1f6b3da48facae87833af15d597c571b01b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949900.jsonl"
+    },
+    "agents/main/sessions/78C23ECA-A88F-463A-B5ED-52C7CC2BB3F1.trajectory-path.json": {
+      "size": 328,
+      "sha256": "509a3f653c3c717aec23f44401cfabc883626a3c8c8db1d28e6793f21b08841d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/78C23ECA-A88F-463A-B5ED-52C7CC2BB3F1.trajectory-path.json"
+    },
+    "agents/main/sessions/A3CF44CF-C87D-4413-A20A-EB5ED3A15C2F.jsonl": {
+      "size": 233399,
+      "sha256": "d93d455829d288384baf7fdff2acdb65c03914f878ccd87150dab24412e51f68",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/A3CF44CF-C87D-4413-A20A-EB5ED3A15C2F.jsonl"
+    },
+    "agents/main/sessions/876871D8-FDA9-486F-91C7-EA16083A4CC1.trajectory-path.json": {
+      "size": 328,
+      "sha256": "677857f93b7d2dd8b9ff6a822b0d7340beb524ef1ff6b9919894160d3642bc63",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/876871D8-FDA9-486F-91C7-EA16083A4CC1.trajectory-path.json"
+    },
+    "agents/main/sessions/claude-new-data-sources-1778824017.trajectory.jsonl": {
+      "size": 238784,
+      "sha256": "41e4662e3b9447f0c250983da898fb18fdee9a7e1eca2aed531de6df80ff0bbb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-new-data-sources-1778824017.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-xgb-data-1778804635.jsonl": {
+      "size": 41853,
+      "sha256": "7f8661532223d77f21e2bee4afe96eb5c0a35817e3dd7ce55f3ffb6ab0f62b1a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-xgb-data-1778804635.jsonl"
+    },
+    "agents/main/sessions/overseer-1778868001.trajectory-path.json": {
+      "size": 294,
+      "sha256": "6529982df3250b2b73d3210106e6b3f07ade7382771ba59e88d437ccc2c7500d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778868001.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778856300.trajectory.jsonl": {
+      "size": 195819,
+      "sha256": "03fcf6b0476f6b9d41ecec7e0c40e770c0d142d93e8c5e00400b96a59c44be8a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778856300.trajectory.jsonl"
+    },
+    "agents/main/sessions/EAA49F42-BFC0-4A74-B78C-5062E8D4A939.jsonl": {
+      "size": 123298,
+      "sha256": "10ecb90cddd38e66021abaf0aea0f2bcdf3ee0132317a2cab6f0aab3945597c3",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/EAA49F42-BFC0-4A74-B78C-5062E8D4A939.jsonl"
+    },
+    "agents/main/sessions/claude-new-data-sources-1778824017.trajectory-path.json": {
+      "size": 324,
+      "sha256": "36615bba953fb7412b0b4005442ba0259de8c996d8b96381e9ff08c8c2f6f114",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-new-data-sources-1778824017.trajectory-path.json"
+    },
+    "agents/main/sessions/f32c3a84-c959-4d1d-b02f-055cc5827bc4.trajectory.jsonl": {
+      "size": 325104,
+      "sha256": "546c3e6cda4810113d5889385f5bcf4c4af58420f94e8a49cd0676891ff44a9f",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/f32c3a84-c959-4d1d-b02f-055cc5827bc4.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-megaresearch-r2-1778846069.trajectory.jsonl": {
+      "size": 180745,
+      "sha256": "d8d64672706b085a8ebcf48638fc9bdacc4b583704ec799ae2915ad4a59b7c57",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-megaresearch-r2-1778846069.trajectory.jsonl"
+    },
+    "agents/main/sessions/A3CF44CF-C87D-4413-A20A-EB5ED3A15C2F.trajectory.jsonl": {
+      "size": 401265,
+      "sha256": "2e5d1d246970dd6aa948fd5f540b0f04cef8b12941f79167b528f9d0017d46e5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/A3CF44CF-C87D-4413-A20A-EB5ED3A15C2F.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778944824.jsonl": {
+      "size": 18448,
+      "sha256": "ebd5669846590b4ce161498d86a39140791dcc2058363444f71645c2ed7f9006",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778944824.jsonl"
+    },
+    "agents/main/sessions/BBCDC3BC-761D-4EF5-9AFA-2C9FFFE9F7FF.jsonl": {
+      "size": 259490,
+      "sha256": "0b6328e6ddf56b4dc5438c47c1541568e62c42c1d734e1c0c1476e7f048611b5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/BBCDC3BC-761D-4EF5-9AFA-2C9FFFE9F7FF.jsonl"
+    },
+    "agents/main/sessions/overseer-1778868001.jsonl": {
+      "size": 20014,
+      "sha256": "bb3c0b94e3c3ffe33fbf8270b7b98853d6df4f3c7004c8603a476943c5cebf30",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778868001.jsonl"
+    },
+    "agents/main/sessions/claude-self-review-1778953595.trajectory-path.json": {
+      "size": 314,
+      "sha256": "a6397c15e3ecc407a3700df9e4b789cd4d8530f51d4ab3485497653ea2ba43d8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-self-review-1778953595.trajectory-path.json"
+    },
+    "agents/main/sessions/349D157D-5744-4B82-8A18-11055F61AC0A.trajectory-path.json": {
+      "size": 328,
+      "sha256": "03312da5944fb800640f4b926b3bf6ff38b8f0dc030ecd3b74a4e09a26f4f974",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/349D157D-5744-4B82-8A18-11055F61AC0A.trajectory-path.json"
+    },
+    "agents/main/sessions/ac3672e2-5dbd-4a30-996f-bcfb763dab9e.trajectory-path.json": {
+      "size": 328,
+      "sha256": "2e74403c1251e9ef41fd3b387e8ac65d181579f93690a21fa986d45a89874f8d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/ac3672e2-5dbd-4a30-996f-bcfb763dab9e.trajectory-path.json"
+    },
+    "agents/main/sessions/92B3B7F5-6E2D-4E48-9EB8-148FBE7EBF6B.jsonl": {
+      "size": 308295,
+      "sha256": "8c30641b63b162fa9c89318eda295721303f354fc0a00178721bb4f652f235df",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/92B3B7F5-6E2D-4E48-9EB8-148FBE7EBF6B.jsonl"
+    },
+    "agents/main/sessions/overseer-1778866200.trajectory.jsonl": {
+      "size": 185989,
+      "sha256": "ceb85ccab5e3f9e0a974077d8cef51f4fc20adaf5328e2ddf363cada94dda4d8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778866200.trajectory.jsonl"
+    },
+    "agents/main/sessions/5594F3E5-B4B8-45B9-82C1-D9E9CD93AD8F.trajectory-path.json": {
+      "size": 328,
+      "sha256": "eab0045abc1da7f3fb6351ec6485fc44baaaf3dd2fe7e95d9b86f90e326517b7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/5594F3E5-B4B8-45B9-82C1-D9E9CD93AD8F.trajectory-path.json"
+    },
+    "agents/main/sessions/cdaf0418-0c4a-493f-a992-53b4dc8ad2a2.trajectory-path.json": {
+      "size": 328,
+      "sha256": "78b125627a04847422bd976b43a88f94eda3263b972c84fd35726edfc27d07d4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/cdaf0418-0c4a-493f-a992-53b4dc8ad2a2.trajectory-path.json"
+    },
+    "agents/main/sessions/C0D401B1-2CA6-48C0-B184-6ECA60BDDAF6.jsonl": {
+      "size": 575273,
+      "sha256": "472b9c1307a8b3faa487df6d0900276afaf82a7cb49ed9623083da4bef0aec31",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C0D401B1-2CA6-48C0-B184-6ECA60BDDAF6.jsonl"
+    },
+    "agents/main/sessions/overseer-1778856300.jsonl": {
+      "size": 21542,
+      "sha256": "fabcb9199285e6f1d9fe82f4ebe16863bb1035fe9a9d8d5c5a5eb3237c680b03",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778856300.jsonl"
+    },
+    "agents/main/sessions/ac3672e2-5dbd-4a30-996f-bcfb763dab9e.trajectory.jsonl": {
+      "size": 352498,
+      "sha256": "d4f476d3e2369f807769b5c889cb72789fc8540f0da551899b73cbd37e9c7af2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/ac3672e2-5dbd-4a30-996f-bcfb763dab9e.trajectory.jsonl"
+    },
+    "agents/main/sessions/C0D401B1-2CA6-48C0-B184-6ECA60BDDAF6.trajectory.jsonl": {
+      "size": 179230,
+      "sha256": "61a3e10188b93558398af6f031300f8666d9b38170133e65855f04ac33df9b64",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C0D401B1-2CA6-48C0-B184-6ECA60BDDAF6.trajectory.jsonl"
+    },
+    "agents/main/sessions/8A1A8B1C-369A-49FC-9F84-6F1E54602F93.trajectory-path.json": {
+      "size": 328,
+      "sha256": "a3a3a8f00f922ae39eb5954f340ce3cea18f62192957af42855528ca7f5eec4e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/8A1A8B1C-369A-49FC-9F84-6F1E54602F93.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778867100.trajectory-path.json": {
+      "size": 294,
+      "sha256": "d83db0ceadde1e8d753cf3fac458d6705f2bfcd51d888241b7dab35a632d126d",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778867100.trajectory-path.json"
+    },
+    "agents/main/sessions/a94b3356-5b47-4514-9e36-c81fb93c566d.trajectory.jsonl": {
+      "size": 181717,
+      "sha256": "2e66c52e64e9dab7245601cdd4836eaaa99ece3b0e6df85ca24982f7ac4dffc5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/a94b3356-5b47-4514-9e36-c81fb93c566d.trajectory.jsonl"
+    },
+    "agents/main/sessions/A3CF44CF-C87D-4413-A20A-EB5ED3A15C2F.trajectory-path.json": {
+      "size": 328,
+      "sha256": "8e1918f86f0925ffd0b2c3680dec5267f982d796e4db60a5cef0c0aa177403b5",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/A3CF44CF-C87D-4413-A20A-EB5ED3A15C2F.trajectory-path.json"
+    },
+    "agents/main/sessions/50880623-A85A-4EBF-A089-DA42CE1ED09C.jsonl": {
+      "size": 130031,
+      "sha256": "91279bcff12fc733d33eeed80df823de08076462fd7fa5220f785145710874dc",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/50880623-A85A-4EBF-A089-DA42CE1ED09C.jsonl"
+    },
+    "agents/main/sessions/52B7D8B4-64F7-4C5E-8102-4D772450E824.trajectory-path.json": {
+      "size": 328,
+      "sha256": "855489b75901a859f639919da9bb787284bf9cb089c93b751d515d59d5ba36f4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/52B7D8B4-64F7-4C5E-8102-4D772450E824.trajectory-path.json"
+    },
+    "agents/main/sessions/8A1A8B1C-369A-49FC-9F84-6F1E54602F93.trajectory.jsonl": {
+      "size": 326195,
+      "sha256": "eef0c0bab9670ca27102cec3d35f3b98945641fb79bf78123ceb2ed42c7076a2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/8A1A8B1C-369A-49FC-9F84-6F1E54602F93.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778867100.trajectory.jsonl": {
+      "size": 184367,
+      "sha256": "3e2963ecccc8f518c4a67e02d4d6f314debbdf018ac7c90b161bbdbc45d2b5a4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778867100.trajectory.jsonl"
+    },
+    "agents/main/sessions/57d918f3-eb42-418f-9b9c-0864e1f7382e.jsonl": {
+      "size": 348560,
+      "sha256": "667ac1f33c83edd9696856ade8c78f4509be658699911a7a010a190982df1fb7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/57d918f3-eb42-418f-9b9c-0864e1f7382e.jsonl"
+    },
+    "agents/main/sessions/50880623-A85A-4EBF-A089-DA42CE1ED09C.trajectory.jsonl": {
+      "size": 277939,
+      "sha256": "81d91c0ece742f332ffdfcad8ead0904ac322499f14e3f063ab0d82e7668876b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/50880623-A85A-4EBF-A089-DA42CE1ED09C.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778871687.jsonl": {
+      "size": 17530,
+      "sha256": "b5d135d6dec939e2b1917378d0949ac88a7da04e82d720898a7fc30ab742e7cb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778871687.jsonl"
+    },
+    "agents/main/sessions/claude-gh-harvest-1778949466.trajectory.jsonl": {
+      "size": 153970,
+      "sha256": "2e6f665def356f3da54df14f6486acb0dfeb184e50d9847c8a99efa56be01406",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-gh-harvest-1778949466.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778870701.trajectory-path.json": {
+      "size": 294,
+      "sha256": "ac2ee0371844fb937b34131c5bbff3331b34036db3c74ac88261402f0a9f568b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778870701.trajectory-path.json"
+    },
+    "agents/main/sessions/discovery-1778866345.trajectory-path.json": {
+      "size": 296,
+      "sha256": "96e5a12669cb7a2911aba51bca65976ad384180e8a829982f4d555c950b31375",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778866345.trajectory-path.json"
+    },
+    "agents/main/sessions/3dd89c6c-1f85-4532-85fa-75857a7c1371.trajectory.jsonl": {
+      "size": 795,
+      "sha256": "3e68260f2175fdff14ca35f03eb14921c2e8e49415cdfe06364d77961de36f37",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/3dd89c6c-1f85-4532-85fa-75857a7c1371.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778823994.jsonl": {
+      "size": 10912,
+      "sha256": "15a6c76114254c59b778d72c2263f10b553d608b594dcb18d0e4fed4d9e15b41",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778823994.jsonl"
+    },
+    "agents/main/sessions/overseer-1778949900.trajectory.jsonl": {
+      "size": 160616,
+      "sha256": "da9fa5d33572d69a0dcab20d8332210557774d7309dbccf56da5a6d626bcbfc4",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949900.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778865301.jsonl": {
+      "size": 16397,
+      "sha256": "15d72fd4f9f186f3d7f14eedb30f1d99885e96440a045fdf510cad543326cb40",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778865301.jsonl"
+    },
+    "agents/main/sessions/overseer-1778869801.jsonl": {
+      "size": 23994,
+      "sha256": "45ea79b761fbaab13cc5f5972901cd000e7ab6cc58d3fbb6de8d5f6596a609b7",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778869801.jsonl"
+    },
+    "agents/main/sessions/C12FBDF6-E4A6-4C4B-AE05-9457DF8F8765.trajectory.jsonl": {
+      "size": 171030,
+      "sha256": "7751d254f013fab7792fd8f43d3ad1938ad6f8fffd2e112b9ef40b774a12220a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/C12FBDF6-E4A6-4C4B-AE05-9457DF8F8765.trajectory.jsonl"
+    },
+    "agents/main/sessions/overseer-1778949591.jsonl": {
+      "size": 4256,
+      "sha256": "a3c64e6b899f59d8b1db7a21826fc7b54b36dcfe0988e080003e4d2d47cfa576",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949591.jsonl"
+    },
+    "agents/main/sessions/3B9F20E6-82ED-4FE2-8AF5-2ED17A261360.trajectory.jsonl": {
+      "size": 417581,
+      "sha256": "57c2d5d7a63629b20b27c05c6d9d8c3f4381581eb794d9c0fca8f0820f5bb0ed",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/3B9F20E6-82ED-4FE2-8AF5-2ED17A261360.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778909877.trajectory.jsonl": {
+      "size": 161593,
+      "sha256": "51b5ffb004c0bebcab6bc620dff288b965c2fb6cd63abdc9131d3aebb7274d22",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778909877.trajectory.jsonl"
+    },
+    "agents/main/sessions/2c797fc4-cf22-4034-a854-9db9a6e92b91.trajectory.jsonl": {
+      "size": 180559,
+      "sha256": "4939f7bbe794bd02e2e857c76255c72f2b7402c22c04a14132e4e8cbb7e11f94",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/2c797fc4-cf22-4034-a854-9db9a6e92b91.trajectory.jsonl"
+    },
+    "agents/main/sessions/8A134FB3-BA9B-4ACD-A10A-D4B0B8FFCC41.jsonl": {
+      "size": 245150,
+      "sha256": "94b3ffe4c8af689c524d5f4607ff919142e81d9d8c4c44b3c1e1b21b0134f3e2",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/8A134FB3-BA9B-4ACD-A10A-D4B0B8FFCC41.jsonl"
+    },
+    "agents/main/sessions/A8538A86-9BB1-4BD8-83AE-8E0C024AC9FB.trajectory-path.json": {
+      "size": 328,
+      "sha256": "fe49037955d324f3566cacc8ac816268ad6886b697390381303f81818cf9ec7b",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/A8538A86-9BB1-4BD8-83AE-8E0C024AC9FB.trajectory-path.json"
+    },
+    "agents/main/sessions/00AC8404-FDAD-4BC7-BA43-E6373E9688F3.trajectory.jsonl": {
+      "size": 175936,
+      "sha256": "f378553eedc5dd6b0cf0531dbce5a11bbc7593883b62fba8c43cc90475aa312e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/00AC8404-FDAD-4BC7-BA43-E6373E9688F3.trajectory.jsonl"
+    },
+    "agents/main/sessions/discovery-1778949085.trajectory.jsonl": {
+      "size": 188922,
+      "sha256": "91e2722197eb51e48e8e18a5effa30b043ff00524f490bb1464f10ed79f4872e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/discovery-1778949085.trajectory.jsonl"
+    },
+    "agents/main/sessions/E23B38A8-EE1D-47A8-BAE3-58A02D5F00AC.trajectory-path.json": {
+      "size": 328,
+      "sha256": "0c0ef46e0e5eb46802628658bad8cceea35d62fcf5fb17dbce469cabfde7428a",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/E23B38A8-EE1D-47A8-BAE3-58A02D5F00AC.trajectory-path.json"
+    },
+    "agents/main/sessions/overseer-1778949001.jsonl": {
+      "size": 15703,
+      "sha256": "f81b48108b76f8eb99b49cec79534f043a2f32d152541295c2039b10955b9ae0",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/overseer-1778949001.jsonl"
+    },
+    "agents/main/sessions/91ca8e8b-31f6-4f5d-9adf-110996c7c493.trajectory.jsonl": {
+      "size": 357075,
+      "sha256": "742b33d252d1596bed4043f0bbc7eb76eef7fe9ff86d1eb5ae21950d38cd9447",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/91ca8e8b-31f6-4f5d-9adf-110996c7c493.trajectory.jsonl"
+    },
+    "agents/main/sessions/claude-xgb-data-1778804635.trajectory-path.json": {
+      "size": 308,
+      "sha256": "382dbc0fd8514ae20ec947a3174e928902488ffd3f4a0f9609f1af5d880e13ba",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents/main/sessions/claude-xgb-data-1778804635.trajectory-path.json"
+    },
+    "tasks/runs.sqlite-wal": {
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/tasks/runs.sqlite-wal"
+    },
+    "tasks/runs.sqlite-shm": {
+      "size": 32768,
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/tasks/runs.sqlite-shm"
+    },
+    "tasks/runs.sqlite": {
+      "size": 53248,
+      "sha256": "3574297cbbfab3086d2dbf72bfa183f491c0352e7a89990cbd76e5f1db6ed089",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/tasks/runs.sqlite"
+    },
+    "flows/registry.sqlite-shm": {
+      "size": 32768,
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/flows/registry.sqlite-shm"
+    },
+    "flows/registry.sqlite-wal": {
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/flows/registry.sqlite-wal"
+    },
+    "flows/registry.sqlite": {
+      "size": 24576,
+      "sha256": "d098d94e77ccd81b7b4c9041bea0149f3f63c313517b54f754c002cff5cf9d8e",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/flows/registry.sqlite"
+    }
+  },
+  "skipped_too_large": 0,
+  "errors": 0,
+  "sources_seen": [
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/agents",
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/tasks",
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.openclaw/flows"
+  ]
+}

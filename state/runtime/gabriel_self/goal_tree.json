@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "top": {
+    "id": "G0",
+    "goal": "Master S&P 500 trading via XGBoost + Mythos paper-trading + autonomous improvement",
+    "status": "in_progress"
+  },
+  "mid": [
+    {
+      "id": "M1",
+      "parent": "G0",
+      "goal": "All 509 S&P 500 tickers mastered with latest v10",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    },
+    {
+      "id": "M2",
+      "parent": "G0",
+      "goal": "Live paper-trade Sharpe >1.5 for 5 sessions",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    },
+    {
+      "id": "M3",
+      "parent": "G0",
+      "goal": "Friday-retrain pipeline end-to-end no manual",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    },
+    {
+      "id": "M4",
+      "parent": "G0",
+      "goal": "Daemon self-improve: weekly +lessons.md",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    },
+    {
+      "id": "M5",
+      "parent": "G0",
+      "goal": "Cloud-routing >=85% off Mac",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    }
+  ],
+  "low": []
+}

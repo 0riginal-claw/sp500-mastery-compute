@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "session_id": "c025ddb8",
+  "ts": "2026-05-21T01:58:57.972526+00:00",
+  "host": {
+    "load1": 16.041015625,
+    "load5": 15.07177734375,
+    "load15": 16.515625,
+    "drive_fuse_ok": false
+  },
+  "daemons": [
+    {
+      "label": "com.zg.ollama_worker",
+      "pid": "605",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.paper_trade_ws",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.dashboard",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.dw_strategies",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.paper_trade_open",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.selective_context_prune",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.dw_market",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.dw_features",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.feature_wiring_consumer",
+      "pid": "646",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.autonomous_mode",
+      "pid": "3541",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.cache_fix_proxy",
+      "pid": "618",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.stale_memory_audit",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.drive_throttle_renice",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.openclaw_session_watcher",
+      "pid": "29489",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.paper_trade_flatten",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.dw_risks",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.memory_auto_save",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.cloud_dispatcher",
+      "pid": "645",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.paper_trade_ingest",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.mem0_auto_capture",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.universal_resume_guardrail",
+      "pid": "14337",
+      "exit": "-9"
+    },
+    {
+      "label": "com.zg.sync_hooks_local",
+      "pid": "-",
+      "exit": "-15"
+    },
+    {
+      "label": "com.zg.openclaw_completion_tracker",
+      "pid": "55855",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.sync_compute_repo",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.botsforge_cloudflare",
+      "pid": "-",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.desktop_error_scanner",
+      "pid": "53253",
+      "exit": "0"
+    },
+    {
+      "label": "com.zg.paper_trade_startup",
+      "pid": "-",
+      "exit": "-15"
+    },
+    {
+      "label": "com.zg.proactive_loop",
+      "pid": "634",
+      "exit": "0"
+    }
+  ],
+  "pid": 76596
+}

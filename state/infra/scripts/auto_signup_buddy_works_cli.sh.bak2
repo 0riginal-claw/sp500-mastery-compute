@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# auto_signup_buddy_works_cli.sh — Semi-CLI Buddy.works bootstrap
+# License: N/A (Buddy has no official CLI — REST API only). Generated 2026-05-17.
+#
+# Buddy.works has NO official CLI. PAT must be created via web UI:
+#   Avatar -> Security -> Personal Access Tokens -> "+"
+# Per buddy.works/docs/api/getting-started/oauth2/personal-access-token
+# (verified 2026-05-17): "Log in to Buddy" is the documented prereq.
+# After PAT issued, this script verifies + writes env file + flips enabled.
+
+set -euo pipefail
+
+PROVIDER="buddy_works"
+MAC_HOME="/Users/orginal"
+ENV_DIR="$HOME/.config/auto_signup"
+ENV_FILE="$ENV_DIR/${PROVIDER}.env"
+LOG_DIR="$HOME/AI-Tools/logs/auto_signup"
+CLOUD_USAGE="$HOME/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery/sweeps/cloud_usage.json"
+mkdir -p "$ENV_DIR" "$LOG_DIR"
+LOG_FILE="$LOG_DIR/${PROVIDER}_$(date -u +%Y%m%dT%H%M%SZ).log"
+
+DRY_RUN=0
+BUDDY_TOKEN="${BUDDY_API_TOKEN:-}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY_RUN=1; shift ;;
+    --token) BUDDY_TOKEN="$2"; shift 2 ;;
+    *) echo "Unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+log() { echo "[$(date -u +%FT%TZ)] $*" | tee -a "$LOG_FILE"; }
+
+log "$PROVIDER setup begin (dry_run=$DRY_RUN)"
+
+if [[ "$DRY_RUN" == 1 ]]; then
+  log "DRY-RUN: would verify token via curl https://api.buddy.works/workspaces"
+  exit 0
+fi
+
+if [[ -z "$BUDDY_TOKEN" ]]; then
+  cat >&2 <<EOF
+ERROR: Need BUDDY_API_TOKEN.
+
+One-time web action required (no CLI bypass; Buddy has no official CLI):
+  1. Visit https://buddy.works and sign up via GitHub/Google OAuth (no CC)
+  2. Click your avatar -> Security -> Personal Access Tokens -> +
+  3. Select scopes: workspace, pipelines, executions (token scopes can be wide)
+  4. Copy the generated token (shown ONCE)
+  5. Re-run:  $0 --token <TOKEN>   OR   export BUDDY_API_TOKEN=...
+EOF
+  exit 2
+fi
+
+# Verify token (REST API call)
+log "Verifying token via GET /workspaces"
+HTTP_CODE=$(curl -sS -o /tmp/buddy_verify.$$ -w '%{http_code}' \
+  -H "Authorization: Bearer $BUDDY_TOKEN" https://api.buddy.works/workspaces || echo "000")
+if [[ "$HTTP_CODE" != "200" ]]; then
+  log "ERROR: token verify failed HTTP $HTTP_CODE — response:"
+  cat /tmp/buddy_verify.$$ | tee -a "$LOG_FILE"
+  rm -f /tmp/buddy_verify.$$
+  exit 2
+fi
+rm -f /tmp/buddy_verify.$$
+
+umask 077
+echo "BUDDY_API_TOKEN=$BUDDY_TOKEN" > "$ENV_FILE"
+chmod 600 "$ENV_FILE"
+log "wrote $ENV_FILE (chmod 600)"
+
+# Flip enabled=true in cloud_usage.json
+python3 - "$CLOUD_USAGE" "$PROVIDER" <<'PY' 2>&1 | tee -a "$LOG_FILE"
+import json, sys
+p, k = sys.argv[1], sys.argv[2]
+d = json.load(open(p))
+if k in d and isinstance(d[k], dict): d[k]["enabled"] = True
+json.dump(d, open(p, "w"), indent=2)
+print(f"flipped {k}.enabled=true in {p}")
+PY
+
+log "$PROVIDER setup complete. Smoke: curl -H 'Authorization: Bearer \$BUDDY_API_TOKEN' https://api.buddy.works/workspaces"

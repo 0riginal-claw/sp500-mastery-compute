@@ -1,0 +1,50 @@
+{
+  "plan_id": "9a38aa8053ae",
+  "cycle_id": "542d2e08",
+  "ts": "2026-05-20T06:49:14.337552+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "EXECUTE IMMEDIATELY: batch-restart all 18 IDLE+3 CRASHED daemons via single launchctl kickstart loop, prioritize dw_market dw_features dw_strategies dw_risks first",
+      "target": "daemon fleet: launchctl kickstart gui/501/<service_name> for com.zg.auto_action, dashboard, dw_features, dw_market, dw_strategies, feature_discovery, agent_watchdog, drive_sync_batch, drive_throttle_renice, plus reload 3 crashed plists",
+      "estimated_min": 3,
+      "depends_on": [],
+      "success_criteria": "launchctl kickstart returned successfully for all 18 IDLE daemons; 3 crashed daemon plists reloaded via launchctl load",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Find and kill any orphaned Python helper processes from c857fa80 that have been running >15 minutes, using ps aux | grep python and kill -9 on stale PIDs",
+      "target": "process list: orphaned research helper Python processes",
+      "estimated_min": 2,
+      "depends_on": [],
+      "success_criteria": "Zero Python processes with runtime >15 min remain; mac load drops below 10 within 30s",
+      "priority": 10
+    },
+    {
+      "step_id": "s3",
+      "action": "Fix yahoo_self_provision.py NoneType crash: add `if browser is None: return None` guard before line 419, then run `playwright install chromium`",
+      "target": "scripts/yahoo_self_provision.py line 419",
+      "estimated_min": 4,
+      "depends_on": [],
+      "success_criteria": "playwright install chromium exits 0; yahoo_self_provision.py imports without error on test run",
+      "priority": 9
+    },
+    {
+      "step_id": "s4",
+      "action": "Write daemon_recovery.sh one-liner to project root, then wait 30s and poll overseer once to confirm fleet at 30+/34 UP",
+      "target": "scripts/daemon_recovery.sh",
+      "estimated_min": 3,
+      "depends_on": [
+        "s1"
+      ],
+      "success_criteria": "scripts/daemon_recovery.sh written and chmod +x; overseer poll shows fleet >= 30/34 UP with 0 new CRASHED",
+      "priority": 8
+    }
+  ],
+  "goals_addressed": [
+    "BREAK THE PLANNING LOOP \u2014 execute daemon recovery commands directly instead of producing more analysis",
+    "Restore fleet from 13/34 to 34/34 UP, fix yahoo_provision crash, kill orphaned helper processes"
+  ]
+}

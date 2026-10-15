@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# auto_signup_deno_deploy_cli.sh — CLI-only Deno Deploy bootstrap
+# License: deployctl is MIT (jsr:@deno/deployctl). Generated 2026-05-17.
+#
+# CLI-ONLY path: deployctl auto-creates the Deno Deploy account on first
+# deploy via GitHub OAuth (docs: "You don't need to setup a Deno Deploy
+# Classic account beforehand. It will be created along the way when you
+# deploy your first project.")  Requires existing GitHub auth (gh CLI).
+#
+# After first auto-deploy, token-create endpoint is reachable; this script
+# performs a minimal hello-world deploy to bootstrap the account, then
+# captures the API token via `deployctl tokens create`.
+
+set -euo pipefail
+
+PROVIDER="deno_deploy"
+MAC_HOME="/Users/orginal"
+ENV_DIR="$MAC_HOME/.config/auto_signup"
+ENV_FILE="$ENV_DIR/${PROVIDER}.env"
+LOG_DIR="$MAC_HOME/AI-Tools/logs/auto_signup"
+CLOUD_USAGE="$MAC_HOME/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery/sweeps/cloud_usage.json"
+mkdir -p "$ENV_DIR" "$LOG_DIR"
+LOG_FILE="$LOG_DIR/${PROVIDER}_$(date -u +%Y%m%dT%H%M%SZ).log"
+
+DRY_RUN=0
+[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=1
+
+log() { echo "[$(date -u +%FT%TZ)] $*" | tee -a "$LOG_FILE"; }
+
+log "$PROVIDER CLI signup begin (dry_run=$DRY_RUN)"
+
+# Prereq: deno + gh
+if ! command -v deno >/dev/null 2>&1; then
+  if [[ "$DRY_RUN" == 1 ]]; then
+    log "DRY-RUN: deno not installed; would require: brew install deno"
+  else
+    log "ERROR: deno not installed. Run: brew install deno (or visit https://deno.land/)"; exit 2
+  fi
+fi
+if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+  if [[ "$DRY_RUN" == 1 ]]; then
+    log "DRY-RUN: gh CLI not authenticated; would require: gh auth login --scopes 'repo,read:user'"
+  else
+    log "ERROR: gh CLI not authenticated. Run: gh auth login --scopes 'repo,read:user'"; exit 2
+  fi
+fi
+
+# Install deployctl (verified MIT, jsr.io official Deno registry)
+if ! command -v deployctl >/dev/null 2>&1; then
+  if [[ "$DRY_RUN" == 1 ]]; then
+    log "DRY-RUN: deno install -gArf jsr:@deno/deployctl"
+  else
+    log "Installing deployctl from jsr:@deno/deployctl (MIT)"
+    deno install -gArf jsr:@deno/deployctl 2>&1 | tee -a "$LOG_FILE"
+  fi
+fi
+
+# Attempt token creation (works after first GH-OAuth-mediated deploy)
+if [[ "$DRY_RUN" == 1 ]]; then
+  log "DRY-RUN: deployctl login  # opens device-flow"
+  log "DRY-RUN: would write \$ENV_FILE with DENO_DEPLOY_TOKEN"
+  exit 0
+fi
+
+log "Launching 'deployctl login' (device-flow, no browser click-through if gh auth present)"
+deployctl login 2>&1 | tee -a "$LOG_FILE" || {
+  log "WARN: deployctl login interactive. Falling back to manual token entry."
+  echo "Visit https://dash.deno.com/account#access-tokens after first deploy, paste token here:"
+  read -rs DENO_DEPLOY_TOKEN
+  umask 077
+  printf 'DENO_DEPLOY_TOKEN=%s\n' "$DENO_DEPLOY_TOKEN" > "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+}
+
+# Flip enabled=true in cloud_usage.json
+python3 - "$CLOUD_USAGE" "$PROVIDER" <<'PY' 2>&1 | tee -a "$LOG_FILE"
+import json, sys
+p, k = sys.argv[1], sys.argv[2]
+d = json.load(open(p))
+if k in d and isinstance(d[k], dict): d[k]["enabled"] = True
+json.dump(d, open(p, "w"), indent=2)
+print(f"flipped {k}.enabled=true in {p}")
+PY
+
+log "$PROVIDER setup complete. Smoke: deployctl --help"

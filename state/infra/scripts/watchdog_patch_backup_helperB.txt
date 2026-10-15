@@ -1,0 +1,18 @@
+HELPER B — Backup Report
+========================
+Produced by: python-pro agent (haiku model, inline)
+Date: 2026-05-16
+
+BACKUP COMPLETE
+Source: /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/scripts/agent_watchdog_daemon.py
+Dest:   /Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/backups/watchdog-falsepositive-fix-2026-05-16/agent_watchdog_daemon.py.bak
+Size:   28K (pre-patch v1.2)
+Manifest: .../backups/watchdog-falsepositive-fix-2026-05-16/MANIFEST.txt
+
+Stale flags archive:
+  Source: .../watchdog/help_requests/*.json (107 files)
+  Dest:   .../watchdog/backups/stale-flags-archive-2026-05-16-1550/ (104 JSON + flagged_backup.json + escalations_backup.json)
+
+State resets performed:
+  flagged.json     → reset to {} (backup at stale-flags-archive dir)
+  escalations.json → reset to {} (backup at stale-flags-archive dir)

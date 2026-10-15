@@ -1,0 +1,7 @@
+{
+  "enabled": false,
+  "max_concurrent_spawns": 8,
+  "budget_remaining_usd": 5.0,
+  "reason_off": "default: never ship enabled",
+  "drift_pause_until": null
+}

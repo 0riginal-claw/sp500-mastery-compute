@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-05-20T23:19:47Z",
+  "issue": {
+    "kind": "CRASHED",
+    "key": "daemon_crashed_com.zg.paper_trade_startup_-15",
+    "label": "com.zg.paper_trade_startup",
+    "status": -15,
+    "summary": "daemon com.zg.paper_trade_startup exit_status=-15, PID=-"
+  },
+  "instruction": "Next Claude session reading dashboard/MISSION_PROGRESS.md should spawn 3 \u00a78 solvers (INTERNET/GITHUB/REPO-LOCAL) for this issue if not yet resolved."
+}

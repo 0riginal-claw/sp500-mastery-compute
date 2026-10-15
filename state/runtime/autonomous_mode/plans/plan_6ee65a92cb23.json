@@ -1,0 +1,72 @@
+{
+  "plan_id": "6ee65a92cb23",
+  "cycle_id": "aa16679e",
+  "ts": "2026-05-20T07:00:16.084937+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Kill 4 of 7 in-flight helpers to free CPU: keep only the Alpaca curl check and WatchPaths plist fix. Kill the parquet scan, claude output search, and orphan Python kill (those will run after recovery).",
+      "target": "in-flight helper PIDs (identify via ps aux | grep helper)",
+      "estimated_min": 2,
+      "depends_on": [],
+      "success_criteria": "Only 3 helpers remain running; load drops from 12+ to <8 within 30s of kills",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "EDIT yahoo_self_provision.py: add `if browser is None: return None` guard before line 419 browser.close() using sed in-place edit",
+      "target": "scripts/yahoo_self_provision.py line 418-419",
+      "estimated_min": 1,
+      "depends_on": [],
+      "success_criteria": "grep 'if browser is None' scripts/yahoo_self_provision.py returns a match; python -c \"compile(open('scripts/yahoo_self_provision.py').read(),'','exec')\" exits 0",
+      "priority": 10
+    },
+    {
+      "step_id": "s3",
+      "action": "EDIT 3 crashdaemon plists: add WatchPaths key pointing at Google Drive mount root using plutil, then plutil -lint each",
+      "target": "~/Library/LaunchAgents/com.zg.{openclaw_session_watcher,mem0_auto_capture,paper_trade_startup}.plist",
+      "estimated_min": 5,
+      "depends_on": [],
+      "success_criteria": "plutil -lint passes for all 3 plists; `plutil -extract WatchPaths xml1` returns the Drive path for each",
+      "priority": 10
+    },
+    {
+      "step_id": "s4",
+      "action": "launchctl bootstrap the 3 crashdaemon plists (with new WatchPaths) and kickstart all remaining IDLE daemons (auto_action, dashboard, dw_market, dw_strategies, drive_sync_batch, feature_discovery, agent_watchdog)",
+      "target": "daemon fleet: 3 bootstrap + 7 kickstart",
+      "estimated_min": 4,
+      "depends_on": [
+        "s2",
+        "s3"
+      ],
+      "success_criteria": "Fleet UP count rises from 14/34 to 30/34 within 60s; all 3 crashdaemons show PID > 0",
+      "priority": 9
+    },
+    {
+      "step_id": "s5",
+      "action": "Write scripts/daemon_recovery.sh: single command that bootout+bootstrap all com.zg.* daemons from their plist files",
+      "target": "scripts/daemon_recovery.sh",
+      "estimated_min": 5,
+      "depends_on": [],
+      "success_criteria": "scripts/daemon_recovery.sh exists, chmod +x, dry-run produces valid launchctl command list",
+      "priority": 7
+    },
+    {
+      "step_id": "s6",
+      "action": "Wait 30s, poll overseer once, log final fleet count and load. Flag any remaining IDLE.",
+      "target": "mission overseer final verification",
+      "estimated_min": 2,
+      "depends_on": [
+        "s4"
+      ],
+      "success_criteria": "Fleet >= 32/34 UP, 0 CRASHED, load < 8.0, previously-crashed daemons show PID > 0",
+      "priority": 10
+    }
+  ],
+  "goals_addressed": [
+    "Break the helper death spiral by killing 4 of 7 in-flight helpers to free CPU",
+    "Execute the known yahoo_provision.py line 419 fix via sed (not another analysis cycle)",
+    "Sequence restarts: WatchPaths plists first, then daemon recovery, only then data collection"
+  ]
+}

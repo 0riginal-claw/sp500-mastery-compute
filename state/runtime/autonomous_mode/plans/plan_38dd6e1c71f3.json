@@ -1,0 +1,40 @@
+{
+  "plan_id": "38dd6e1c71f3",
+  "cycle_id": "d1493b70",
+  "ts": "2026-05-20T08:07:43.836572+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "UPDATE Wave 3 strategy spec with delay filter: entry = 10-Q filing with 35-50 day delay, expected WR=63.2%, Sharpe=1.5+",
+      "target": "research/notes/20260520_wave3_10q_strategy.md",
+      "estimated_min": 10,
+      "depends_on": [],
+      "success_criteria": "Updated strategy document with delay-filtered metrics (+1.68%, WR=63.2%, Sharpe estimated 1.5+) and clear entry rule changes",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Write capstone session document to research/notes/20260520_capstone.md with all findings, all rejected approaches with evidence, daemon state, database profiles, and Wave 3 roadmap",
+      "target": "research/notes/20260520_capstone.md",
+      "estimated_min": 15,
+      "depends_on": [],
+      "success_criteria": "Complete session archive capturing every test result, decision, infrastructure state, and recommended next steps across all 3.5 hours",
+      "priority": 8
+    },
+    {
+      "step_id": "s3",
+      "action": "Final daemon fix attempt: run `bash -x` on mem0_auto_capture.sh and selective_context_prune.sh to identify the exact missing binary causing exit 126",
+      "target": "bin/mem0_auto_capture.sh, bin/selective_context_prune.sh",
+      "estimated_min": 10,
+      "depends_on": [],
+      "success_criteria": "Specific missing dependency identified for both shell daemons (e.g., 'python3 not found', 'mem0 command not found'); documented in capstone",
+      "priority": 6
+    }
+  ],
+  "goals_addressed": [
+    "Slippage stress test \u2014 Sharpe 0.82 at realistic 5bps costs (tradeable)",
+    "Filing delay analysis \u2014 NORMAL delay filers produce +1.68%, WR=63.2% (3x improvement)",
+    "Cross-source validation \u2014 Alpaca data confirmed reliable (AAPL corr=0.995)"
+  ]
+}

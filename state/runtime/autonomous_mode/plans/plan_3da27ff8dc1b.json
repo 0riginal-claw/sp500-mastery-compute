@@ -1,0 +1,90 @@
+{
+  "plan_id": "3da27ff8dc1b",
+  "cycle_id": "c857fa80",
+  "ts": "2026-05-20T06:32:42.336591+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Resample AAPL Alpaca 1-min bars to daily OHLCV and compute 10 core Bucket-48 daily features",
+      "target": "ticker:AAPL via scripts/resample_daily.py",
+      "estimated_min": 15,
+      "depends_on": [],
+      "success_criteria": "Daily DataFrame with 1,260 rows, columns: open/high/low/close/volume + body_pct, close_pos, atr14, rsi14, higher_high, higher_low, bull_control",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Walk-forward backtest daily RSI<30 mean reversion on AAPL: 2yr IS / 1yr OOS / 1yr step, hold 21 days",
+      "target": "ticker:AAPL daily RSI<30 strategy",
+      "estimated_min": 20,
+      "depends_on": [
+        "s1"
+      ],
+      "success_criteria": "WF report with n_trades, WR, PF, Ret% for 4 OOS folds; if WR\u226552% and PF\u22651.10, flag as promising",
+      "priority": 10
+    },
+    {
+      "step_id": "s3",
+      "action": "Run cross-sectional decile-long/short backtest on 100 S&P 500 tickers using 21-day momentum",
+      "target": "scripts/cross_sectional_momentum.py",
+      "estimated_min": 30,
+      "depends_on": [
+        "s1"
+      ],
+      "success_criteria": "CSV table: decile 1-10 returns, long-short Sharpe; if long-short Sharpe > 0.5, momentum signal survives in this universe",
+      "priority": 9
+    },
+    {
+      "step_id": "s4",
+      "action": "Build a daily resample pipeline module that reads 1-min parquet and writes daily parquet for any ticker",
+      "target": "scripts/resample_daily.py",
+      "estimated_min": 20,
+      "depends_on": [
+        "s1"
+      ],
+      "success_criteria": "Module accepts ticker arg, reads 1-min parquet, writes daily parquet with closed='left' label='left' semantics, tested on 3 tickers",
+      "priority": 8
+    },
+    {
+      "step_id": "s5",
+      "action": "Port the 10 Bucket-48 daily features into a reusable compute_all_daily_features(df) function",
+      "target": "scripts/candlestick_features.py (extend) + scripts/market_structure.py (extend)",
+      "estimated_min": 25,
+      "depends_on": [
+        "s1"
+      ],
+      "success_criteria": "Function exists, tested on daily AAPL, returns same df with 10 new float columns appended, no NaN after warm-up period",
+      "priority": 8
+    },
+    {
+      "step_id": "s6",
+      "action": "Run daily RSI<30 strategy on MSFT and XOM to check cross-ticker replicability of the daily edge",
+      "target": "ticker:MSFT, XOM daily RSI<30",
+      "estimated_min": 20,
+      "depends_on": [
+        "s2",
+        "s4"
+      ],
+      "success_criteria": "Both tickers produce WF reports with WR\u226550%; at least one of the two has PF\u22651.05 (not profitable but not negative)",
+      "priority": 7
+    },
+    {
+      "step_id": "s7",
+      "action": "Test daily close<VWAP short-term reversal: long when close < 20-day SMA and RSI < 40, exit after +5% or 10 days",
+      "target": "ticker:AAPL daily (alternate entry)",
+      "estimated_min": 15,
+      "depends_on": [
+        "s2",
+        "s5"
+      ],
+      "success_criteria": "WF output delivered; comparison table of RSI<30 vs SMA+RSI strategies shows which entry condition has higher PF",
+      "priority": 6
+    }
+  ],
+  "goals_addressed": [
+    "Test daily-frequency hypothesis as the primary pivot from failed 5-min research",
+    "Generate first evidence of positive expected value at daily resolution",
+    "Build reusable daily pipeline before expanding across full S&P 500 universe"
+  ]
+}

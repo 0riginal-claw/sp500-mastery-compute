@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>AI_ROOT</key>
+		<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools</string>
+		<key>GH_TOKEN</key>
+		<string>REPLACE_WITH_GH_TOKEN_AT_DEPLOY_TIME</string>
+		<key>GITHUB_BRANCH</key>
+		<string>main</string>
+		<key>GITHUB_OWNER</key>
+		<string>0riginal-claw</string>
+		<key>GITHUB_REPO</key>
+		<string>sp500-mastery-compute</string>
+		<key>GITHUB_TOKEN</key>
+		<string>REPLACE_WITH_GH_TOKEN_AT_DEPLOY_TIME</string>
+		<key>PATH</key>
+		<string>/Users/orginal/.venvs/sp500-mastery/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>ExitTimeOut</key>
+	<integer>20</integer>
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>Label</key>
+	<string>com.zg.sync_compute_repo</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/orginal/.venvs/sp500-mastery/bin/python</string>
+		<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&amp;p500-ticker-mastery/scripts/sync_compute_repo.py</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&amp;p500-ticker-mastery/logs/sync_compute_repo.stderr.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&amp;p500-ticker-mastery/logs/sync_compute_repo.stdout.log</string>
+	<key>StartInterval</key>
+	<integer>300</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&amp;p500-ticker-mastery</string>
+</dict>
+</plist>

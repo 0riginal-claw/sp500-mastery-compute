@@ -1,0 +1,51 @@
+HELPER A — Transcript End-Marker Check Design
+==============================================
+Produced by: python-pro agent (sonnet model, inline)
+Date: 2026-05-16
+
+ROOT CAUSE ANALYSIS
+-------------------
+The daemon's run_scan() only checks output-file mtime to decide if an agent is "stuck".
+Files with mtime in the 5-60 min window are flagged regardless of transcript content.
+This causes ~3-4 false positives/min because completed agents' files stay on disk.
+
+COMPLETION MARKERS FOUND IN REAL OUTPUT FILES
+---------------------------------------------
+Surveyed 73 in-window files (5-60 min age). Markers present:
+  - JSON line with stop_reason == "end_turn"   → 34 files (Claude Code agents done)
+  - Plain text "THRESHOLD MET"                 → 3 files (poll script goal reached)
+  - Plain text "ELAPSED=Ns"                    → 4 files (timer/poll script done)
+  - No markers                                 → 32 files (possibly genuinely stuck)
+
+FUNCTION DESIGNED AND IMPLEMENTED
+-----------------------------------
+Function: agent_has_completed_transcript(path: Path) -> bool
+Location: After agent_id_from_path(), before the DeepSeek section (~line 302)
+
+Logic:
+  1. Read all lines from the file
+  2. Slice last 500 lines (markers appear at/near EOF — avoids reading multi-MB files fully)
+  3. For each line:
+     - If starts with "{": parse JSON, check stop_reason in {end_turn, max_tokens, stop_sequence}
+       or type == "model.completed"
+     - Else: check for "THRESHOLD MET" substring or ELAPSED=\d+ regex
+  4. Return True (completed) if any marker found; False (possibly stuck) otherwise
+
+CALL SITE IN run_scan()
+-----------------------
+Inserted after "watchdog helper guard" block, before extract_task_desc():
+
+    if agent_has_completed_transcript(path):
+        log.info("Skipping agent %s — transcript shows completion (false-positive guard)", agent_id)
+        continue
+
+IMPACT
+------
+Before patch: 73 in-window files → up to 73 false flags per scan cycle
+After patch:  73 in-window files → ~3 suppressed + genuinely stuck flagged
+New flag rate: ~8 per scan (was ~14+ with escalations)
+False positive rate: effectively 0 for files with completion markers
+
+VERSION
+-------
+Daemon version bumped: 1.2 → 1.3

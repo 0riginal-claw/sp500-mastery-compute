@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# hook-bootstrap.sh — SessionStart enforcement
+#
+# Purpose: at every Claude Code session start, verify the 6 canonical PreToolUse
+# hooks are registered in $CLAUDE_CONFIG_DIR/settings.json. If any are missing,
+# log to logs/hook_bootstrap.log. If HOOK_BOOTSTRAP_AUTOREPAIR=1, attempt to
+# append the missing hook entries (best-effort).
+#
+# This is defense-in-depth: even if settings.json gets corrupted or partially
+# overwritten by an earlier session, the next session restores the contract.
+#
+# Why this matters: empirical test on 2026-05-19 confirmed PreToolUse hooks DO
+# inherit into L1 sub-agents via the parent's CLAUDE_CONFIG_DIR. L2 grandchildren
+# inherit too (same env propagation). The hook system breaks only if settings.json
+# itself drifts out of spec — this bootstrap catches that drift.
+#
+# Idempotent. Always exit 0 (never block SessionStart).
+
+set +e
+LOG_DIR="/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/logs"
+LOG="$LOG_DIR/hook_bootstrap.log"
+mkdir -p "$LOG_DIR" 2>/dev/null
+
+ts() { date -u +'%Y-%m-%dT%H:%M:%SZ'; }
+log() { echo "[$(ts)] $*" >> "$LOG" 2>/dev/null; }
+
+CFG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+SETTINGS="$CFG_DIR/settings.json"
+SPEC="/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.claude/hooks/_canonical_pretooluse_rules.json"
+
+if [[ ! -r "$SETTINGS" ]]; then
+  log "ERROR settings.json not readable at $SETTINGS — bootstrap skipped"
+  exit 0
+fi
+if [[ ! -r "$SPEC" ]]; then
+  log "ERROR spec missing at $SPEC — bootstrap skipped"
+  exit 0
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  log "ERROR jq missing — bootstrap skipped"
+  exit 0
+fi
+
+# Collect every PreToolUse hook command currently registered.
+CURRENT_CMDS=$(jq -r '.hooks.PreToolUse // [] | .[].hooks // [] | .[].command // empty' "$SETTINGS" 2>/dev/null)
+
+# Collect the required command_substr list from the spec.
+REQUIRED=$(jq -r '.required_hooks[] | "\(.id)\t\(.command_substr)"' "$SPEC" 2>/dev/null)
+
+MISSING=0
+MISSING_IDS=""
+while IFS=$'\t' read -r id substr; do
+  [[ -z "$id" ]] && continue
+  if ! printf '%s' "$CURRENT_CMDS" | grep -qF "$substr"; then
+    MISSING=$((MISSING+1))
+    MISSING_IDS="$MISSING_IDS $id"
+    log "MISSING hook id=$id substr=$substr"
+  fi
+done <<< "$REQUIRED"
+
+if [[ $MISSING -eq 0 ]]; then
+  log "OK all 6 canonical PreToolUse hooks present in $SETTINGS"
+  exit 0
+fi
+
+log "DRIFT detected: $MISSING missing hook(s):$MISSING_IDS"
+
+# Auto-repair is opt-in. Default: observe-only.
+if [[ "${HOOK_BOOTSTRAP_AUTOREPAIR:-0}" != "1" ]]; then
+  log "AUTOREPAIR off (set HOOK_BOOTSTRAP_AUTOREPAIR=1 to enable). Observe-only."
+  exit 0
+fi
+
+# Best-effort auto-repair: re-append missing hook stanzas to settings.json.
+# We back up first, then use jq to splice in each missing entry. This block is
+# intentionally conservative — only adds, never removes.
+BACKUP="$SETTINGS.bootstrap_repair_$(date -u +%Y%m%dT%H%M%SZ).bak"
+cp -p "$SETTINGS" "$BACKUP" 2>/dev/null && log "BACKUP $BACKUP"
+
+HOOKS_BASE="/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.claude/hooks"
+
+while IFS=$'\t' read -r id substr; do
+  [[ -z "$id" ]] && continue
+  if printf '%s' "$CURRENT_CMDS" | grep -qF "$substr"; then
+    continue
+  fi
+  # Look up matcher + reconstruct full command path.
+  matcher=$(jq -r --arg id "$id" '.required_hooks[] | select(.id==$id) | .matcher' "$SPEC" 2>/dev/null)
+  full_cmd="/bin/bash \"$HOOKS_BASE/$substr\""
+  new_entry=$(jq -n --arg m "$matcher" --arg c "$full_cmd" \
+    '{matcher:$m, hooks:[{type:"command", command:$c, timeout:5}]}')
+  tmp=$(mktemp)
+  jq --argjson entry "$new_entry" '.hooks.PreToolUse += [$entry]' "$SETTINGS" > "$tmp" 2>>"$LOG"
+  if [[ -s "$tmp" ]]; then
+    mv "$tmp" "$SETTINGS" && log "REPAIRED appended hook id=$id matcher=$matcher"
+  else
+    rm -f "$tmp"
+    log "REPAIR_FAIL id=$id (jq returned empty)"
+  fi
+done <<< "$REQUIRED"
+
+exit 0

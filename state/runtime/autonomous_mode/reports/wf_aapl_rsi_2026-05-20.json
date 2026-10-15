@@ -1,0 +1,76 @@
+{
+  "task": "WF backtest AAPL daily RSI<30 mean-reversion, hold 21d",
+  "source_feature_file": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/s&p500-ticker-mastery/cache/features/AAPL_v10_full_0175c4585644fd24.parquet",
+  "data_range": [
+    "2021-04-21",
+    "2026-04-20"
+  ],
+  "n_bars": 1213,
+  "params": {
+    "rsi_lookback": 14,
+    "rsi_thresh": 30.0,
+    "hold_days": 21,
+    "cost_bps_per_side": 1.0,
+    "is_years": 2,
+    "oos_years_per_fold": 1,
+    "step_years": 1
+  },
+  "folds": [
+    {
+      "n_trades": 1,
+      "win_rate": 1.0,
+      "profit_factor": null,
+      "total_ret": 0.05555907145336068,
+      "avg_ret": 0.05555907145336068,
+      "median_ret": 0.05555907145336068,
+      "fold": 1,
+      "oos_start": "2025-04-21",
+      "oos_end": "2026-04-20"
+    },
+    {
+      "n_trades": 1,
+      "win_rate": 0.0,
+      "profit_factor": 0.0,
+      "total_ret": -0.05292284187833909,
+      "avg_ret": -0.05292284187833909,
+      "median_ret": -0.05292284187833909,
+      "fold": 2,
+      "oos_start": "2024-04-21",
+      "oos_end": "2025-04-20"
+    },
+    {
+      "n_trades": 3,
+      "win_rate": 0.6666666666666666,
+      "profit_factor": 2.0692069700573623,
+      "total_ret": 0.011587089596555678,
+      "avg_ret": 0.0038623631988518926,
+      "median_ret": 0.002638221381267658,
+      "fold": 3,
+      "oos_start": "2023-04-21",
+      "oos_end": "2024-04-20"
+    },
+    {
+      "n_trades": 0,
+      "win_rate": null,
+      "profit_factor": null,
+      "total_ret": 0.0,
+      "avg_ret": null,
+      "median_ret": null,
+      "fold": 4,
+      "oos_start": "2022-04-21",
+      "oos_end": "2023-04-20"
+    }
+  ],
+  "aggregate_oos": {
+    "n_trades": 5,
+    "win_rate": 0.6,
+    "profit_factor": 1.223076143403057,
+    "total_ret": 0.014223319171577268,
+    "avg_ret": 0.0028446638343154534,
+    "median_ret": 0.002638221381267658
+  },
+  "promising_folds": [
+    3
+  ],
+  "aggregate_promising": true
+}

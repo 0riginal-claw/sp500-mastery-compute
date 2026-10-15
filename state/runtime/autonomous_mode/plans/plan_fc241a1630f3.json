@@ -1,0 +1,71 @@
+{
+  "plan_id": "fc241a1630f3",
+  "cycle_id": "3420cb08",
+  "ts": "2026-05-20T06:56:22.002279+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Fix yahoo_self_provision.py line 419: add `if browser is None:\n        return None` guard before the browser.close() line using sed in-place edit",
+      "target": "scripts/yahoo_self_provision.py line 418-419",
+      "estimated_min": 1,
+      "depends_on": [],
+      "success_criteria": "grep shows 'if browser is None:' in the file at or before the close() call; script imports without AttributeError on Python parse check",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Add WatchPaths to all 3 crashdaemon plists pointing at Google Drive mount root using plutil, then launchctl bootout/bootstrap each",
+      "target": "~/Library/LaunchAgents/com.zg.{openclaw_session_watcher,mem0_auto_capture,paper_trade_startup}.plist",
+      "estimated_min": 5,
+      "depends_on": [],
+      "success_criteria": "`plutil -lint` passes for all 3 plists; WatchPaths key contains Drive path; each daemon shows PID > 0 after bootstrap",
+      "priority": 10
+    },
+    {
+      "step_id": "s3",
+      "action": "Batch-restart all remaining IDLE daemons via launchctl kickstart loop (auto_action, dashboard, dw_features, dw_market, dw_strategies, drive_sync_batch, drive_throttle_renice, feature_discovery)",
+      "target": "daemon fleet: 8 IDLE launchctl services",
+      "estimated_min": 3,
+      "depends_on": [],
+      "success_criteria": "Fleet UP count rises from 13/34 to 31/34 within 30s; dw_market shows PID > 0",
+      "priority": 9
+    },
+    {
+      "step_id": "s4",
+      "action": "Kill orphaned Python processes (>15 min runtime) found via `ps aux | grep python`, verify load drops below 10 with `uptime`",
+      "target": "process list: orphaned Python helper PIDs",
+      "estimated_min": 2,
+      "depends_on": [],
+      "success_criteria": "Python process count < 5; uptime load average < 8.0; no critical daemons accidentally killed",
+      "priority": 9
+    },
+    {
+      "step_id": "s5",
+      "action": "Write scripts/daemon_recovery.sh that runs bootout+bootstrap for all com.zg.* daemons in one command, then verify it executes cleanly",
+      "target": "scripts/daemon_recovery.sh",
+      "estimated_min": 4,
+      "depends_on": [],
+      "success_criteria": "scripts/daemon_recovery.sh exists, executable, runs `launchctl list | grep com.zg. | wc -l` and returns \u2265 30 after execution",
+      "priority": 7
+    },
+    {
+      "step_id": "s6",
+      "action": "Wait 30s, poll overseer once, log final fleet count, confirm 3 previously-crashed daemons show PID > 0",
+      "target": "mission overseer final verification",
+      "estimated_min": 2,
+      "depends_on": [
+        "s1",
+        "s2",
+        "s3",
+        "s4"
+      ],
+      "success_criteria": "Fleet >= 33/34 UP, 0 CRASHED, previously-crashed daemons have non-negative PIDs, load < 8.0",
+      "priority": 10
+    }
+  ],
+  "goals_addressed": [
+    "EXECUTE all known fixes instead of re-planning them \u2014 break the 2.5-hour planning loop",
+    "Fix 3 crashdaemon plists with WatchPaths, fix yahoo_provision.py line 419, batch-restart fleet to 34/34"
+  ]
+}

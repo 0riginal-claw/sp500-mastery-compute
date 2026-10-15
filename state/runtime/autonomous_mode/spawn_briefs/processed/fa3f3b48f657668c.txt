@@ -1,0 +1,27 @@
+# origin: autonomous_daemon
+# user_session_yielding: enabled (do not run if last_user_prompt < 60s)
+# autonomous_mode spawn
+# model_reason: haiku (mechanical helper task, cost-bias)
+# scope_estimate_min: 1
+# decomposition_plan: single-helper slice
+# autosolve_skip: spawned via autonomous_mode_daemon safety/budget-gated flow
+
+Workspace inherits standing authorization. Safety boundaries apply.
+Pre-approved: routine read/write/script/install/log/backup inside My Drive.
+
+## Task
+Yield session — all research complete. 7 artifacts delivered across 3 waves. 30+ ideas tested and documented in SEEN_IDEAS.md. 1 deployable strategy confirmed (10-Q delay+sector at Sharpe 5.70, WR 88% OOS). Cron watcher exists at bin/edgar_watcher.sh (install manually: crontab -l; echo '30 08 * * 1-5 /full/path/bin/edgar_watcher.sh' | crontab -). All artifacts at research/notes/20260520_capstone.md.
+
+## Why
+plan step s1 addressing blockers
+
+## Brief
+Target: session termination
+Success criteria: Session yields with clean termination. No new cycles spawned. Human reviews capstone.md before next session.
+Depends on: []
+
+## Expected lift
+Session yields with clean termination. No new cycles spawned. Human reviews capstone.md before next session.
+
+## Proof of work
+Return: commands run, paths accessed, files changed, backups, sub-agents, final status.

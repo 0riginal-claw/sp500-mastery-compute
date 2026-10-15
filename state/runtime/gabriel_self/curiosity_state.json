@@ -1,0 +1,34 @@
+{
+  "data": {
+    "last_touched": null,
+    "spawn_count": 0
+  },
+  "model": {
+    "last_touched": null,
+    "spawn_count": 0
+  },
+  "infra": {
+    "last_touched": null,
+    "spawn_count": 0
+  },
+  "cloud": {
+    "last_touched": null,
+    "spawn_count": 0
+  },
+  "research": {
+    "last_touched": null,
+    "spawn_count": 0
+  },
+  "trading": {
+    "last_touched": null,
+    "spawn_count": 0
+  },
+  "self_improvement": {
+    "last_touched": null,
+    "spawn_count": 0
+  },
+  "diagnostics": {
+    "last_touched": null,
+    "spawn_count": 0
+  }
+}

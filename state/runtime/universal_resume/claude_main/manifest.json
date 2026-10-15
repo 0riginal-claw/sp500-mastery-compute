@@ -1,0 +1,22 @@
+{
+  "class": "claude_main",
+  "ts": "2026-05-21T00:17:35.145897+00:00",
+  "session_id": "d2489079",
+  "files": {
+    "session_resume/last_session_activity.unix": {
+      "size": 11,
+      "sha256": "cb31e981c7d4be523dcb55eaa73b7fa19634de3356938057e6432ea5db3070cb",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.zg/state/session_resume/last_session_activity.unix"
+    },
+    "session_resume/stop_validate.log": {
+      "size": 890,
+      "sha256": "2d413b8b46145d1c399033f69e5a139c88bb373fcc95defa421279d4abd683a8",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.zg/state/session_resume/stop_validate.log"
+    }
+  },
+  "skipped_too_large": 0,
+  "errors": 0,
+  "sources_seen": [
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.zg/state/session_resume"
+  ]
+}

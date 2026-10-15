@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "top": {
+    "id": "G0",
+    "goal": "Master S&P 500 trading via XGBoost + Mythos paper-trading + autonomous improvement",
+    "status": "in_progress"
+  },
+  "mid": [
+    {
+      "id": "M1",
+      "parent": "G0",
+      "goal": "All 509 S&P 500 tickers mastered with latest v10 strategy",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    },
+    {
+      "id": "M2",
+      "parent": "G0",
+      "goal": "Live paper-trade daily Sharpe >1.5 sustained for 5 sessions",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": "2026-05-21T01:57:06.213017+00:00"
+    },
+    {
+      "id": "M3",
+      "parent": "G0",
+      "goal": "Friday-retrain pipeline runs end-to-end without manual intervention",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    },
+    {
+      "id": "M4",
+      "parent": "G0",
+      "goal": "Daemon self-improvement: weekly net-positive lessons.md additions",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    },
+    {
+      "id": "M5",
+      "parent": "G0",
+      "goal": "Cloud-routing target: >=85% of CPU/RAM workload off Mac",
+      "status": "in_progress",
+      "blockers": [],
+      "last_progress_ts": null
+    }
+  ],
+  "low": [
+    {
+      "id": "L_sim00943",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: paper trade Sharpe below target",
+      "ts": "2026-05-20T20:46:41.440238+00:00"
+    },
+    {
+      "id": "L_sim00944",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: paper trade Sharpe below target",
+      "ts": "2026-05-20T20:46:41.442171+00:00"
+    },
+    {
+      "id": "L_sim00947",
+      "parent": "M3",
+      "action": "Unblock Friday-retrain pipeline runs end-to-end without manual inter: Friday retrain manual step still required",
+      "ts": "2026-05-20T20:46:41.445177+00:00"
+    },
+    {
+      "id": "L_sim00949",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: tickers not yet mastered for AAPL, MSFT, GOOG",
+      "ts": "2026-05-20T20:46:41.447172+00:00"
+    },
+    {
+      "id": "L_sim00951",
+      "parent": "M4",
+      "action": "Unblock Daemon self-improvement: weekly net-positive lessons.md addi: lessons.md not net-positive this week",
+      "ts": "2026-05-20T20:46:41.450550+00:00"
+    },
+    {
+      "id": "L_sim00952",
+      "parent": "M3",
+      "action": "Unblock Friday-retrain pipeline runs end-to-end without manual inter: Friday retrain manual step still required",
+      "ts": "2026-05-20T20:46:41.451773+00:00"
+    },
+    {
+      "id": "L_sim00953",
+      "parent": "M3",
+      "action": "Unblock Friday-retrain pipeline runs end-to-end without manual inter: Friday retrain manual step still required",
+      "ts": "2026-05-20T20:46:41.452828+00:00"
+    },
+    {
+      "id": "L_sim00954",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: paper trade Sharpe below target",
+      "ts": "2026-05-20T20:46:41.454026+00:00"
+    },
+    {
+      "id": "L_sim00955",
+      "parent": "M3",
+      "action": "Unblock Friday-retrain pipeline runs end-to-end without manual inter: Friday retrain manual step still required",
+      "ts": "2026-05-20T20:46:41.455254+00:00"
+    },
+    {
+      "id": "L_sim00956",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: paper trade Sharpe below target",
+      "ts": "2026-05-20T20:46:41.456248+00:00"
+    },
+    {
+      "id": "L_sim00957",
+      "parent": "M4",
+      "action": "Unblock Daemon self-improvement: weekly net-positive lessons.md addi: lessons.md not net-positive this week",
+      "ts": "2026-05-20T20:46:41.457573+00:00"
+    },
+    {
+      "id": "L_sim00958",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: paper trade Sharpe below target",
+      "ts": "2026-05-20T20:46:41.458682+00:00"
+    },
+    {
+      "id": "L_sim00959",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: tickers not yet mastered for AAPL, MSFT, GOOG",
+      "ts": "2026-05-20T20:46:41.459705+00:00"
+    },
+    {
+      "id": "L_347041e1",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: System has been in an infinite event-delivery loop for 24+ hours \u2014 all research ",
+      "ts": "2026-05-20T23:17:48.096295+00:00"
+    },
+    {
+      "id": "L_e0c23e27",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: Cross-session Claude Code task notification files are being delivered as follow-",
+      "ts": "2026-05-20T23:45:21.692500+00:00"
+    },
+    {
+      "id": "L_fffc83e6",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: Cross-session Claude Code task notifications keep this session alive \u2014 the event",
+      "ts": "2026-05-20T23:51:17.012639+00:00"
+    },
+    {
+      "id": "L_3a5b973a",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: 6 crashdaemons with exit -15 (SIGTERM) from earlier daemon bootout \u2014 all non-cri",
+      "ts": "2026-05-20T23:56:19.605546+00:00"
+    },
+    {
+      "id": "L_aa217e00",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: Session event-delivery loop continues after 24+ hours \u2014 system self-healing (15/",
+      "ts": "2026-05-20T23:58:58.791296+00:00"
+    },
+    {
+      "id": "L_eb0058df",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: Session event-delivery loop at 24+ hours \u2014 all deliverables complete, system sel",
+      "ts": "2026-05-21T00:01:46.054950+00:00"
+    },
+    {
+      "id": "L_6472edbf",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: Stale context cache persists after 24+ hours \u2014 yahoo log deleted and recreated w",
+      "ts": "2026-05-21T00:07:29.930046+00:00"
+    },
+    {
+      "id": "L_061af032",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: Stale context cache persists after 26+ hours \u2014 shows 15/35 UP with expired PIDs,",
+      "ts": "2026-05-21T00:20:41.791206+00:00"
+    },
+    {
+      "id": "L_54f9fb77",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: Stale context cache persists after 28+ hours \u2014 MISSION_PROGRESS on disk updated ",
+      "ts": "2026-05-21T00:29:25.582680+00:00"
+    },
+    {
+      "id": "L_f84c1fcc",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: Session exhausted after 30+ hours \u2014 stale context cache cannot be refreshed from",
+      "ts": "2026-05-21T00:32:00.153682+00:00"
+    },
+    {
+      "id": "L_bf891427",
+      "parent": "M4",
+      "action": "Unblock Daemon self-improvement: weekly net-positive lessons.md addi: Infrastructure self-healed to 92% recovery during context-locked session \u2014 12/37",
+      "ts": "2026-05-21T00:45:15.974238+00:00"
+    },
+    {
+      "id": "L_27738c97",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: Stale context cache at 30+ hours \u2014 MISSION_PROGRESS shows 00:40:43Z (daemon live",
+      "ts": "2026-05-21T00:48:07.421932+00:00"
+    },
+    {
+      "id": "L_168ad7fd",
+      "parent": "M2",
+      "action": "Unblock Live paper-trade daily Sharpe >1.5 sustained for 5 sessions: Mac load at 29.08 \u2014 sustained cap breach for 30+ minutes (cap=12). Same pre-pani",
+      "ts": "2026-05-21T00:55:21.788916+00:00"
+    },
+    {
+      "id": "L_2f9b270d",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: Session cycled 33+ hours on stale context cache \u2014 all research complete, all pro",
+      "ts": "2026-05-21T01:14:53.074302+00:00"
+    },
+    {
+      "id": "L_046f39ea",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: Session cycled 40+ hours on stale context cache. Infrastructure stable at 13/37 ",
+      "ts": "2026-05-21T01:37:08.626362+00:00"
+    },
+    {
+      "id": "L_6144a094",
+      "parent": "M4",
+      "action": "Unblock Daemon self-improvement: weekly net-positive lessons.md addi: Session cycled 40+ hours on stale context cache. 14/37 UP, 2 one-shot daemons ex",
+      "ts": "2026-05-21T01:40:06.756362+00:00"
+    },
+    {
+      "id": "L_a95663aa",
+      "parent": "M1",
+      "action": "Unblock All 509 S&P 500 tickers mastered with latest v10 strategy: Session cycled 42+ hours on stale context. All research delivered across 25+ tur",
+      "ts": "2026-05-21T01:47:19.825927+00:00"
+    }
+  ],
+  "updated_ts": "2026-05-21T01:57:06.213083+00:00"
+}

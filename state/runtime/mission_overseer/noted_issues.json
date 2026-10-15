@@ -1,0 +1,112 @@
+{
+  "daemon_crashed_com.zg.openclaw_session_watcher_2": {
+    "noted_at": "2026-05-20T04:26:36Z",
+    "summary": "daemon com.zg.openclaw_session_watcher exit_status=2, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.mem0_auto_capture_126": {
+    "noted_at": "2026-05-20T04:26:36Z",
+    "summary": "daemon com.zg.mem0_auto_capture exit_status=126, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.paper_trade_startup_1": {
+    "noted_at": "2026-05-20T04:26:36Z",
+    "summary": "daemon com.zg.paper_trade_startup exit_status=1, PID=-",
+    "kind": "CRASHED"
+  },
+  "task_stall_smoke407e_1779248617": {
+    "noted_at": "2026-05-20T04:28:37Z",
+    "summary": "in_progress task #smoke407e idle 45min",
+    "kind": "STALL"
+  },
+  "daemon_crashed_com.zg.drive_throttle_renice_126": {
+    "noted_at": "2026-05-20T06:14:33Z",
+    "summary": "daemon com.zg.drive_throttle_renice exit_status=126, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.drive_sync_batch_2": {
+    "noted_at": "2026-05-20T06:15:33Z",
+    "summary": "daemon com.zg.drive_sync_batch exit_status=2, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.drive_sync_batch_1": {
+    "noted_at": "2026-05-20T06:16:33Z",
+    "summary": "daemon com.zg.drive_sync_batch exit_status=1, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.selective_context_prune_126": {
+    "noted_at": "2026-05-20T07:14:40Z",
+    "summary": "daemon com.zg.selective_context_prune exit_status=126, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.stale_memory_audit_2": {
+    "noted_at": "2026-05-20T07:14:40Z",
+    "summary": "daemon com.zg.stale_memory_audit exit_status=2, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.paper_trade_ws_-9": {
+    "noted_at": "2026-05-20T07:35:30Z",
+    "summary": "daemon com.zg.paper_trade_ws exit_status=-9, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.paper_trade_snapshots_-9": {
+    "noted_at": "2026-05-20T07:35:31Z",
+    "summary": "daemon com.zg.paper_trade_snapshots exit_status=-9, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.stale_memory_audit_78": {
+    "noted_at": "2026-05-20T07:56:33Z",
+    "summary": "daemon com.zg.stale_memory_audit exit_status=78, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.openclaw_session_watcher_78": {
+    "noted_at": "2026-05-20T07:56:33Z",
+    "summary": "daemon com.zg.openclaw_session_watcher exit_status=78, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.help_request_consumer_-15": {
+    "noted_at": "2026-05-20T09:40:42Z",
+    "summary": "daemon com.zg.help_request_consumer exit_status=-15, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.sync_compute_repo_1": {
+    "noted_at": "2026-05-20T17:54:29Z",
+    "summary": "daemon com.zg.sync_compute_repo exit_status=1, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.mission_overseer_-15": {
+    "noted_at": "2026-05-20T23:16:33Z",
+    "summary": "daemon com.zg.mission_overseer exit_status=-15, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.memory_auto_save_-15": {
+    "noted_at": "2026-05-20T23:19:47Z",
+    "summary": "daemon com.zg.memory_auto_save exit_status=-15, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.sync_compute_repo_-15": {
+    "noted_at": "2026-05-20T23:19:47Z",
+    "summary": "daemon com.zg.sync_compute_repo exit_status=-15, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.paper_trade_startup_-15": {
+    "noted_at": "2026-05-20T23:19:47Z",
+    "summary": "daemon com.zg.paper_trade_startup exit_status=-15, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.agent_watchdog_-15": {
+    "noted_at": "2026-05-20T23:26:38Z",
+    "summary": "daemon com.zg.agent_watchdog exit_status=-15, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.botsforge_cloudflare_1": {
+    "noted_at": "2026-05-21T00:22:52Z",
+    "summary": "daemon com.zg.botsforge_cloudflare exit_status=1, PID=-",
+    "kind": "CRASHED"
+  },
+  "daemon_crashed_com.zg.sync_hooks_local_-15": {
+    "noted_at": "2026-05-21T01:34:15Z",
+    "summary": "daemon com.zg.sync_hooks_local exit_status=-15, PID=-",
+    "kind": "CRASHED"
+  }
+}

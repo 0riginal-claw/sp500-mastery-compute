@@ -1,0 +1,17 @@
+{
+  "class": "ollama",
+  "ts": "2026-05-21T00:17:35.515678+00:00",
+  "session_id": "d2489079",
+  "files": {
+    "_files/id_ed25519.pub": {
+      "size": 81,
+      "sha256": "289249f37152625f2c02705b0706a7734928aafc4950f4981a44dc74b42a2fb6",
+      "src": "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.ollama/id_ed25519.pub"
+    }
+  },
+  "skipped_too_large": 0,
+  "errors": 0,
+  "sources_seen": [
+    "/Users/orginal/Library/CloudStorage/GoogleDrive-zachgladstone@gmail.com/My Drive/AI-Tools/home/.ollama/id_ed25519.pub"
+  ]
+}

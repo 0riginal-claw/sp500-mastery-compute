@@ -1,0 +1,51 @@
+{
+  "plan_id": "5a95b509bec2",
+  "cycle_id": "cafbd51f",
+  "ts": "2026-05-20T08:13:18.832580+00:00",
+  "source": "deepseek",
+  "steps": [
+    {
+      "step_id": "s1",
+      "action": "Write EDGAR 10-Q signal generator script: query DB for new 10-Qs with 35-50d delay, compute 5d hold window, output daily trade signal JSON",
+      "target": "scripts/edgar_10q_signal.py (new)",
+      "estimated_min": 25,
+      "depends_on": [],
+      "success_criteria": "Script accepts --date param, queries EDGAR DB, filters to 35-50d delay, outputs JSON with ticker list and entry dates; tested with date=2026-04-24 (most recent data) produces >= 5 tickers",
+      "priority": 10
+    },
+    {
+      "step_id": "s2",
+      "action": "Clear all 8 stale in-flight helpers from the spawn list \u2014 they are duplicates or already-completed tasks from prior cycles",
+      "target": "in-flight helper list cleanup",
+      "estimated_min": 2,
+      "depends_on": [],
+      "success_criteria": "In-flight helper list shows 0 entries; no active spawns running",
+      "priority": 9
+    },
+    {
+      "step_id": "s3",
+      "action": "Write capstone document capturing the complete session \u2014 all tests, results, database profiles, daemon state, and Wave 3 roadmap",
+      "target": "research/notes/20260520_capstone.md (update existing or write final version)",
+      "estimated_min": 10,
+      "depends_on": [],
+      "success_criteria": "Document exists with sections: 3 waves of work, all rejected approaches with evidence, 10-Q signal metrics (Sharpe 2.47), database inventory, daemon state, and Wave 3 execution plan",
+      "priority": 8
+    },
+    {
+      "step_id": "s4",
+      "action": "Build EDGAR filing watcher cron wrapper: check for new 10-Qs daily, generate signals, compare against prior day to detect new filings",
+      "target": "bin/edgar_watcher.sh (new) + cron integration",
+      "estimated_min": 15,
+      "depends_on": [
+        "s1"
+      ],
+      "success_criteria": "Shell script exists that runs edgar_10q_signal.py with today's date, logs output to logs/edgar_signal.log; dry-run produces valid signal output",
+      "priority": 7
+    }
+  ],
+  "goals_addressed": [
+    "Build the execution pathway for the confirmed 10-Q signal (Sharpe 2.47, WR 65.5%)",
+    "Create EDGAR filing watcher + daily signal generator for Wave 3",
+    "Clear stale in-flight helpers and finalize session artifacts"
+  ]
+}
