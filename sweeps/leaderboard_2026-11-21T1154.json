@@ -1,0 +1,14 @@
+{
+  "run_label": "2026-11-21T1154",
+  "run_id": "44901297104",
+  "ts": "2026-11-21T12:54:51.635027Z",
+  "total": 0,
+  "completed": 0,
+  "failed": 0,
+  "unknown": 0,
+  "shards_seen": 20,
+  "high_quality": [],
+  "top_pf": [],
+  "top_sharpe": [],
+  "all_rows": []
+}
